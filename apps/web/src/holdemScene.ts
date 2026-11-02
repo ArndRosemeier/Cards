@@ -13,12 +13,12 @@ import type { GameScene, SceneHooks } from "./trickScene.ts";
 
 import { pickGeo, type Geo } from "./geo.ts";
 // table geometry; set once per scene from the screen orientation (see setGeo)
-const TABLE = { x: 800, y: 430, rx: 640, ry: 290 }, DECK = { x: 800, y: 175 }, POT = { x: 800, y: 300 };
-const K = { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 690, ownPlateY: 790, seatIn: 40, ownDX: 150, ownScale: 0.95 };
+const TABLE = { x: 800, y: 430, rx: 640, ry: 290 }, DECK = { x: 800, y: 175 }, POT = { x: 800, y: 512 };
+const K = { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 652, ownPlateY: 805, seatIn: 40, ownDX: 150, ownScale: 0.95 };
 const SLOT = (i: number) => ({ x: TABLE.x + (i - 2) * K.slotDX, y: K.slotY });
 function setGeo(g: Geo) {
   if (g.portrait) { Object.assign(TABLE, { x: 360, y: 560, rx: 310, ry: 480 }); Object.assign(DECK, { x: 360, y: 300 }); Object.assign(POT, { x: 360, y: 440 }); Object.assign(K, { slotDX: 112, slotY: 560, cardScale: 0.72, ownY: 900, ownPlateY: 1062, seatIn: 95, ownDX: 130, ownScale: 1 }); }
-  else { Object.assign(TABLE, { x: 800, y: 430, rx: 640, ry: 290 }); Object.assign(DECK, { x: 800, y: 175 }); Object.assign(POT, { x: 800, y: 300 }); Object.assign(K, { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 690, ownPlateY: 790, seatIn: 40, ownDX: 150, ownScale: 0.95 }); }
+  else { Object.assign(TABLE, { x: 800, y: 430, rx: 640, ry: 290 }); Object.assign(DECK, { x: 800, y: 175 }); Object.assign(POT, { x: 800, y: 512 }); Object.assign(K, { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 652, ownPlateY: 805, seatIn: 40, ownDX: 150, ownScale: 0.95 }); }
 }
 
 const CHIPS: [number, number][] = [[1000, 0xe3b341], [500, 0x7c4dab], [100, 0x2b2b30], [25, 0x2e8b57], [5, 0xc0392b], [1, 0xe9e4d4]];
@@ -54,6 +54,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private queue: Update<View, Move, Ev>[] = [];
   private running = false; private ready = false; private busy = true; private destroyed = false; private finished = false;
   private view: View | null = null; private legal: Move[] = [];
+  private handDone = false;
   private me = 0; private n = 0; private names: string[] = [];
   private controls = document.createElement("div"); private banner = document.createElement("div"); private board = document.createElement("div");
   private readonly geo: Geo = pickGeo(window.innerWidth, window.innerHeight);
@@ -176,6 +177,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private async animate(ev: Ev, u: Update<View, Move, Ev>) {
     switch (ev.t) {
       case "newHand": {
+        this.handDone = false;
         this.clearHand(); this.disp.bets = Array(this.n).fill(0); this.renderStacks(); this.renderPot();
         this.placeDealer(ev.dealer); await sleep(350); break;
       }
@@ -221,6 +223,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
         break;
       }
       case "show": {
+        this.handDone = true; for (const st of this.seats) gsap.to(st.ring, { alpha: 0, duration: 0.2 });
         const sp = this.seats[ev.seat]!;
         if (ev.seat !== this.me) {
           sp.cards.forEach((c, i) => { c.reveal(ev.cards[i]!); gsap.to(c.scale, { x: 0.62, y: 0.62, duration: 0.3 }); gsap.to(c, { y: c.y - (sp.pos.y < TABLE.y ? -30 : 30), duration: 0.3 }); });
@@ -229,6 +232,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
         sp.handLabel.text = t("hh_" + ev.hand); await sleep(450); break;
       }
       case "award": {
+        this.handDone = true; for (const st of this.seats) gsap.to(st.ring, { alpha: 0, duration: 0.2 });
         const sp = this.seats[ev.seat]!;
         await this.flyChips(POT, sp.plate.position, ev.amount); this.disp.pot = Math.max(0, this.disp.pot - ev.amount); this.disp.stacks[ev.seat]! += ev.amount; this.renderPot(); this.renderStacks();
         sp.status.text = `+${ev.amount}`; gsap.fromTo(sp.plate.scale, { x: 1.12, y: 1.12 }, { x: 1, y: 1, duration: 0.5, ease: "elastic.out(1,0.5)" });
@@ -278,7 +282,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private send(m: Move) { if (this.busy) return; this.busy = true; this.legal = []; this.refresh(); this.hooks.submit(m); }
   private refresh() {
     const v = this.view; if (!v) return;
-    for (let s = 0; s < this.n; s++) gsap.to(this.seats[s]!.ring, { alpha: !v.over && v.turn === s ? 1 : 0, duration: 0.25 });
+    for (let s = 0; s < this.n; s++) gsap.to(this.seats[s]!.ring, { alpha: !v.over && !this.handDone && v.turn === s ? 1 : 0, duration: 0.25 });
     this.controls.innerHTML = "";
     const mineTurn = !this.busy && this.legal.length > 0;
     if (mineTurn) {
@@ -305,7 +309,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
         r2.append(slider, lab, go); upd(); this.controls.append(r2);
       }
     }
-    this.banner.textContent = v.over ? "" : v.turn === this.me ? t("yourTurn") : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
+    this.banner.textContent = v.over ? "" : v.turn === this.me ? (v.toCall > 0 ? t("hCallPrompt", { n: Math.min(v.toCall, v.stacks[this.me] ?? v.toCall) }) : t("hCheckPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
     this.banner.style.display = this.busy || v.over ? "none" : "block";
     this.board.innerHTML = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}" style="${v.out[i] ? "opacity:.35" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.stacks[i]}</b></div>`).join("") + `<div class="x">${t("hHand", { n: v.handNo })} · ${v.sb}/${v.bb}</div>`;
   }

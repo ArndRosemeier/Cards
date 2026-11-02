@@ -41,6 +41,7 @@ const skatUi: TrickUi<SMove, SView> = {
     }
   },
   order: skatOrder,
+  trump: (v) => (v.game && v.game !== "R" ? `${t("trumpLabel")}: ${t("game" + v.game)}` : null),
   talonFaceUp: () => false,
   status: (v, names, me) => {
     if (v.over) return "";
@@ -94,6 +95,7 @@ const schafUi: TrickUi<SKMove, SKView> = {
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: () => null,
   label: (m) => (m.t === "pass" ? t("sk_passBtn") : m.t === "game" ? t("sk_" + m.mode) : null),
+  trump: (v) => (v.mode && v.mode !== "ramsch" ? `${t("trumpLabel")}: ${t("sk_" + v.mode)}` : null),
   order: schafOrder,
   status: (v, names, me) => {
     if (v.over) return "";
@@ -108,11 +110,13 @@ const schafUi: TrickUi<SKMove, SKView> = {
 
 const SYM: Record<string, string> = { C: "♣", D: "♦", H: "♥", S: "♠", N: "NT" };
 const callHtml = (c: any): string => c.t === "bid" ? `${c.level}<span class="${c.suit === "H" || c.suit === "D" ? "red" : ""}">${SYM[c.suit]}</span>` : c.t === "pass" ? "–" : c.t === "double" ? "X" : "XX";
-const SEATN = ["N", "E", "S", "W"];
+/** compass letters as seen from the own seat: you are South, the next seat clockwise is West */
+const compass = (seat: number, me: number) => ["S", "W", "N", "E"][(seat - me + 4) % 4]!;
 const bridgeUi: TrickUi<BMove, BView> = {
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: () => null,
   label: () => null,
+  trump: (v) => (v.contract ? `${t("trumpLabel")}: ${SYM[v.contract.suit]}` : null),
   order: (hand, v) => {
     const trump = v?.contract?.suit && v.contract.suit !== "N" ? v.contract.suit : null;
     const order = ["S", "H", "C", "D"];
@@ -127,14 +131,14 @@ const bridgeUi: TrickUi<BMove, BView> = {
     if (v.controller === me && v.turn !== me) return t("br_playDummy");
     return v.turn === me ? t("yourTurn") : t("turnOf", { n: names[v.turn ?? 0] ?? "" });
   },
-  extra: (v, names) => [`${t("roundNo", { a: v.board, b: v.boards })}`, `${t("br_vul")}: ${v.vul[0] && v.vul[1] ? t("br_both") : v.vul[0] ? "NS" : v.vul[1] ? "EW" : t("br_none")}`,
-    ...(v.contract ? [`${v.contract.level}${SYM[v.contract.suit]}${["", " X", " XX"][v.contract.doubled]} ${SEATN[v.contract.declarer]} · ${v.tricks[v.contract.declarer % 2]}/${v.tricks[0] + v.tricks[1]}`] : [])],
+  extra: (v, names) => [`${t("roundNo", { a: v.board, b: v.boards })}`, `${t("br_vul")}: ${v.vul[0] && v.vul[1] ? t("br_both") : v.vul[(v.you as number) % 2] ? "NS" : v.vul[((v.you as number) + 1) % 2] ? "EW" : t("br_none")}`,
+    ...(v.contract ? [`${v.contract.level}${SYM[v.contract.suit]}${["", " X", " XX"][v.contract.doubled]} ${compass(v.contract.declarer, v.you as number)} · ${v.tricks[v.contract.declarer % 2]}/${v.tricks[0] + v.tricks[1]}`] : [])],
   panel: (v, legal, ctx) => {
     if (v.phase === "over") return null;
     const box = document.createElement("div"); box.className = "bidbox";
     if (v.phase === "auction") {
       const hist = document.createElement("div"); hist.className = "auction";
-      hist.innerHTML = [0, 1, 2, 3].map((s) => `<b>${SEATN[s]}${s === v.dealer ? "*" : ""}</b>`).join("") + [...Array(v.dealer).fill(null), ...v.auction].map((a: any) => `<span>${a ? callHtml(a.call) : ""}</span>`).join("");
+      hist.innerHTML = [0, 1, 2, 3].map((s) => `<b>${compass(s, v.you as number)}${s === v.dealer ? "*" : ""}</b>`).join("") + [...Array(v.dealer).fill(null), ...v.auction].map((a: any) => `<span>${a ? callHtml(a.call) : ""}</span>`).join("");
       if (v.turn === ctx.me) {
         const grid = document.createElement("div"); grid.className = "bidgrid";
         for (let level = 1; level <= 7; level++) for (const su of ["C", "D", "H", "S", "N"]) {

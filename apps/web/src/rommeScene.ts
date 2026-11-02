@@ -31,7 +31,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private queue: Update<View, Move, Ev>[] = []; private running = false; private ready = false; private dealt = false; private busy = true; private destroyed = false; private finished = false;
   private view: View | null = null; private legal: Move[] = []; private me = 0; private n = 0; private names: string[] = [];
   private selection = new Set<Card>(); private staged: Card[][] = []; private sortMode: "suit" | "rank" = "suit";
-  private actions = document.createElement("div"); private banner = document.createElement("div"); private board = document.createElement("div");
+  private sortBtn = document.createElement("button"); private actions = document.createElement("div"); private banner = document.createElement("div"); private board = document.createElement("div");
   private readonly app: Application; private readonly ui: HTMLElement; private readonly hooks: SceneHooks<Move>;
 
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
@@ -44,13 +44,14 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     this.stockStack.eventMode = "static"; this.stockStack.cursor = "pointer"; this.stockStack.on("pointertap", () => this.draw("stock"));
     this.actions.className = "actions"; if (!this.geo.portrait) this.actions.style.bottom = "calc(env(safe-area-inset-bottom) + 262px)";
     this.banner.className = "banner"; this.banner.style.display = "none"; this.board.className = "board";
-    ui.append(this.actions, this.banner, this.board);
+    this.sortBtn.className = "btn small sortbtn"; this.sortBtn.style.display = "none";
+    ui.append(this.actions, this.banner, this.board, this.sortBtn);
     this.resize(); window.addEventListener("resize", this.onResize);
   }
   private onResize = () => this.resize();
   private resize() { const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H); this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); document.body.classList.toggle("portrait", g.portrait); setActionsBottom(g, w, h, this.n || 4); cover(this.bg, w, h); }
   hint(cards: Card[]) { for (const c of cards) this.mine.get(c)?.glowFor(7); }
-  destroy() { document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
+  destroy() { this.sortBtn.remove(); document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
 
   receive(u: Update<View, Move, Ev>) { this.queue.push(u); void this.drain(); }
   private async drain() {
@@ -112,16 +113,16 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
 
   private layoutMelds(animate = true) {
     // left-to-right, wrapping rows, in the central area
-    const pt = this.geo.portrait, x0 = pt ? 150 : 250; let x = x0, y = pt ? 270 : 190; const rowH = pt ? 112 : 120, maxX = pt ? 580 : 1350;
+    const pt = this.geo.portrait, x0 = pt ? 150 : 250; let x = x0, y = pt ? 250 : 190; const rowH = pt ? 130 : 120, maxX = pt ? 585 : 1350, sc = pt ? 0.6 : 0.5, cw = CardView.W * sc, ch = CardView.H * sc;
     for (const m of this.melds) {
-      const step = pt ? 22 : 34, wdt = (m.cards.length - 1) * step + 70;
+      const step = pt ? 27 : 34, wdt = (m.cards.length - 1) * step + cw;
       if (x + wdt > maxX) { x = x0; y += rowH; }
       m.cards.forEach((cv, i) => {
         this.meldLayer.addChild(cv);
-        const sl = { x: x + 35 + i * step, y: y + 50, rot: 0, scale: 0.5 }; cv.slot = sl;
-        gsap.to(cv, { x: sl.x, y: sl.y, rotation: 0, duration: animate ? 0.4 : 0, ease: "power3.out", overwrite: "auto" }); gsap.to(cv.scale, { x: 0.5, y: 0.5, duration: animate ? 0.4 : 0 });
+        const sl = { x: x + cw / 2 + i * step, y: y + ch / 2, rot: 0, scale: sc }; cv.slot = sl;
+        gsap.to(cv, { x: sl.x, y: sl.y, rotation: 0, duration: animate ? 0.4 : 0, ease: "power3.out", overwrite: "auto" }); gsap.to(cv.scale, { x: sc, y: sc, duration: animate ? 0.4 : 0 });
       });
-      m.frame.clear().roundRect(x - 6, y - 8, wdt + 12, 116, 14).stroke({ width: 2, color: m.owner === this.me ? 0xffe08a : 0xffffff, alpha: 0.35 }).fill({ color: 0x000000, alpha: 0.12 });
+      m.frame.clear().roundRect(x - 6, y - 8, wdt + 12, ch + 16, 14).stroke({ width: 2, color: m.owner === this.me ? 0xffe08a : 0xffffff, alpha: 0.35 }).fill({ color: 0x000000, alpha: 0.12 });
       m.frame.eventMode = "static"; m.frame.cursor = "pointer"; m.frame.removeAllListeners();
       const idx = this.melds.indexOf(m); m.frame.on("pointertap", () => this.tryLayoff(idx));
       x += wdt + 22;
@@ -271,7 +272,8 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       } else btn(`${t("rm_meld")}${meld ? ` (${meld.value})` : ""}`, "primary", () => this.send({ t: "meld", groups: [sel] }), !meld);
       btn(t("rm_discard"), opened || !this.staged.length ? "primary" : "", () => this.send({ t: "discard", card: sel[0]! }), sel.length !== 1 || (v.taken === sel[0] && v.handSizes[this.me]! > 1));
     }
-    if (this.dealt) btn(this.sortMode === "suit" ? "123" : "♣♥", "small", () => { this.sortMode = this.sortMode === "suit" ? "rank" : "suit"; this.order.reset(); this.layout(this.me); });
+    this.sortBtn.style.display = this.dealt ? "block" : "none"; this.sortBtn.textContent = `${t("sort")}: ${this.sortMode === "suit" ? "123" : "♣♥"}`;
+    this.sortBtn.onclick = () => { this.sortMode = this.sortMode === "suit" ? "rank" : "suit"; this.order.reset(); this.layout(this.me); this.refresh(); };
     for (let s = 0; s < this.n; s++) gsap.to(this.plates[s]!.ring, { alpha: !v.over && v.turn === s ? 1 : 0, duration: 0.25 });
     let msg = ""; if (!v.over) msg = v.turn === this.me ? (v.phase === "draw" ? t("rm_drawPrompt") : t("rm_playPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
     this.banner.textContent = msg; this.banner.style.display = this.busy || !msg ? "none" : "block";

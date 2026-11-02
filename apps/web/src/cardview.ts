@@ -74,6 +74,10 @@ export class CardView extends Container {
   /** set by the scene on own-hand cards: lets the player drag the card to re-sort the hand */
   drag: DragCtl | null = null;
   dragging = false;
+  private _dim = false;
+  /** greyed out: a card that cannot be played right now */
+  get dimmed() { return this._dim; }
+  set dimmed(v: boolean) { this._dim = v; this.face.tint = v ? 0x8d8d8d : 0xffffff; }
   private noTap = false;
 
   constructor(id: Card | null, faceUp: boolean) {
@@ -215,7 +219,7 @@ export class CardView extends Container {
     mesh.setCorners(c[0]!, c[1]!, c[2]!, c[3]!, c[4]!, c[5]!, c[6]!, c[7]!);
     sheen.setCorners(c[0]!, c[1]!, c[2]!, c[3]!, c[4]!, c[5]!, c[6]!, c[7]!);
     // light from the upper left: faces turned towards it are brighter; a sheen sweeps across when the tilt hits the glossy angle
-    const facing = cy * cx, shade = clamp(0.8 + 0.2 * facing + 0.07 * (sy - sx) * (cy >= 0 ? 1 : -1), 0.55, 1.05), g = Math.round(clamp(shade, 0, 1) * 255);
+    const facing = cy * cx, shade = clamp(0.8 + 0.2 * facing + 0.07 * (sy - sx) * (cy >= 0 ? 1 : -1), 0.72, 1.05), g = Math.round(clamp(shade * (this._dim ? 0.55 : 1), 0, 1) * 255);
     mesh.tint = (g << 16) | (g << 8) | g;
     sheen.alpha = front ? clamp(1 - Math.abs(ty * 1.1 + tx * 0.8 - 0.2) * 3.4, 0, 1) * 0.42 * Math.min(1, Math.abs(ty) * 6 + Math.abs(tx) * 6) : 0;
     sheen.visible = sheen.alpha > 0.01;

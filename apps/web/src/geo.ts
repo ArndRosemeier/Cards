@@ -18,12 +18,12 @@ export const LAND: Geo = {
   portrait: false, W: 1600, H: 900, center: { x: 800, y: 440 },
   layouts: {
     2: [A(800, 770, 0, 0, 1), A(800, 125, P, 0, -1)],
-    3: [A(800, 770, 0, 0, 1), A(130, 450, P / 2, -1, 0), A(1470, 450, -P / 2, 1, 0)],
-    4: [A(800, 770, 0, 0, 1), A(130, 450, P / 2, -1, 0), A(800, 125, P, 0, -1), A(1470, 450, -P / 2, 1, 0)],
-    5: [A(800, 770, 0, 0, 1), A(130, 500, P / 2, -1, 0), A(520, 125, P, -0.6, -1), A(1080, 125, P, 0.6, -1), A(1470, 500, -P / 2, 1, 0)],
+    3: [A(800, 770, 0, 0, 1), A(130, 420, P / 2, -1, 0), A(1470, 420, -P / 2, 1, 0)],
+    4: [A(800, 770, 0, 0, 1), A(130, 420, P / 2, -1, 0), A(800, 125, P, 0, -1), A(1470, 420, -P / 2, 1, 0)],
+    5: [A(800, 770, 0, 0, 1), A(130, 470, P / 2, -1, 0), A(520, 125, P, -0.6, -1), A(1080, 125, P, 0.6, -1), A(1470, 470, -P / 2, 1, 0)],
   },
-  ownPlate: { x: 170, y: 668 }, talonY: 250, toast: { dx: 330, dy: 200 }, ownStep: 118, ownWidth: 1300, ownScale: 1, dummyWidth: 620, dummyStep: 46, dummyScale: 0.72,
-  plate: (a, rel) => (rel === 0 ? { x: 170, y: 668 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy }),
+  ownPlate: { x: 170, y: 664 }, talonY: 250, toast: { dx: 330, dy: 200 }, ownStep: 118, ownWidth: 1300, ownScale: 1, dummyWidth: 620, dummyStep: 46, dummyScale: 0.72,
+  plate: (a, rel) => (rel === 0 ? { x: 170, y: 664 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy }),
 };
 
 export const PORT: Geo = {
@@ -34,7 +34,7 @@ export const PORT: Geo = {
     4: [A(360, 1075, 0, 0, 1), A(90, 640, P / 2, -1, 0), A(360, 170, P, 0, -1), A(630, 640, -P / 2, 1, 0)],
     5: [A(360, 1075, 0, 0, 1), A(90, 720, P / 2, -1, 0), A(200, 170, P, -0.6, -1), A(520, 170, P, 0.6, -1), A(630, 720, -P / 2, 1, 0)],
   },
-  ownPlate: { x: 150, y: 1240 }, talonY: 390, toast: { dx: 250, dy: 290 }, ownStep: 80, ownWidth: 560, ownScale: 1.15, dummyWidth: 480, dummyStep: 36, dummyScale: 0.52,
+  ownPlate: { x: 150, y: 1240 }, talonY: 390, toast: { dx: 190, dy: 250 }, ownStep: 80, ownWidth: 560, ownScale: 1.15, dummyWidth: 480, dummyStep: 36, dummyScale: 0.52,
   plate: (a, rel) => (rel === 0 ? { x: 150, y: 1240 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 20 : -20), y: a.cy + 235 }),
 };
 

@@ -13,10 +13,10 @@ import type { GameScene, SceneHooks } from "./trickScene.ts";
 
 import { pickGeo, setActionsBottom, type Geo } from "./geo.ts";
 const STOCK = { x: 270, y: 520 }, DISC = { x: 400, y: 520 };
-const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 600 }); Object.assign(DISC, { x: 410, y: 600 }); } else { Object.assign(STOCK, { x: 270, y: 520 }); Object.assign(DISC, { x: 400, y: 520 }); } };
+const setPiles = (g: Geo) => { MS = g.portrait ? 0.55 : 0.45; CW = CardView.W * MS; CH = CardView.H * MS; if (g.portrait) { Object.assign(STOCK, { x: 250, y: 645 }); Object.assign(DISC, { x: 410, y: 645 }); } else { Object.assign(STOCK, { x: 270, y: 520 }); Object.assign(DISC, { x: 400, y: 520 }); } };
 const SUIT_ORDER = ["C", "H", "S", "D"];
 const sortHand = (h: Card[]) => h.slice().sort((a, b) => (isWild(a) ? 1 : 0) - (isWild(b) ? 1 : 0) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)));
-const MS = 0.45, CW = CardView.W * MS, CH = CardView.H * MS; // meld card scale / size
+let MS = 0.45, CW = CardView.W * MS, CH = CardView.H * MS; // meld card scale / size (larger on a phone)
 
 interface MeldView { side: number; idx: number; kind: "meld" | "reds"; cards: CardView[]; frame: Graphics; label: Text }
 const FONT = "Segoe UI, sans-serif";
@@ -89,7 +89,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
       box.fill({ color: mate ? 0x3b2f08 : 0, alpha: 0.5 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: mate ? 0.9 : 0.5 });
       ring.stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count);
-      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 250, y: 835 } : a.dy === -1 ? { x: a.cx - 300, y: a.cy } : { x: a.cx, y: a.cy + 200 }; plate.position.set(pp.x, pp.y); }
+      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 664 } : a.dy === -1 ? { x: a.cx - 300, y: a.cy } : { x: a.cx, y: a.cy + 200 }; plate.position.set(pp.x, pp.y); }
       this.tableLayer.addChild(plate); this.plates[s] = { ring, count };
     }
     for (let i = 0; i < 4; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }
@@ -128,10 +128,10 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
   private layoutMelds(animate = true) {
     const own = this.view?.mySide ?? 0;
     const pt = this.geo.portrait, others = Array.from({ length: this.view?.sides ?? 0 }, (_, i) => i).filter((i) => i !== own);
-    const regions = pt ? [{ x0: 150, y0: 725, sides: [own], rows: 2 }, { x0: 150, y0: 325, sides: others, rows: 3 }] : [{ x0: 470, y0: 455, sides: [own], rows: 2 }, { x0: 470, y0: 215, sides: others, rows: 2 }];
+    const regions: { x0: number; x1?: number; y0: number; sides: number[]; rows: number }[] = pt ? [{ x0: 40, x1: 680, y0: 745, sides: [own], rows: 2 }, { x0: 150, x1: 570, y0: 195, sides: others, rows: 3 }] : [{ x0: 470, y0: 455, sides: [own], rows: 2 }, { x0: 470, y0: 215, sides: others, rows: 2 }];
     for (const r of regions) {
       const items = this.groups.filter((g) => r.sides.includes(g.side)).sort((a, b) => r.sides.indexOf(a.side) - r.sides.indexOf(b.side) || (a.kind === "reds" ? -1 : 0) - (b.kind === "reds" ? -1 : 0) || a.idx - b.idx);
-      const maxX = pt ? 570 : 1450, gap = pt ? 10 : 18; let step = 26, rows = 1;
+      const maxX = r.x1 ?? 1450, gap = pt ? 10 : 18; let step = 26, rows = 1;
       const fit = (st: number) => { let x = r.x0, rr = 1; for (const g of items) { const w = (Math.max(g.cards.length, 1) - 1) * st + CW; if (x + w > maxX) { x = r.x0; rr++; } x += w + gap; } return rr; };
       for (const st of [26, 22, 18, 15, 12, 10, 8]) { step = st; rows = fit(st); if (rows <= r.rows) break; }
       let x = r.x0, row = 0;

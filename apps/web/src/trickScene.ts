@@ -24,6 +24,8 @@ export interface TrickUi<M, V> {
   /** custom panel (e.g. the Bridge bidding box). Return null to hide. */
   panel?(v: V, legal: M[], ctx: { send(m: M): void; names: string[]; me: number }): HTMLElement | null;
   winner(v: V): number;                        // who won the match (for the result screen)
+  /** short "trumps: ♣" style chip shown at the top of the table */
+  trump?(v: V): string | null;
 }
 
 export interface SceneHooks<M> { submit(m: M): void; onFinished(winner: number, names: string[], me: number, scores?: number[]): void }
@@ -63,6 +65,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private selection = new Set<Card>();
   private destroyed = false;
   private finished = false;
+  private chip = document.createElement("div");
   private banner = document.createElement("div");
   private actions = document.createElement("div");
   private board = document.createElement("div");
@@ -82,7 +85,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.board.className = "board";
     this.panelEl.className = "panelbox"; this.panelEl.style.display = "none";
     this.lastBtn.className = "btn lasttrick"; this.lastBtn.textContent = t("lastTrick"); this.lastBtn.style.display = "none"; this.lastBtn.onclick = () => this.showLastTrick();
-    ui.append(this.banner, this.actions, this.board, this.panelEl, this.lastBtn);
+    this.chip.className = "trumpchip"; this.chip.style.display = "none";
+    ui.append(this.banner, this.actions, this.board, this.panelEl, this.lastBtn, this.chip);
     this.resize();
     window.addEventListener("resize", this.onResize);
   }
@@ -108,7 +112,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.destroyed = true; document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
     window.removeEventListener("resize", this.onResize);
     gsap.killTweensOf("*");
-    this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove(); this.lastBtn.remove();
+    this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove(); this.lastBtn.remove(); this.chip.remove();
     this.app.stage.removeChildren();
   }
 
@@ -176,6 +180,11 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const a = this.anchor(seat), own = seat === this.me, dum = seat === this.dummySeat && !own;
     const g = this.geo, step = own ? Math.min(g.ownStep, g.ownWidth / Math.max(n, 1)) : dum ? Math.min(g.dummyStep, g.dummyWidth / Math.max(n, 1)) : Math.min(28, 420 / Math.max(n, 1));
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.9 : 0.5);
+    if (dum && a.dx !== 0) {
+      // a dummy at the side: an upright column, each card overlapping the next so the index corners stay readable
+      const vs = Math.min(38, 560 / Math.max(n, 1));
+      return { x: Math.max(a.cx, 48) + (a.dx === 1 ? -14 : 14), y: a.cy + (i - (n - 1) / 2) * vs, rot: 0, scale: g.dummyScale };
+    }
     const cos = Math.cos(a.rot), sin = Math.sin(a.rot);
     return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.03 : 0.03), scale: own ? g.ownScale : dum ? g.dummyScale : 0.56 };
   }
@@ -390,6 +399,10 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     for (const m of this.legal) { const cs = this.adapter.cardsOfMove(m); if (cs) { k = cs.length; cs.forEach((c) => cards.add(c)); } }
     return { cards, k };
   }
+  private reject(cv: CardView) {
+    gsap.fromTo(cv, { x: cv.slot.x - 10 }, { x: cv.slot.x, duration: 0.4, ease: "elastic.out(1, 0.25)", overwrite: "auto" });
+    this.toast(this.me, t("illegalCard"));
+  }
   private send(m: M) { if (this.busy) return; this.busy = true; this.legal = []; this.selection.clear(); this.refresh(); this.hooks.submit(m); }
 
   private refresh() {
@@ -399,6 +412,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     for (const [card, cv] of [...this.mine, ...this.dummy]) {
       if (cv.dragging) continue;
       const canPlay = play.has(card), canSel = sel.cards.has(card), on = canPlay || canSel;
+      const dimIt = !this.busy && play.size > 0 && sel.k === 0 && !canPlay;
+      cv.dimmed = dimIt;
       cv.eventMode = on || cv.drag ? "static" : "none"; cv.cursor = on ? "pointer" : "default"; cv.removeAllListeners();
       const picked = this.selection.has(card);
       const baseY = cv.slot.y - (picked ? 46 : on && (canSel || this.legal.length) ? 12 : 0);
@@ -411,7 +426,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
           if (this.selection.has(card)) this.selection.delete(card); else if (this.selection.size < sel.k) this.selection.add(card);
           this.refresh();
         });
-      }
+      } else if (dimIt) cv.on("pointertap", () => this.reject(cv));
     }
     // buttons: confirm for selections, other moves by label
     this.actions.innerHTML = "";
@@ -434,6 +449,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     }
     for (let s = 0; s < this.n; s++) gsap.to(this.plates[s]!.ring, { alpha: !v.over && v.turn === s ? 1 : 0, duration: 0.25 });
     this.banner.textContent = this.adapter.status(v, this.names, this.me);
+    { const c = this.adapter.trump?.(v) ?? null; this.chip.textContent = c ?? ""; this.chip.style.display = c ? "block" : "none"; }
     this.banner.style.display = this.busy || v.over || !this.banner.textContent ? "none" : "block";
     const rows = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.scores[i] ?? 0}</b></div>`);
     const extra = this.adapter.extra?.(v, this.names) ?? [];

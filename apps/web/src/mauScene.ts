@@ -33,6 +33,7 @@ export class MauScene {
   private deckStack = new Container();
   private deckCount = new Text({ text: "", style: { fill: "#f4efe4", fontSize: 26, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
   private wishSprite = new Sprite();
+  private pulse: gsap.core.Tween | null = null;
   private discardViews: CardView[] = [];
   private mine = new Map<Card, CardView>();
   private opp: CardView[][] = [];
@@ -365,7 +366,10 @@ export class MauScene {
     for (let s = 0; s < this.n; s++) gsap.to(this.plates[s]!.ring, { alpha: v.winner === null && v.turn === s ? 1 : 0, duration: 0.25 });
     if (v.winner !== null) { this.banner.style.display = "none"; return; }
     let msg = "";
-    if (v.turn === this.me) msg = v.pendingDraw > 0 ? t("mustDraw", { n: v.pendingDraw }) : v.pendingSkip ? t("mustSkip") : t("yourTurn");
+    const stuck = !this.busy && v.turn === this.me && this.legal.some((m) => m.t === "draw") && !this.legal.some((m) => m.t === "play");
+    if (v.turn === this.me) msg = v.pendingDraw > 0 ? t("mustDraw", { n: v.pendingDraw }) : v.pendingSkip ? t("mustSkip") : stuck ? t("noPlay") : t("yourTurn");
+    if (stuck) { if (!this.pulse) { const base = this.deckStack.scale.x; this.pulse = gsap.to(this.deckStack.scale, { x: base * 1.07, y: base * 1.07, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" }); (this.pulse as gsap.core.Tween & { base?: number }).base = base; } }
+    else if (this.pulse) { const base = (this.pulse as gsap.core.Tween & { base?: number }).base ?? 1; this.pulse.kill(); this.pulse = null; this.deckStack.scale.set(base); }
     else msg = t("turnOf", { n: this.names[v.turn] ?? "" });
     this.banner.textContent = msg; this.banner.style.display = this.busy ? "none" : "block";
   }
