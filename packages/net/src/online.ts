@@ -69,7 +69,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
     this.hub.on("player-", (id) => this.onPlayerLeft(id));
     this.hub.on("player+", () => this.sendShadow());
     this.hub.on("host", (id) => { if (id === this.hub.you) this.promote(); });
-    this.hub.on("close", () => this.emit("error", "connection_closed"));
+    this.hub.on("close", () => { if (!this.left) this.emit("error", "connection_closed"); });
   }
 
   static async create<C, S, M, V, E>(def: GameDef<C, S, M, V, E>, opts: SessionOptions, room: { name: string; seats: number; public?: boolean }) {
@@ -255,7 +255,8 @@ export class OnlineSession<Config, State, Move, View, Ev> {
   /** Show a quick reaction at the own seat for everyone at the table. */
   sendEmote(id: string) { if (this.mySeat !== null) this.hub.send({ t: "emote", seat: this.mySeat, id }); }
 
-  leave() { this.hub.close(); this.table?.dispose(); }
+  private left = false;
+  leave() { this.left = true; this.hub.close(); this.table?.dispose(); }
 }
 
 export type { RoomSummary };

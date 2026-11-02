@@ -141,7 +141,7 @@ async function autoJoin(code: string) {
     enterRoom(await OnlineSession.join(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, code));
   } catch (e: any) {
     try { peek.close(); } catch { /* ignore */ }
-    showOnline(code, e?.code === "room_full" ? t("roomFull") : t("connFail"));
+    showOnline(code, e?.code === "room_full" ? t("roomFull") : e?.code === "no_such_room" ? t("roomNotFound") : t("connFail"));
   }
 }
 
@@ -206,7 +206,7 @@ function enterRoom(session: Session) {
   session.on("lobby", (l) => { if (l.phase === "lobby") showLobby(); else if (!gameShown) showGame(); });
   session.on("update", (u) => { if (!gameShown) showGame(); lastUpdate = u; scene?.receive(u); });
   session.on("emote", (seat, id) => scene?.emote?.(seat, id));
-  session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); } else if (c === "room_full") { showMenu(); } });
+  session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); toast(t(c === "host_lost" ? "hostLost" : "connLost")); } else if (c === "room_full") { session.leave(); showOnline("", t("roomFull")); } });
   const showGame = () => {
     gameShown = started = true;
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
