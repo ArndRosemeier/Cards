@@ -1,7 +1,9 @@
 export type Suit = "C" | "S" | "H" | "D"; // clubs, spades, hearts, diamonds
 export type Rank = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "T" | "J" | "Q" | "K" | "A";
 /** A card is a plain string like "H7" or "ST" (suit + rank). Extra copies from double decks carry apostrophes ("ST'"), so every physical card has a unique id. */
-export type Card = `${Suit}${Rank}${string}`;
+export type Card = `${Suit}${Rank}${string}` | `X${string}`;
+/** Jokers are cards with suit "X" ("X1"…"X6"). */
+export const isJoker = (c: Card): boolean => c[0] === "X";
 
 export const SUITS: readonly Suit[] = ["C", "S", "H", "D"];
 export const RANKS: readonly Rank[] = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];

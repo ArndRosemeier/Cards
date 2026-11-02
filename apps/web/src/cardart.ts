@@ -50,7 +50,21 @@ const PIPS: Record<string, [number, number][]> = {
 };
 const RANK_LABEL: Record<string, string> = { T: "10" };
 
+function drawJoker(): HTMLCanvasElement {
+  const { c, ctx } = canvas(CARD_W, CARD_H);
+  const g = ctx.createLinearGradient(0, 0, CARD_W, CARD_H); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#f1ead9");
+  ctx.fillStyle = g; rr(ctx, 1, 1, CARD_W - 2, CARD_H - 2, 14); ctx.fill(); ctx.strokeStyle = "rgba(60,50,30,.35)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = "#7c3aed"; ctx.font = "800 15px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.save(); ctx.translate(18, 110); ctx.rotate(-Math.PI / 2); ctx.fillText("JOKER", 0, 0); ctx.restore();
+  ctx.save(); ctx.translate(CARD_W - 18, 90); ctx.rotate(Math.PI / 2); ctx.fillText("JOKER", 0, 0); ctx.restore();
+  ctx.translate(CARD_W / 2, CARD_H / 2); ctx.fillStyle = "#e11d48";
+  ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = (Math.PI / 5) * i - Math.PI / 2, r = i % 2 ? 16 : 40; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+  return c;
+}
+
 function drawFace(card: Card): HTMLCanvasElement {
+  if (card[0] === "X") return drawJoker();
   const suit = card[0] as Suit, rank = card[1]!;
   const { c, ctx } = canvas(CARD_W, CARD_H);
   const col = suitColor(suit);
@@ -146,7 +160,7 @@ const tex = (key: string, make: () => HTMLCanvasElement) => {
   if (!t) { t = Texture.from(make()); cache.set(key, t); }
   return t;
 };
-export const faceTexture = (card: Card) => { const k = card.slice(0, 2) as Card; return tex(k, () => drawFace(k)); };
+export const faceTexture = (card: Card) => { const k = (card[0] === "X" ? "X1" : card.slice(0, 2)) as Card; return tex(k, () => drawFace(k)); };
 export const backTexture = () => tex("back", drawBack);
 export const shadowTexture = () => tex("shadow", drawShadow);
 export const suitTexture = (suit: Suit) => tex("suit" + suit, () => {

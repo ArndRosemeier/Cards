@@ -17,7 +17,8 @@
     "@cards/skat": "*",
     "@cards/doppelkopf": "*",
     "@cards/schafkopf": "*",
-    "@cards/holdem": "*"
+    "@cards/holdem": "*",
+    "@cards/romme": "*"
   },
   "devDependencies": {
     "vite": "^8.3.5"

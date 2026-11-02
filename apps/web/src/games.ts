@@ -7,6 +7,8 @@ import { Skat, defaultConfig as skatCfg, skatBot, BIDS, type View as SView, type
 import { Doppelkopf, defaultConfig as dokoCfg, dokoBot, isTrump as dokoTrump, strength as dokoStrength, type View as DView, type Move as DMove, type Mode as DMode } from "@cards/doppelkopf";
 import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTrump, strength as schafStrength, type View as SKView, type Move as SKMove, type Mode as SKMode } from "@cards/schafkopf";
 import { Holdem, defaultConfig as holdemCfg, holdemBot } from "@cards/holdem";
+import { Romme, defaultConfig as rommeCfg, rommeBot } from "@cards/romme";
+import { RommeScene } from "./rommeScene.ts";
 import { MauScene } from "./mauScene.ts";
 import { HoldemScene } from "./holdemScene.ts";
 import { TrickScene, type GameScene, type SceneHooks, type TrickUi } from "./trickScene.ts";
@@ -152,6 +154,11 @@ export const GAME_ENTRIES: GameEntry[] = [
     id: "holdem", players: [2, 3, 4, 5, 6],
     def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: () => holdemBot },
     scene: (app, ui, hooks) => new HoldemScene(app, ui, hooks),
+  },
+  {
+    id: "romme", players: [2, 3, 4],
+    def: { id: "romme", rules: Romme, config: rommeCfg, makeBot: () => rommeBot },
+    scene: (app, ui, hooks) => new RommeScene(app, ui, hooks),
   },
 ];
 export const entryOf = (id: string) => GAME_ENTRIES.find((g) => g.id === id)!;

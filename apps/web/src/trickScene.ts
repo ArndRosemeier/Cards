@@ -9,9 +9,9 @@ import { t } from "./i18n.ts";
 export const W = 1600, H = 900;
 const CENTER = { x: 800, y: 440 };
 
-type Anchor = { cx: number; cy: number; rot: number; dx: number; dy: number };
+export type Anchor = { cx: number; cy: number; rot: number; dx: number; dy: number };
 const A = (cx: number, cy: number, rot: number, dx: number, dy: number): Anchor => ({ cx, cy, rot, dx, dy });
-const LAYOUTS: Record<number, Anchor[]> = {
+export const LAYOUTS: Record<number, Anchor[]> = {
   2: [A(800, 770, 0, 0, 1), A(800, 125, Math.PI, 0, -1)],
   3: [A(800, 770, 0, 0, 1), A(130, 450, Math.PI / 2, -1, 0), A(1470, 450, -Math.PI / 2, 1, 0)],
   4: [A(800, 770, 0, 0, 1), A(130, 450, Math.PI / 2, -1, 0), A(800, 125, Math.PI, 0, -1), A(1470, 450, -Math.PI / 2, 1, 0)],

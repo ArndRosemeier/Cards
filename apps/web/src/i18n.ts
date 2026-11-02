@@ -25,6 +25,8 @@ const de: Dict = {
   sk_durchmarsch: "Durchmarsch!", sk_ramschLoser: "Verloren mit {pts}", sk_role_declarer: "Du spielst", sk_role_partner: "Du bist Partner", sk_role_opponent: "Du spielst dagegen",
   hFold: "Passen", hCheck: "Check", hCall: "Call", hAllIn: "All-in", hRaiseTo: "Erhöhen auf {n}", hBet: "Setzen {n}", hHand: "Hand {n}", blindsUp: "Blinds steigen: {sb}/{bb}",
   hh_highCard: "Höchste Karte", hh_pair: "Paar", hh_twoPair: "Zwei Paare", hh_trips: "Drilling", hh_straight: "Straße", hh_flush: "Flush", hh_fullHouse: "Full House", hh_quads: "Vierling", hh_straightFlush: "Straight Flush",
+  rm_out: "Rommé!", rm_reshuffle: "Stapel neu gemischt", rm_openFirst: "Erst auslegen (Mindestwert)", rm_noFit: "Passt nicht", rm_addGroup: "Gruppe bilden", rm_open: "Auslegen", rm_unstage: "Zurücksetzen",
+  rm_meld: "Legen", rm_discard: "Abwerfen", rm_drawPrompt: "Ziehe vom Stapel oder nimm die offene Karte", rm_playPrompt: "Auslegen, anlegen oder abwerfen", rm_minOpen: "Auslegen ab {n} Punkten",
 };
 const en: Dict = {
   title: "Card Games", play: "Play", you: "You", players: "Players", name: "Your name",
@@ -52,6 +54,8 @@ const en: Dict = {
   sk_durchmarsch: "Grand slam!", sk_ramschLoser: "Lost with {pts}", sk_role_declarer: "You play", sk_role_partner: "You are the partner", sk_role_opponent: "You play against",
   hFold: "Fold", hCheck: "Check", hCall: "Call", hAllIn: "All-in", hRaiseTo: "Raise to {n}", hBet: "Bet {n}", hHand: "Hand {n}", blindsUp: "Blinds up: {sb}/{bb}",
   hh_highCard: "High card", hh_pair: "Pair", hh_twoPair: "Two pair", hh_trips: "Three of a kind", hh_straight: "Straight", hh_flush: "Flush", hh_fullHouse: "Full house", hh_quads: "Four of a kind", hh_straightFlush: "Straight flush",
+  rm_out: "Rummy!", rm_reshuffle: "Stock reshuffled", rm_openFirst: "Open first (minimum value)", rm_noFit: "Does not fit", rm_addGroup: "Form group", rm_open: "Lay out", rm_unstage: "Reset",
+  rm_meld: "Meld", rm_discard: "Discard", rm_drawPrompt: "Draw from the stock or take the open card", rm_playPrompt: "Meld, lay off or discard", rm_minOpen: "Opening needs {n} points",
 };
 let lang: "de" | "en" = (() => {
   try { const s = localStorage.getItem("lang"); if (s === "de" || s === "en") return s; } catch { /* ignore */ }
