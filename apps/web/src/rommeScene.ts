@@ -5,6 +5,7 @@ import type { Ev, Move, View } from "@cards/romme";
 import { parseMeld } from "@cards/romme";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
+import { addAvatar } from "./avatar.ts";
 import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -79,7 +80,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 20, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } }); count.anchor.set(0.5); count.position.set(78, 0); addCountIcon(count);
       box.roundRect(-100, -26, 200, 52, 26).fill({ color: 0, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-104, -30, 208, 60, 30).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
-      const plate = new Container(); plate.addChild(ring, box, name, count);
+      const plate = new Container(); plate.addChild(ring, box, name, count); if (s !== this.me) addAvatar(plate, this.names[s]!, name, -76, 0, 22);
       { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 668 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy + 130 }; plate.position.set(pp.x, pp.y); }
       this.tableLayer.addChild(plate); this.plates[s] = { ring, count, name };
     }

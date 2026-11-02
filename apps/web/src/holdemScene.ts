@@ -21,6 +21,11 @@ function setGeo(g: Geo) {
   else { Object.assign(TABLE, { x: 800, y: 430, rx: 640, ry: 290 }); Object.assign(DECK, { x: 800, y: 175 }); Object.assign(POT, { x: 800, y: 512 }); Object.assign(K, { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 652, ownPlateY: 805, seatIn: 40, ownDX: 150, ownScale: 0.95 }); }
 }
 
+/** painted chip art (public/fx/chip.webp); the drawn ellipses are the fallback until it has loaded */
+let chipTex: Texture | null = null;
+{ const img = new Image(); img.onload = () => { chipTex = Texture.from(img); }; img.src = new URL("fx/chip.webp", document.baseURI).href; }
+/** the gold chip art is tinted per denomination; blend the tint towards white so the painted detail stays visible */
+const lighten = (c: number) => { const m = (v: number) => Math.round(v + (255 - v) * 0.55); return (m((c >> 16) & 255) << 16) | (m((c >> 8) & 255) << 8) | m(c & 255); };
 const CHIPS: [number, number][] = [[1000, 0xe3b341], [500, 0x7c4dab], [100, 0x2b2b30], [25, 0x2e8b57], [5, 0xc0392b], [1, 0xe9e4d4]];
 function chipStack(amount: number): Container {
   const c = new Container(); let rest = amount; let col = 0;
@@ -28,6 +33,10 @@ function chipStack(amount: number): Container {
     const n = Math.min(Math.floor(rest / den), 8); if (!Math.floor(rest / den)) continue;
     rest -= Math.floor(rest / den) * den;
     for (let i = 0; i < n; i++) {
+      if (chipTex) {
+        const sp = new Sprite(chipTex); sp.anchor.set(0.5); sp.width = 40; sp.height = 26; sp.tint = den === 1000 ? 0xffffff : lighten(color); sp.position.set(col * 36, -i * 4.5); c.addChild(sp);
+        continue;
+      }
       const g = new Graphics();
       g.ellipse(0, 0, 17, 9).fill(color).stroke({ width: 2, color: 0xffffff, alpha: 0.7 });
       g.ellipse(0, 0, 11, 5.5).stroke({ width: 1.5, color: 0xffffff, alpha: 0.5 });
@@ -139,7 +148,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private holeSlot(seat: number, i: number) {
     const mine = seat === this.me, sp = this.seats[seat]!;
     if (mine) return { x: TABLE.x + (i - 0.5) * K.ownDX, y: K.ownY, rot: (i - 0.5) * 0.12, scale: K.ownScale };
-    return { x: sp.pos.x + (i - 0.5) * 46, y: sp.pos.y + (sp.pos.y < TABLE.y ? 0 : -4), rot: (i - 0.5) * 0.15, scale: 0.42 };
+    return { x: sp.pos.x + (i - 0.5) * 46, y: sp.pos.y + (sp.pos.y < TABLE.y ? -12 : 12), rot: (i - 0.5) * 0.15, scale: 0.42 };
   }
   private mk(id: Card | null, up: boolean, at = DECK) { const cv = new CardView(id, up); cv.position.set(at.x, at.y); cv.scale.set(0.4); this.layerB.addChild(cv); return cv; }
   private async fly(cv: CardView, to: { x: number; y: number; rot: number; scale: number }, d = 0.5) {

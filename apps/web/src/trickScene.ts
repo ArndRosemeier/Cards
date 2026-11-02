@@ -3,6 +3,7 @@ import gsap from "gsap";
 import type { Card, TrickEv, TrickViewBase, Seat } from "@cards/engine";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
+import { addAvatar } from "./avatar.ts";
 import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -155,7 +156,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
       ring.roundRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 31).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       label.position.set(-20, 0); count.position.set(w / 2 - 30, 0);
       const won = new Text({ text: "", style: { fill: "#ffe9a0", fontSize: 16, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } }); won.anchor.set(0.5); won.position.set(0, h / 2 + 14);
-      const plate = new Container(); plate.addChild(ring, box, label, count, won);
+      const plate = new Container(); plate.addChild(ring, box, label, count, won); if (s !== this.me) addAvatar(plate, this.names[s]!, label);
       this.tableLayer.addChild(plate);
       this.plates[s] = { label, count, ring, box: plate, won };
     }

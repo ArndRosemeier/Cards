@@ -5,6 +5,7 @@ import { rankOf, suitOf } from "@cards/engine";
 import type { Ev, Move, View } from "@cards/maumau";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
+import { addAvatar } from "./avatar.ts";
 import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { CARD_H, CARD_W, tableTexture, suitTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -138,7 +139,7 @@ export class MauScene {
       box.roundRect(-w / 2, -h / 2, w, h, 27).fill({ color: 0x000000, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 31).stroke({ width: 3, color: 0xffe08a, alpha: 1 }); ring.alpha = 0;
       label.position.set(-20, 0); count.position.set(w / 2 - 30, 0);
-      plate.addChild(ring, box, label, count);
+      plate.addChild(ring, box, label, count); if (s !== this.me) addAvatar(plate, this.names[s]!, label);
       this.tableLayer.addChild(plate);
       this.plates[s] = { holder: plate, box, label, count, ring };
     }
