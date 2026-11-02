@@ -17,7 +17,20 @@
   "win": "a short bright magical success chime, rising sparkling bells, about one second",
   "lose": "a short gentle descending sad two-note wooden mallet tone, about one second",
   "turn": "a soft single wooden tick notification, subtle, short",
-  "click": "a tiny crisp button click"
+  "click": "a tiny crisp button click",
+  "nope": "a short dull wooden thud, a negative rejected buzz, soft",
+  "hint": "a soft gentle two-note bell chime, helpful, bright, short",
+  "points": "a tiny bright coin-like tick, sparkly, very short",
+  "allin": "a rising whoosh followed by a heavy stack of poker chips pushed forward and clattering",
+  "chipstack": "a stack of poker chips being slid and clacking together, clay chips",
+  "canasta": "a short triumphant fanfare of trumpets and a rising sparkle, celebratory, about two seconds",
+  "reveal": "a dramatic short brass stinger hit with a cymbal swell, announcement",
+  "joker": "a playful magical flourish, quick swishing harp glissando and a sparkle",
+  "roundwin": "a cheerful short victory jingle with bells and a bright major chord, about two seconds",
+  "roundlose": "a gentle short sad jingle, descending notes on a muted piano, about two seconds",
+  "draw": "a single playing card being drawn off the top of a deck, soft slide and flick",
+  "trick": "several playing cards swept together and collected into a neat stack on a felt table",
+  "knock": "two soft knuckle knocks on a wooden table, check gesture"
  },
  "music": {
   "music_a": "30-second loopable instrumental background music for a relaxed card game night, warm felt piano, soft upright bass, brushed drums, gentle jazz lounge, mellow, no vocals, steady tempo, ends cleanly",

@@ -227,7 +227,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
         if (isWild(ev.card)) { this.frozenMark.visible = true; this.frozenMark.alpha = 0; gsap.to(this.frozenMark, { alpha: 1, duration: 0.3 }); }
         break;
       }
-      case "say": this.toast(t(ev.key, ev.vars ?? {})); sfx.win(); await sleep(ev.key === "ca_canasta" ? 900 : 1200); break;
+      case "say": this.toast(t(ev.key, ev.vars ?? {})); if (ev.key === "ca_canasta") sfx.canasta(); else sfx.win(); await sleep(ev.key === "ca_canasta" ? 900 : 1200); break;
     }
   }
   private async dealAll(u: Update<View, Move, Ev>) {
@@ -245,7 +245,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     const tx = new Text({ text, style: { fill: "#ffe08a", fontSize: 54, fontWeight: "800", fontFamily: FONT, stroke: { color: "#000", width: 7 } } }); tx.anchor.set(0.5); tx.position.set(this.geo.center.x, this.geo.center.y - 40); tx.alpha = 0; tx.scale.set(0.6); this.fxLayer.addChild(tx);
     gsap.to(tx, { alpha: 1, duration: 0.25 }); gsap.to(tx.scale, { x: 1, y: 1, duration: 0.4, ease: "back.out(2)" }); gsap.to(tx, { alpha: 0, delay: 1.0, duration: 0.4, onComplete: () => tx.destroy() });
   }
-  private note(text: string) { this.banner.textContent = text; this.banner.style.display = "block"; this.banner.classList.add("err"); setTimeout(() => { this.banner.classList.remove("err"); this.refresh(); }, 1800); sfx.tick(); }
+  private note(text: string) { this.banner.textContent = text; this.banner.style.display = "block"; this.banner.classList.add("err"); setTimeout(() => { this.banner.classList.remove("err"); this.refresh(); }, 1800); sfx.nope(); }
 
   // ---------------------------------------------------------------- state sync
   private sync(v: View) {

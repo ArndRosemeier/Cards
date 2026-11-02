@@ -3,8 +3,10 @@
 const FILES: Record<string, string[]> = {
   place: ["place2", "place3", "place4"], flip: ["flip1", "flip2", "flip3"], deal: ["deal1", "deal2"], chip: ["chip1", "chip2", "chip3"],
   shuffle: ["shuffle"], sweep: ["sweep"], win: ["win"], lose: ["lose"], turn: ["turn"], click: ["click"],
+  nope: ["nope"], hint: ["hint"], points: ["points"], allin: ["allin"], chipstack: ["chipstack"], canasta: ["canasta"], reveal: ["reveal"],
+  joker: ["joker"], roundwin: ["roundwin"], roundlose: ["roundlose"], draw: ["draw"], trick: ["trick"], knock: ["knock"],
 };
-const GAIN: Record<string, number> = { place: 0.7, flip: 0.5, deal: 0.45, chip: 0.6, shuffle: 0.6, sweep: 0.5, win: 0.7, lose: 0.6, turn: 0.4, click: 0.5 };
+const GAIN: Record<string, number> = { place: 0.7, flip: 0.5, deal: 0.45, chip: 0.6, shuffle: 0.6, sweep: 0.5, win: 0.7, lose: 0.6, turn: 0.4, click: 0.5, nope: 0.6, hint: 0.5, points: 0.4, allin: 0.7, chipstack: 0.6, canasta: 0.7, reveal: 0.7, joker: 0.6, roundwin: 0.7, roundlose: 0.6, draw: 0.5, trick: 0.55, knock: 0.6 };
 const bank: Record<string, AudioBuffer[]> = {};
 let loading = false;
 function load(c: AudioContext) {
@@ -66,6 +68,28 @@ export const sfx = {
   /** it is your turn */
   turn() { if (sample("turn")) return; tone(700, 0.06, 0.06, "sine"); },
   click() { if (sample("click")) return; tone(900, 0.03, 0.05, "square"); },
+  /** illegal move / refused card */
+  nope() { if (sample("nope")) return; tone(180, 0.12, 0.12, "sawtooth"); },
+  hint() { if (sample("hint")) return; tone(880, 0.25, 0.08, "sine"); tone(1320, 0.3, 0.06, "sine", 0.12); },
+  /** "+n" score popup */
+  points() { if (sample("points")) return; tone(1500, 0.06, 0.07, "triangle"); },
+  /** Hold'em all-in / big stack pushed */
+  allin() { if (sample("allin")) return; sfx.chip(); },
+  chipstack() { if (sample("chipstack")) return; sfx.chip(); },
+  /** Canasta completed */
+  canasta() { if (sample("canasta")) return; sfx.win(); },
+  /** Re! / Kontra / announcement stinger */
+  reveal() { if (sample("reveal")) return; sfx.win(); },
+  /** Rommé joker swap */
+  joker() { if (sample("joker")) return; sfx.win(); },
+  roundwin() { if (sample("roundwin")) return; sfx.win(); },
+  roundlose() { if (sample("roundlose")) return; sfx.lose(); },
+  /** drawing a card from the stock */
+  draw() { if (sample("draw")) return; sfx.deal(); },
+  /** a trick being collected */
+  trick() { if (sample("trick")) return; sfx.sweep(); },
+  /** check / pass knock */
+  knock() { if (sample("knock")) return; tone(220, 0.05, 0.12, "triangle"); tone(220, 0.05, 0.1, "triangle", 0.12); },
   tick() { tone(900, 0.04, 0.06, "square"); },
   get muted() { return muted; },
   toggle() { muted = !muted; try { localStorage.setItem("muted", muted ? "1" : "0"); } catch { /* ignore */ } music.sync(); return muted; },

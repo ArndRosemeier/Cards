@@ -196,7 +196,7 @@ function addHud(onMenu: () => void) {
   const hud = document.createElement("div"); hud.className = "hud";
   hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
-  (hud.querySelector("#hintbtn") as HTMLButtonElement).onclick = hintNow;
+  (hud.querySelector("#hintbtn") as HTMLButtonElement).onclick = () => { sfx.hint(); hintNow(); };
   (hud.querySelector("#rulesbtn") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
   (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
   (hud.querySelector("#mus") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = music.toggle() ? "♪̸" : "♪"; };
