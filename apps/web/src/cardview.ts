@@ -29,6 +29,8 @@ export interface DragCtl {
   canvas: HTMLCanvasElement;
   /** the own hand in its current order */
   order(): CardView[];
+  /** pointer entered / left a card: the hand opens a little around it */
+  hover?(card: CardView | null): void;
   /** put the card at this position of the hand and lay the hand out again */
   move(card: Card, index: number): void;
 }
@@ -96,9 +98,9 @@ export class CardView extends Container {
 
   // ---------------------------------------------------------------- hover (survives removeAllListeners)
   private bindHover() {
-    this.on("pointerover", (e) => { this.overP = e.getLocalPosition(this); });
+    this.on("pointerover", (e) => { this.overP = e.getLocalPosition(this); this.drag?.hover?.(this); });
     this.on("pointermove", (e) => { this.overP = e.getLocalPosition(this); });
-    this.on("pointerout", () => { this.overP = null; });
+    this.on("pointerout", () => { this.overP = null; this.drag?.hover?.(null); });
     this.on("pointerdown", (e) => this.startDrag(e.client.x, e.client.y));
   }
   override emit(event: string | symbol, ...args: unknown[]): boolean {
@@ -254,4 +256,14 @@ export function addCountIcon(count: Container) {
   g.roundRect(-30, -10, 13, 19, 3).fill({ color: 0x1c2a5c }).stroke({ width: 1.5, color: 0xe8c66a });
   g.roundRect(-26.5, -6, 6, 11, 2).stroke({ width: 1, color: 0xe8c66a, alpha: 0.7 });
   count.addChild(g);
+}
+
+/** Open the fan around the hovered card so its neighbours' index corners stay readable (null closes it again). */
+export function spreadHand(hand: CardView[], hovered: CardView | null) {
+  if (reducedMotion || hand.some((c) => c.dragging)) return;
+  const at = hovered ? hand.indexOf(hovered) : -1;
+  hand.forEach((cv, j) => {
+    const d = at < 0 ? 0 : j - at, off = at < 0 || d === 0 ? 0 : Math.sign(d) * Math.max(0, 26 - (Math.abs(d) - 1) * 9);
+    gsap.to(cv, { x: cv.slot.x + off, duration: 0.18, ease: "power2.out", overwrite: "auto" });
+  });
 }

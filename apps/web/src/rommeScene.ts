@@ -5,7 +5,7 @@ import type { Ev, Move, View } from "@cards/romme";
 import { parseMeld } from "@cards/romme";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
-import { CardView, HandOrder, type DragCtl, addCountIcon, sleep, tween } from "./cardview.ts";
+import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
@@ -87,7 +87,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   }
   private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
   private order = new HandOrder(); private dragCtl: DragCtl | null = null;
-  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), hover: (c) => spreadHand(this.handOf(this.me), c), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
     const order = this.sortMode === "suit" ? sortSuit([...this.mine.keys()]) : sortRank([...this.mine.keys()]);

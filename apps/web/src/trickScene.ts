@@ -3,7 +3,7 @@ import gsap from "gsap";
 import type { Card, TrickEv, TrickViewBase, Seat } from "@cards/engine";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
-import { CardView, HandOrder, type DragCtl, addCountIcon, sleep, tween } from "./cardview.ts";
+import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
@@ -172,7 +172,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private talonSlot(i: number) { return { x: this.geo.center.x - 55 + i * 110, y: this.geo.talonY, rot: 0, scale: 0.8 }; }
 
   private order = new HandOrder(); private dragCtl: DragCtl | null = null;
-  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), hover: (c) => spreadHand(this.handOf(this.me), c), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
   private handOf(seat: number): CardView[] {
     if (seat === this.dummySeat && seat !== this.me) return this.adapter.order([...this.dummy.keys()], this.view ?? undefined).map((c) => this.dummy.get(c)!);
     if (seat !== this.me) return this.opp[seat]!;

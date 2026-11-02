@@ -4,7 +4,7 @@ import { isJoker, rankOf, suitOf, RANKS, type Card } from "@cards/engine";
 import { checkMelds, checkPile, isCanasta, isWild, points, seatsOf, sideOf, type Ev, type Move, type View } from "@cards/canasta";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
-import { CardView, HandOrder, type DragCtl, addCountIcon, sleep, tween } from "./cardview.ts";
+import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
@@ -89,14 +89,14 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
       box.fill({ color: mate ? 0x3b2f08 : 0, alpha: 0.5 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: mate ? 0.9 : 0.5 });
       ring.stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count);
-      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 664 } : a.dy === -1 ? { x: a.cx - 300, y: a.cy } : { x: a.cx, y: a.cy + 200 }; plate.position.set(pp.x, pp.y); }
+      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 664 } : a.dy === -1 ? { x: a.cx - 300, y: a.cy } : { x: a.cx, y: a.cy + 140 }; plate.position.set(pp.x, pp.y); }
       this.tableLayer.addChild(plate); this.plates[s] = { ring, count };
     }
     for (let i = 0; i < 4; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }
   }
   private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
   private order = new HandOrder(); private dragCtl: DragCtl | null = null;
-  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), hover: (c) => spreadHand(this.handOf(this.me), c), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
     return this.order.apply(sortHand([...this.mine.keys()])).map((c) => this.mine.get(c)!);
