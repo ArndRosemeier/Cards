@@ -3,7 +3,7 @@ import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
-import { setTableTheme, preloadBackgrounds } from "./cardart.ts";
+import { setTableTheme, preloadBackgrounds, preloadCardArt } from "./cardart.ts";
 import { getLang, setLang, t } from "./i18n.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
@@ -20,7 +20,7 @@ const defOf = () => { const d = entry().def; return fast ? { ...d, botDelay: () 
 let app: Application;
 let scene: GameScene<any> | null = null;
 document.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest?.(".btn")) sfx.click(); });
-preloadBackgrounds();
+preloadBackgrounds(); preloadCardArt();
 let teardown: (() => void) | null = null;
 
 const token = (() => {

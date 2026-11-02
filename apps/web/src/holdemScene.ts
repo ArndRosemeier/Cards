@@ -78,10 +78,11 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   }
   private drawTable() {
     const g = this.tableG;
-    g.ellipse(TABLE.x, TABLE.y + 10, TABLE.rx + 38, TABLE.ry + 38).fill({ color: 0x000000, alpha: 0.35 });
-    g.ellipse(TABLE.x, TABLE.y, TABLE.rx + 30, TABLE.ry + 30).fill(0x4a2c17).stroke({ width: 4, color: 0x2a170b });
-    g.ellipse(TABLE.x, TABLE.y, TABLE.rx + 8, TABLE.ry + 8).fill(0x2e1a0d);
-    g.ellipse(TABLE.x, TABLE.y, TABLE.rx, TABLE.ry).fill(0x0f6b43).stroke({ width: 3, color: 0x0a4a2e });
+    // oval sits on the painted casino cloth: soft shadow, padded leather rail, translucent felt so the painting shows through
+    g.ellipse(TABLE.x, TABLE.y + 10, TABLE.rx + 34, TABLE.ry + 34).fill({ color: 0x000000, alpha: 0.4 });
+    g.ellipse(TABLE.x, TABLE.y, TABLE.rx + 26, TABLE.ry + 26).fill({ color: 0x15110f, alpha: 0.92 }).stroke({ width: 2, color: 0xe8c66a, alpha: 0.45 });
+    g.ellipse(TABLE.x, TABLE.y, TABLE.rx + 6, TABLE.ry + 6).fill({ color: 0x050403, alpha: 0.6 });
+    g.ellipse(TABLE.x, TABLE.y, TABLE.rx, TABLE.ry).fill({ color: 0x0f6b43, alpha: 0.78 }).stroke({ width: 3, color: 0x0a4a2e, alpha: 0.8 });
     g.ellipse(TABLE.x, TABLE.y, TABLE.rx - 60, TABLE.ry - 50).stroke({ width: 2, color: 0xe8c66a, alpha: 0.25 });
   }
 

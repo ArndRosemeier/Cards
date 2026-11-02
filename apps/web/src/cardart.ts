@@ -48,12 +48,33 @@ const PIPS: Record<string, [number, number][]> = {
   "9": [[0, 0], [2, 0], [0, 1 / 3], [2, 1 / 3], [1, .5], [0, 2 / 3], [2, 2 / 3], [0, 1], [2, 1]],
   "T": [[0, 0], [2, 0], [1, 1 / 6], [0, 1 / 3], [2, 1 / 3], [0, 2 / 3], [2, 2 / 3], [1, 5 / 6], [0, 1], [2, 1]],
 };
+/** Painted court/joker/back art (public/cards/*.webp). Procedural drawing remains the fallback until/if it loads. */
+const art = new Map<string, HTMLImageElement>();
+export function preloadCardArt() {
+  const names = ["back", "joker", ...["H", "D", "S", "C"].flatMap((s) => ["K", "Q", "J"].map((r) => r + s))];
+  for (const n of names) {
+    const img = new Image(); img.decoding = "async";
+    img.onload = () => { art.set(n, img); cache.clear(); };
+    img.src = new URL(`cards/${n}.webp`, document.baseURI).href;
+  }
+}
+/** draw img covering the box (x,y,w,h), centred */
+function cover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+  const k = Math.max(w / img.naturalWidth, h / img.naturalHeight), dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
 const RANK_LABEL: Record<string, string> = { T: "10" };
 
 function drawJoker(): HTMLCanvasElement {
   const { c, ctx } = canvas(CARD_W, CARD_H);
   const g = ctx.createLinearGradient(0, 0, CARD_W, CARD_H); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#f1ead9");
   ctx.fillStyle = g; rr(ctx, 1, 1, CARD_W - 2, CARD_H - 2, 14); ctx.fill(); ctx.strokeStyle = "rgba(60,50,30,.35)"; ctx.lineWidth = 1.2; ctx.stroke();
+  const ja = art.get("joker");
+  if (ja) {
+    ctx.save(); rr(ctx, 7, 7, CARD_W - 14, CARD_H - 14, 9); ctx.clip(); cover(ctx, ja, 7, 7, CARD_W - 14, CARD_H - 14); ctx.restore();
+    ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 2; rr(ctx, 7, 7, CARD_W - 14, CARD_H - 14, 9); ctx.stroke();
+    return c;
+  }
   ctx.fillStyle = "#7c3aed"; ctx.font = "800 15px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.save(); ctx.translate(18, 110); ctx.rotate(-Math.PI / 2); ctx.fillText("JOKER", 0, 0); ctx.restore();
   ctx.save(); ctx.translate(CARD_W - 18, 90); ctx.rotate(Math.PI / 2); ctx.fillText("JOKER", 0, 0); ctx.restore();
@@ -96,7 +117,20 @@ function drawFace(card: Card): HTMLCanvasElement {
       else drawSuit(ctx, suit, x, y, 27);
     }
   } else {
-    // court cards: ornate frame + big monogram
+    const pa = art.get(rank + suit);
+    if (pa) {
+      // painted double-headed court card; indices stay crisp vector on top
+      const x = 34, y = 20, w = CARD_W - 68, h = CARD_H - 40;
+      ctx.save(); rr(ctx, x, y, w, h, 7); ctx.clip();
+      ctx.fillStyle = "#f3e7c9"; ctx.fillRect(x, y, w, h);
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h / 2); ctx.clip(); cover(ctx, pa, x, y, w, h / 2); ctx.restore();
+      ctx.save(); ctx.translate(x + w, y + h); ctx.rotate(Math.PI); ctx.beginPath(); ctx.rect(0, 0, w, h / 2); ctx.clip(); cover(ctx, pa, 0, 0, w, h / 2); ctx.restore();
+      ctx.restore();
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6; rr(ctx, x, y, w, h, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2); ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();
+      return c;
+    }
+    // court cards (fallback): ornate frame + big monogram
     const x = 30, y = 28, w = CARD_W - 60, h = CARD_H - 56;
     const fg = ctx.createLinearGradient(x, y, x + w, y + h);
     fg.addColorStop(0, "#f7e7b0"); fg.addColorStop(1, "#e6c36a");
@@ -116,6 +150,8 @@ function drawBack(): HTMLCanvasElement {
   const g = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
   g.addColorStop(0, "#1c3a8a"); g.addColorStop(1, "#0d1f57");
   ctx.fillStyle = "#f4efe4"; rr(ctx, 1, 1, CARD_W - 2, CARD_H - 2, 14); ctx.fill();
+  const ba = art.get("back");
+  if (ba) { ctx.save(); rr(ctx, 6, 6, CARD_W - 12, CARD_H - 12, 10); ctx.clip(); cover(ctx, ba, 6, 6, CARD_W - 12, CARD_H - 12); ctx.restore(); return c; }
   ctx.fillStyle = g; rr(ctx, 7, 7, CARD_W - 14, CARD_H - 14, 9); ctx.fill();
   ctx.save(); rr(ctx, 7, 7, CARD_W - 14, CARD_H - 14, 9); ctx.clip();
   ctx.strokeStyle = "rgba(232,198,106,.35)"; ctx.lineWidth = 1;
