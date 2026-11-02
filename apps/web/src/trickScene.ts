@@ -24,7 +24,7 @@ export interface TrickUi<M, V> {
   cardsOfMove(m: M): Card[] | null;            // a move that selects several cards (pass, discard)
   label(m: M): string | null;                  // other moves become buttons with this text (null: hide)
   status(v: V, names: string[], me: number): string;
-  order(hand: Card[]): Card[];                 // how the own hand is sorted
+  order(hand: Card[], v?: V): Card[];                 // how the own hand is sorted
   /** extra panel rows next to the scores, e.g. "bid 24" */
   extra?(v: V, names: string[]): string[];
   talonFaceUp?(v: V): boolean;
@@ -145,11 +145,11 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const a = this.anchor(seat);
     return { x: CENTER.x + a.dx * 95, y: CENTER.y + a.dy * 70, rot: (Math.random() - 0.5) * 0.3 + (a.dx !== 0 ? 0.1 : 0), scale: 0.95 };
   }
-  private talonSlot(i: number) { return { x: CENTER.x - 50 + i * 100, y: CENTER.y - 10, rot: 0, scale: 0.8 }; }
+  private talonSlot(i: number) { return { x: CENTER.x - 55 + i * 110, y: 250, rot: 0, scale: 0.8 }; }
 
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
-    const order = this.adapter.order([...this.mine.keys()]);
+    const order = this.adapter.order([...this.mine.keys()], this.view ?? undefined);
     return order.map((c) => this.mine.get(c)!);
   }
   private fanSlot(seat: number, i: number, n: number) {

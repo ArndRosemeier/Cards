@@ -13,6 +13,13 @@ const de: Dict = {
   back: "Zurück", onlyHost: "Nur der Gastgeber kann starten", join: "Beitreten",
   confirm: "Bestätigen", moon: "Schuss auf den Mond!", waitingOthers: "Warte auf die anderen …", passCards: "Wähle 3 Karten zum Weitergeben ({dir})",
   passLeft: "nach links", passRight: "nach rechts", passAcross: "gegenüber", roundPoints: "Runde",
+  bidV: "Reizen {v}", skatPass: "Weg", skatHold: "Ja", pickup: "Skat aufnehmen", handGame: "Hand spielen", gameC: "Kreuz", gameS: "Pik", gameH: "Herz", gameD: "Karo", gameG: "Grand", gameN: "Null", gameR: "Ramsch",
+  yourBid: "Du reizt", yourHold: "Hältst du {v}?", bidding: "{n} reizt …", pickOrHand: "Skat aufnehmen oder Hand spielen?", declChoosing: "{n} entscheidet …", discard2: "Drücke 2 Karten in den Skat",
+  chooseGame: "Wähle dein Spiel", roundNo: "Spiel {a} von {b}", sayBid: "{v}", sayHold: "Ja!", sayPass: "Weg", handgame: "Hand!", ramsch: "Ramsch!", durchmarsch: "Durchmarsch!", ramschLoser: "Verloren mit {pts}",
+  skatWon: "Gewonnen! +{n}", skatLost: "Verloren! −{n}",
+  dk_healthyBtn: "Gesund", dk_hochzeit: "Hochzeit", dk_soloC: "Kreuz-Solo", dk_soloS: "Pik-Solo", dk_soloH: "Herz-Solo", dk_soloD: "Karo-Solo", dk_soloQ: "Damen-Solo", dk_soloJ: "Buben-Solo",
+  dk_askReserve: "Gesund oder Vorbehalt?", dk_reserving: "{n} überlegt …", dk_team: "Partei", dk_reserve: "Vorbehalt!", dk_healthy: "Gesund", dk_re: "Re!", dk_kontra: "Kontra!",
+  dk_partner: "Partner gefunden", dk_forcedSolo: "Stilles Solo", dk_reWon: "Re gewinnt ({re} Augen) · {n}", dk_kontraWon: "Kontra gewinnt · {n}",
 };
 const en: Dict = {
   title: "Card Games", play: "Play", you: "You", players: "Players", name: "Your name",
@@ -28,6 +35,13 @@ const en: Dict = {
   back: "Back", onlyHost: "Only the host can start", join: "Join",
   confirm: "Confirm", moon: "Shooting the moon!", waitingOthers: "Waiting for the others …", passCards: "Pick 3 cards to pass ({dir})",
   passLeft: "left", passRight: "right", passAcross: "across", roundPoints: "Round",
+  bidV: "Bid {v}", skatPass: "Pass", skatHold: "Yes", pickup: "Pick up Skat", handGame: "Play hand", gameC: "Clubs", gameS: "Spades", gameH: "Hearts", gameD: "Diamonds", gameG: "Grand", gameN: "Null", gameR: "Ramsch",
+  yourBid: "Your bid", yourHold: "Do you hold {v}?", bidding: "{n} is bidding …", pickOrHand: "Pick up the Skat or play hand?", declChoosing: "{n} is deciding …", discard2: "Put 2 cards into the Skat",
+  chooseGame: "Choose your game", roundNo: "Game {a} of {b}", sayBid: "{v}", sayHold: "Yes!", sayPass: "Pass", handgame: "Hand!", ramsch: "Ramsch!", durchmarsch: "Grand slam!", ramschLoser: "Lost with {pts}",
+  skatWon: "Won! +{n}", skatLost: "Lost! −{n}",
+  dk_healthyBtn: "Healthy", dk_hochzeit: "Marriage", dk_soloC: "Clubs solo", dk_soloS: "Spades solo", dk_soloH: "Hearts solo", dk_soloD: "Diamonds solo", dk_soloQ: "Queens solo", dk_soloJ: "Jacks solo",
+  dk_askReserve: "Healthy or reservation?", dk_reserving: "{n} is thinking …", dk_team: "Team", dk_reserve: "Reservation!", dk_healthy: "Healthy", dk_re: "Re!", dk_kontra: "Kontra!",
+  dk_partner: "Partner found", dk_forcedSolo: "Silent solo", dk_reWon: "Re wins ({re} points) · {n}", dk_kontraWon: "Kontra wins · {n}",
 };
 let lang: "de" | "en" = (() => {
   try { const s = localStorage.getItem("lang"); if (s === "de" || s === "en") return s; } catch { /* ignore */ }

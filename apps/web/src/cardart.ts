@@ -146,7 +146,7 @@ const tex = (key: string, make: () => HTMLCanvasElement) => {
   if (!t) { t = Texture.from(make()); cache.set(key, t); }
   return t;
 };
-export const faceTexture = (card: Card) => tex(card, () => drawFace(card));
+export const faceTexture = (card: Card) => { const k = card.slice(0, 2) as Card; return tex(k, () => drawFace(k)); };
 export const backTexture = () => tex("back", drawBack);
 export const shadowTexture = () => tex("shadow", drawShadow);
 export const suitTexture = (suit: Suit) => tex("suit" + suit, () => {
