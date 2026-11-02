@@ -104,9 +104,9 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
   }
   private fan(seat: number, i: number, n: number) {
     const a = this.anchor(seat), own = seat === this.me;
-    const g = this.geo, step = own ? Math.min(g.portrait ? 62 : 100, (g.portrait ? 540 : 1300) / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
+    const g = this.geo, step = own ? Math.min(g.portrait ? 62 : 100, (g.portrait ? 540 : 1300) / Math.max(n, 1)) : Math.min(22, (g.portrait && a.dx !== 0 ? 250 : 330) / Math.max(n, 1)); const yo = !own && g.portrait && a.dx !== 0 ? -105 : 0; // phone: side stacks sit above the own meld rows
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.5 : 0.3), cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin, y: a.cy + (own ? 0 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
+    return { x: a.cx + lx * cos - ly * sin, y: a.cy + yo + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
   }
   private layout(seat: number, animate = true) {
     const hand = this.handOf(seat);
