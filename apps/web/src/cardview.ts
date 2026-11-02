@@ -103,9 +103,10 @@ export class CardView extends Container {
     this.on("pointerout", () => { this.overP = null; this.drag?.hover?.(null); });
     this.on("pointerdown", (e) => this.startDrag(e.client.x, e.client.y));
   }
-  override emit(event: string | symbol, ...args: unknown[]): boolean {
-    if (this.noTap && (event === "pointertap" || event === "click" || event === "tap")) return false;
-    return super.emit(event as never, ...(args as never[]));
+  /** Pixi calls listeners directly (not through emit), so taps are filtered when they are registered: a drag must not count as a tap. */
+  override on(event: string | symbol, fn: (...args: any[]) => void, context?: unknown): this {
+    if (event === "pointertap" || event === "click" || event === "tap") { const orig = fn; fn = (...a: unknown[]) => { if (!this.noTap) orig.apply(context ?? this, a); }; context = undefined; }
+    return super.on(event as never, fn as never, context as never);
   }
   private startDrag(sx: number, sy: number) {
     const ctl = this.drag; if (!ctl || !this.parent || !this.id) return;
