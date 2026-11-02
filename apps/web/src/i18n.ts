@@ -23,6 +23,8 @@ const de: Dict = {
   sk_passBtn: "Weiter", sk_sauC: "Rufspiel Eichel", sk_sauS: "Rufspiel Gras", sk_sauD: "Rufspiel Schellen", sk_wenz: "Wenz", sk_soloC: "Eichel-Solo", sk_soloS: "Gras-Solo", sk_soloH: "Herz-Solo", sk_soloD: "Schellen-Solo",
   sk_ramsch: "Ramsch", sk_pass: "Weiter", sk_choose: "Was spielst du?", sk_choosing: "{n} überlegt …", sk_partner: "Die Sau!", sk_partnerIs: "Partner:", sk_won: "Gewonnen! {pts} Augen", sk_lost: "Verloren! {pts} Augen",
   sk_durchmarsch: "Durchmarsch!", sk_ramschLoser: "Verloren mit {pts}", sk_role_declarer: "Du spielst", sk_role_partner: "Du bist Partner", sk_role_opponent: "Du spielst dagegen",
+  hFold: "Passen", hCheck: "Check", hCall: "Call", hAllIn: "All-in", hRaiseTo: "Erhöhen auf {n}", hBet: "Setzen {n}", hHand: "Hand {n}", blindsUp: "Blinds steigen: {sb}/{bb}",
+  hh_highCard: "Höchste Karte", hh_pair: "Paar", hh_twoPair: "Zwei Paare", hh_trips: "Drilling", hh_straight: "Straße", hh_flush: "Flush", hh_fullHouse: "Full House", hh_quads: "Vierling", hh_straightFlush: "Straight Flush",
 };
 const en: Dict = {
   title: "Card Games", play: "Play", you: "You", players: "Players", name: "Your name",
@@ -48,6 +50,8 @@ const en: Dict = {
   sk_passBtn: "Pass", sk_sauC: "Call ace of Acorns", sk_sauS: "Call ace of Leaves", sk_sauD: "Call ace of Bells", sk_wenz: "Wenz", sk_soloC: "Acorns solo", sk_soloS: "Leaves solo", sk_soloH: "Hearts solo", sk_soloD: "Bells solo",
   sk_ramsch: "Ramsch", sk_pass: "Pass", sk_choose: "What do you play?", sk_choosing: "{n} is thinking …", sk_partner: "The ace!", sk_partnerIs: "Partner:", sk_won: "Won! {pts} points", sk_lost: "Lost! {pts} points",
   sk_durchmarsch: "Grand slam!", sk_ramschLoser: "Lost with {pts}", sk_role_declarer: "You play", sk_role_partner: "You are the partner", sk_role_opponent: "You play against",
+  hFold: "Fold", hCheck: "Check", hCall: "Call", hAllIn: "All-in", hRaiseTo: "Raise to {n}", hBet: "Bet {n}", hHand: "Hand {n}", blindsUp: "Blinds up: {sb}/{bb}",
+  hh_highCard: "High card", hh_pair: "Pair", hh_twoPair: "Two pair", hh_trips: "Three of a kind", hh_straight: "Straight", hh_flush: "Flush", hh_fullHouse: "Full house", hh_quads: "Four of a kind", hh_straightFlush: "Straight flush",
 };
 let lang: "de" | "en" = (() => {
   try { const s = localStorage.getItem("lang"); if (s === "de" || s === "en") return s; } catch { /* ignore */ }

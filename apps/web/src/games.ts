@@ -6,7 +6,9 @@ import { RANKS, suitOf, rankOf, type Card } from "@cards/engine";
 import { Skat, defaultConfig as skatCfg, skatBot, BIDS, type View as SView, type Move as SMove } from "@cards/skat";
 import { Doppelkopf, defaultConfig as dokoCfg, dokoBot, isTrump as dokoTrump, strength as dokoStrength, type View as DView, type Move as DMove, type Mode as DMode } from "@cards/doppelkopf";
 import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTrump, strength as schafStrength, type View as SKView, type Move as SKMove, type Mode as SKMode } from "@cards/schafkopf";
+import { Holdem, defaultConfig as holdemCfg, holdemBot } from "@cards/holdem";
 import { MauScene } from "./mauScene.ts";
+import { HoldemScene } from "./holdemScene.ts";
 import { TrickScene, type GameScene, type SceneHooks, type TrickUi } from "./trickScene.ts";
 import { t } from "./i18n.ts";
 
@@ -145,6 +147,11 @@ export const GAME_ENTRIES: GameEntry[] = [
     id: "schafkopf", players: [4],
     def: { id: "schafkopf", rules: Schafkopf, config: schafCfg, makeBot: () => schafkopfBot },
     scene: (app, ui, hooks) => new TrickScene(app, ui, schafUi, hooks),
+  },
+  {
+    id: "holdem", players: [2, 3, 4, 5, 6],
+    def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: () => holdemBot },
+    scene: (app, ui, hooks) => new HoldemScene(app, ui, hooks),
   },
 ];
 export const entryOf = (id: string) => GAME_ENTRIES.find((g) => g.id === id)!;
