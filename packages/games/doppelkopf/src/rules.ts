@@ -23,6 +23,8 @@ export interface View {
   turn: Seat | null; scores: number[]; over: boolean;
   phase: DokoState["phase"]; mode: Mode; soloist: Seat | null; team: "re" | "kontra" | null; seenQ: Seat[];
   announced: { re: boolean; kontra: boolean }; canAnnounce: boolean; round: number; rounds: number; dealer: Seat; reserved: (Mode | "ok" | null)[];
+  /** card points of the viewer's side as far as they can know it; opp is null while the sides are not fully known */
+  teamPts: { mine: number; opp: number | null; complete: boolean } | null;
 }
 
 const N = 4;
@@ -190,6 +192,7 @@ export const Doppelkopf: GameRules<DokoConfig, DokoState, Move, View, Ev> = {
       you: seat, hand: seat === "public" ? [] : s.hands[seat]!.slice(), handSizes: s.hands.map((h) => h.length), talon: 0, trick: s.trick.slice(),
       turn: s.phase === "over" ? null : s.turn, scores: s.scores.slice(), over: s.phase === "over", phase: s.phase, mode: s.mode, soloist: s.soloist,
       team: seat === "public" || s.phase === "reserve" ? null : teamOf(s, seat), seenQ: s.seenQ.slice(), announced: { ...s.announced },
+      teamPts: seat === "public" || s.phase !== "play" ? null : teamPoints(s, seat),
       canAnnounce: seat !== "public" && canAnnounce(s, seat), round: s.round, rounds: s.rounds, dealer: s.dealer, reserved: s.reservations.slice(),
     };
   },
@@ -201,6 +204,15 @@ export const Doppelkopf: GameRules<DokoConfig, DokoState, Move, View, Ev> = {
   },
 };
 
+/** What a player can know about the card points of the two sides: only revealed Re members count. */
+function teamPoints(s: DokoState, seat: Seat): { mine: number; opp: number | null; complete: boolean } {
+  const knownRe = s.mode === "normal" ? [...new Set([...s.seenQ, ...(s.re.includes(seat) ? [seat] : [])])] : s.re.slice();
+  const complete = knownRe.length === s.re.length && (s.mode !== "hochzeit" || s.partner !== null || s.solo);
+  const all = [0, 1, 2, 3], reSet = new Set(knownRe);
+  const reP = sum(knownRe.flatMap((i) => s.taken[i]!)), restP = sum(all.filter((i) => !reSet.has(i)).flatMap((i) => s.taken[i]!));
+  if (teamOf(s, seat) === "re") return { mine: reP, opp: complete ? restP : null, complete };
+  return complete ? { mine: restP, opp: reP, complete } : { mine: sum(s.taken[seat]!), opp: null, complete };
+}
 function teamOf(s: DokoState, seat: Seat): "re" | "kontra" {
   if (s.phase === "play" && (s.mode === "hochzeit" || s.solo || s.mode.startsWith("solo"))) return s.re.includes(seat) ? "re" : "kontra";
   return s.hands[seat]!.some((c) => strip(c) === "CQ") || s.re.includes(seat) ? "re" : "kontra";

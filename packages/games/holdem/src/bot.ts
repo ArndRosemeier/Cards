@@ -40,6 +40,8 @@ export function preflop(hole: Card[]): number {
 
 export const holdemBot: Bot<View, Move> = {
   choose(v, legal, rng) {
+    const nextHand = legal.find((m) => m.t === "next");
+    if (nextHand) return nextHand;
     const me = v.you as number;
     const opps = Math.max(1, v.inHand.filter((x, i) => x && i !== me).length);
     const has = (t: Move["t"]) => legal.find((m) => m.t === t);

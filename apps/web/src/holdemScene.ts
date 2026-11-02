@@ -297,7 +297,11 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     for (let s = 0; s < this.n; s++) gsap.to(this.seats[s]!.ring, { alpha: !v.over && !this.handDone && v.turn === s ? 1 : 0, duration: 0.25 });
     this.controls.innerHTML = "";
     const mineTurn = !this.busy && this.legal.length > 0;
-    if (mineTurn) {
+    const nextMove = this.legal.find((m) => m.t === "next");
+    if (mineTurn && nextMove) {
+      const row = document.createElement("div"); row.className = "hrow";
+      const b = document.createElement("button"); b.className = "btn primary big"; b.textContent = t("hNextHand"); b.onclick = () => this.send(nextMove); row.append(b); this.controls.append(row);
+    } else if (mineTurn) {
       const call = this.legal.find((m) => m.t === "call"), check = this.legal.find((m) => m.t === "check"), fold = this.legal.find((m) => m.t === "fold");
       const raises = this.legal.filter((m): m is Extract<Move, { t: "raise" }> => m.t === "raise");
       const row = document.createElement("div"); row.className = "hrow";
@@ -321,8 +325,9 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
         r2.append(slider, lab, go); upd(); this.controls.append(r2);
       }
     }
-    this.banner.textContent = v.over ? "" : v.turn === this.me ? (v.toCall > 0 ? t("hCallPrompt", { n: Math.min(v.toCall, v.stacks[this.me] ?? v.toCall) }) : t("hCheckPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
+    this.banner.textContent = v.over ? "" : v.phase === "between" ? (nextMove ? t("hHandOver") : t("hWaitHost")) : v.turn === this.me ? (v.toCall > 0 ? t("hCallPrompt", { n: Math.min(v.toCall, v.stacks[this.me] ?? v.toCall) }) : t("hCheckPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
     this.banner.style.display = this.busy || v.over ? "none" : "block";
+    for (let s = 0; s < this.n; s++) if (v.phase === "between") gsap.to(this.seats[s]!.ring, { alpha: 0, duration: 0.2 });
     this.board.innerHTML = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}" style="${v.out[i] ? "opacity:.35" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.stacks[i]}</b></div>`).join("") + `<div class="x">${t("hHand", { n: v.handNo })} · ${v.sb}/${v.bb}</div>`;
   }
 }

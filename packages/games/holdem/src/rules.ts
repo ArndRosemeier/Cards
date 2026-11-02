@@ -4,13 +4,14 @@ import { bestScore, categoryOf, HAND_NAMES } from "./eval.ts";
 export interface HoldemConfig { stack: number; sb: number; bb: number; handsPerLevel: number }
 export const defaultConfig: HoldemConfig = { stack: 1000, sb: 10, bb: 20, handsPerLevel: 6 };
 
-type Phase = "preflop" | "flop" | "turn" | "river" | "over";
+/** "between": the hand is decided and shown; seat 0 (the host) starts the next one */
+type Phase = "preflop" | "flop" | "turn" | "river" | "between" | "over";
 export interface HoldemState {
   stacks: number[]; hole: Card[][]; community: Card[]; deck: Card[]; dealer: Seat; phase: Phase;
   bets: number[]; total: number[]; folded: boolean[]; allIn: boolean[]; out: boolean[];
   cur: number; minRaise: number; pending: Seat[]; turn: Seat; handNo: number; sb: number; bb: number; handsPerLevel: number;
 }
-export type Move = { t: "fold" } | { t: "check" } | { t: "call" } | { t: "raise"; to: number };
+export type Move = { t: "fold" } | { t: "check" } | { t: "call" } | { t: "raise"; to: number } | { t: "next" };
 export type Ev =
   | { t: "newHand"; hand: number; dealer: Seat; sb: number; bb: number }
   | { t: "blind"; seat: Seat; amount: number }
@@ -85,10 +86,11 @@ export const Holdem: GameRules<HoldemConfig, HoldemState, Move, View, Ev> = {
     return { state: s, events };
   },
 
-  activeSeats: (s) => (s.phase === "over" ? [] : [s.turn]),
+  activeSeats: (s) => (s.phase === "over" ? [] : s.phase === "between" ? [0] : [s.turn]),
 
   legalMoves(s, seat) {
     if (s.phase === "over" || seat !== s.turn) return [];
+    if (s.phase === "between") return [{ t: "next" }];
     const toCall = s.cur - s.bets[seat]!;
     const out: Move[] = [];
     if (toCall > 0) out.push({ t: "fold" }, { t: "call" }); else out.push({ t: "check" });
@@ -106,6 +108,12 @@ export const Holdem: GameRules<HoldemConfig, HoldemState, Move, View, Ev> = {
     const s: HoldemState = structuredClone(prev);
     const events: Ev[] = [];
     if (s.phase === "over" || seat !== s.turn) throw new Error("not your turn");
+    if (s.phase === "between") {
+      if (move.t !== "next") throw new Error("the hand is over");
+      startHand(s, rng, events);
+      return { state: s, events };
+    }
+    if (move.t === "next") throw new Error("no hand to finish");
     const toCall = s.cur - s.bets[seat]!;
     const put = (amt: number) => { s.stacks[seat]! -= amt; s.bets[seat]! += amt; s.total[seat]! += amt; if (s.stacks[seat] === 0) s.allIn[seat] = true; };
     s.pending.shift();
@@ -137,11 +145,11 @@ export const Holdem: GameRules<HoldemConfig, HoldemState, Move, View, Ev> = {
 
   view(s, seat) {
     const me = seat === "public" ? null : seat;
-    const { minTo, maxTo } = me !== null && s.turn === me && s.phase !== "over" ? raiseRange(s, me) : { minTo: 0, maxTo: 0 };
+    const { minTo, maxTo } = me !== null && s.turn === me && s.phase !== "over" && s.phase !== "between" ? raiseRange(s, me) : { minTo: 0, maxTo: 0 };
     return {
       you: seat, hand: me === null ? [] : s.hole[me]!.slice(), handSizes: s.hole.map((h) => h.length), talon: 0, trick: [], turn: s.phase === "over" ? null : s.turn,
       scores: s.stacks.slice(), over: s.phase === "over", stacks: s.stacks.slice(), bets: s.bets.slice(), folded: s.folded.slice(), allIn: s.allIn.slice(), out: s.out.slice(),
-      community: s.community.slice(), pot: potOf(s), dealer: s.dealer, toCall: me !== null ? Math.max(0, s.cur - s.bets[me]!) : 0, minRaiseTo: minTo, maxRaiseTo: maxTo,
+      community: s.community.slice(), pot: potOf(s), dealer: s.dealer, toCall: me !== null && s.phase !== "between" ? Math.max(0, s.cur - s.bets[me]!) : 0, minRaiseTo: minTo, maxRaiseTo: maxTo,
       phase: s.phase, handNo: s.handNo, sb: s.sb, bb: s.bb, inHand: s.folded.map((f) => !f),
     };
   },
@@ -217,5 +225,5 @@ function award(s: HoldemState, rng: Rng, events: Ev[], showdown: boolean) {
   s.total = Array(n).fill(0);
   for (let i = 0; i < n; i++) if (!s.out[i] && s.stacks[i] === 0) { s.out[i] = true; events.push({ t: "out", seat: i }); }
   if (s.out.filter((o) => !o).length <= 1) { s.phase = "over"; return; }
-  startHand(s, rng, events);
+  s.phase = "between"; s.turn = 0; s.pending = [];
 }

@@ -25,6 +25,10 @@ export interface View {
   /** hands played face-up (Ouvert): seat -> cards */
   shown?: Record<number, Card[]>;
   bidLevel: number; caller: Seat | null; listener: Seat | null; round: number; rounds: number;
+  /** card points taken in tricks so far, per seat (public: played cards are known) */
+  cardPts: number[];
+  /** the declarer's own view only: card points in the skat they put away (0 for everyone else) */
+  skatPts: number;
 }
 
 const N = 3;
@@ -225,6 +229,7 @@ export const Skat: GameRules<SkatConfig, SkatState, Move, View, Ev> = {
       phase: s.phase, dealer: s.dealer, forehand: forehand(s.dealer), declarer: s.declarer, game: s.game, handGame: s.handGame, ouvert: s.ouvert, announce: s.announce, contract: s.contract,
       ...(s.ouvert && s.phase === "play" && s.declarer !== null ? { shown: { [s.declarer]: s.hands[s.declarer]!.slice() } } : {}),
       bidLevel: s.bid.level, caller: s.phase === "bid" ? s.bid.caller : null, listener: s.phase === "bid" ? s.bid.listener : null, round: s.round, rounds: s.rounds,
+      cardPts: s.taken.map(sumPoints), skatPts: seat !== "public" && seat === s.declarer && s.game && s.game !== "R" && s.game !== "N" ? sumPoints(s.talon) : 0,
     };
   },
 

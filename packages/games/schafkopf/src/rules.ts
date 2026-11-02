@@ -18,9 +18,22 @@ export interface View {
   turn: Seat | null; scores: number[]; over: boolean;
   phase: SchafState["phase"]; mode: Mode | null; declarer: Seat | null; role: "declarer" | "partner" | "opponent" | null; partnerKnown: Seat | null;
   round: number; rounds: number; dealer: Seat; offers: (Mode | "pass" | null)[];
+  /** card points of the viewer's side as far as they can know it; opp is null while the sides are not fully known */
+  teamPts: { mine: number; opp: number | null; complete: boolean } | null;
 }
 
 const N = 4;
+/** Card points of the viewer's side: the partner of a Sauspiel is only known once the ace was played (or to the partner). */
+function teamPoints(s: SchafState, me: Seat): { mine: number; opp: number | null; complete: boolean } {
+  const d = s.declarer!, sau = s.mode!.startsWith("sau") && s.partner !== null;
+  const partnerShown = sau && (s.aceSeen || me === s.partner);
+  const all = [0, 1, 2, 3], declTeam = new Set<Seat>([d]); if (partnerShown) declTeam.add(s.partner!);
+  const complete = !sau || partnerShown;
+  const declP = sum([...declTeam].flatMap((i) => s.taken[i]!)), restP = sum(all.filter((i) => !declTeam.has(i)).flatMap((i) => s.taken[i]!));
+  const onDecl = declTeam.has(me);
+  if (onDecl) return { mine: declP, opp: complete ? restP : null, complete };
+  return complete ? { mine: restP, opp: declP, complete } : { mine: sum(s.taken[me]!), opp: null, complete };
+}
 const POINTS: Record<string, number> = { A: 11, T: 10, K: 4, Q: 3, J: 2, "9": 0, "8": 0, "7": 0 };
 export const cardPoints = (c: Card) => POINTS[rankOf(c)]!;
 const sum = (cs: Card[]) => cs.reduce((a, c) => a + cardPoints(c), 0);
@@ -151,6 +164,7 @@ export const Schafkopf: GameRules<SchafConfig, SchafState, Move, View, Ev> = {
     return {
       you: seat, hand: me === null ? [] : s.hands[me]!.slice(), handSizes: s.hands.map((h) => h.length), talon: 0, trick: s.trick.slice(),
       turn: s.phase === "over" ? null : s.turn, scores: s.scores.slice(), over: s.phase === "over", phase: s.phase, mode: s.mode, declarer: s.declarer, role,
+      teamPts: me === null || s.phase !== "play" || s.declarer === null ? null : teamPoints(s, me),
       partnerKnown: s.aceSeen ? s.partner : null, round: s.round, rounds: s.rounds, dealer: s.dealer, offers: s.offers.slice(),
     };
   },

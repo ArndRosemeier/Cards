@@ -46,3 +46,25 @@ test("random games finish and conserve chips", () => {
 test("bot games finish", () => {
   for (let seed = 1; seed <= 6; seed++) assert.ok(play(seed, 4, true), `seed ${seed}`);
 });
+
+test("a decided hand waits for seat 0 to press next", () => {
+  const rng = new Rng(11);
+  let { state } = Holdem.setup(defaultConfig, 3, rng);
+  // everybody folds to the big blind
+  let guard = 0;
+  while (state.phase !== "between" && guard++ < 20) {
+    const seat = Holdem.activeSeats(state)[0]!;
+    const legal = Holdem.legalMoves(state, seat);
+    state = Holdem.apply(state, seat, legal.find((m) => m.t === "fold") ?? legal[0]!, rng).state;
+  }
+  assert.equal(state.phase, "between");
+  assert.deepEqual(Holdem.activeSeats(state), [0]);
+  assert.deepEqual(Holdem.legalMoves(state, 0), [{ t: "next" }]);
+  assert.deepEqual(Holdem.legalMoves(state, 1), []);
+  assert.throws(() => Holdem.apply(state, 0, { t: "check" }, rng));
+  const before = state.handNo;
+  const r = Holdem.apply(state, 0, { t: "next" }, rng);
+  assert.equal(r.state.handNo, before + 1);
+  assert.ok(r.events.some((e) => e.t === "newHand"));
+  assert.notEqual(r.state.phase, "between");
+});

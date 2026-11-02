@@ -28,6 +28,20 @@ const skatOrder = (hand: Card[]) => hand.slice().sort((a, b) => {
   const kb = rankOf(b) === "J" ? -10 + skatSuit.indexOf(suitOf(b)) : skatSuit.indexOf(suitOf(b)) * 10 + skatRank.indexOf(rankOf(b));
   return ka - kb;
 });
+/** Card points of the own side (Doppelkopf, Schafkopf): both sides once they are known, else just the own points. */
+function teamLine(tp: { mine: number; opp: number | null; complete: boolean } | null): string[] {
+  if (!tp) return [];
+  return [tp.opp !== null ? t("ptsTeam", { a: tp.mine, b: tp.opp }) : t("skPtsSolo", { a: tp.mine })];
+}
+/** Card points of the player's own side, always visible during play (Ramsch: own points). */
+function skatPoints(v: SView): string[] {
+  if (v.phase !== "play" || v.game === "N" || typeof v.you !== "number") return [];
+  const me = v.you, pts = v.cardPts;
+  if (v.game === "R" || v.declarer === null) return [t("skPtsSolo", { a: pts[me] ?? 0 })];
+  const decl = v.declarer, declPts = (pts[decl] ?? 0) + (me === decl ? v.skatPts : 0);
+  const oppPts = pts.reduce((a, n, i) => (i === decl ? a : a + n), 0);
+  return me === decl ? [t("skPtsDecl", { a: declPts, b: oppPts })] : [t("skPtsOpp", { a: oppPts, b: declPts })];
+}
 const skatUi: TrickUi<SMove, SView> = {
   points: classicPoints,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
@@ -60,7 +74,7 @@ const skatUi: TrickUi<SMove, SView> = {
       default: return v.turn === me ? t("yourTurn") : t("turnOf", { n: who });
     }
   },
-  extra: (v, names) => [`${t("roundNo", { a: v.round + 1, b: v.rounds })}`, ...(v.declarer !== null && v.game ? [`${names[v.declarer]}: ${t("game" + v.game)}${v.ouvert ? " Ouvert" : v.handGame ? " Hand" : ""}${v.announce === "schneider" ? " · " + t("announce_schneider") : v.announce === "schwarz" ? " · " + t("announce_schwarz") : ""} (${v.contract})`] : v.game === "R" ? [t("gameR")] : [])],
+  extra: (v, names) => [`${t("roundNo", { a: v.round + 1, b: v.rounds })}`, ...skatPoints(v), ...(v.declarer !== null && v.game ? [`${names[v.declarer]}: ${t("game" + v.game)}${v.ouvert ? " Ouvert" : v.handGame ? " Hand" : ""}${v.announce === "schneider" ? " · " + t("announce_schneider") : v.announce === "schwarz" ? " · " + t("announce_schwarz") : ""} (${v.contract})`] : v.game === "R" ? [t("gameR")] : [])],
   winner: (v) => v.scores.indexOf(Math.max(...v.scores)),
 };
 
@@ -86,7 +100,7 @@ const dokoUi: TrickUi<DMove, DView> = {
     if (v.phase === "reserve") return v.turn === me ? t("dk_askReserve") : t("dk_reserving", { n: who });
     return v.turn === me ? t("yourTurn") : t("turnOf", { n: who });
   },
-  extra: (v) => [t("roundNo", { a: v.round + 1, b: v.rounds }), ...(v.team ? [`${t("dk_team")}: ${v.team === "re" ? "Re" : "Kontra"}`] : []), ...(v.mode !== "normal" && v.phase === "play" ? [t("dk_" + v.mode)] : []),
+  extra: (v) => [t("roundNo", { a: v.round + 1, b: v.rounds }), ...teamLine(v.teamPts), ...(v.team ? [`${t("dk_team")}: ${v.team === "re" ? "Re" : "Kontra"}`] : []), ...(v.mode !== "normal" && v.phase === "play" ? [t("dk_" + v.mode)] : []),
     ...(v.announced.re ? ["Re!"] : []), ...(v.announced.kontra ? ["Kontra!"] : [])],
   winner: (v) => v.scores.indexOf(Math.max(...v.scores)),
 };
@@ -114,7 +128,7 @@ const schafUi: TrickUi<SKMove, SKView> = {
     }
     return v.turn === me ? t("yourTurn") : t("turnOf", { n: who });
   },
-  extra: (v, names) => [t("roundNo", { a: v.round + 1, b: v.rounds }), ...(v.mode && v.mode !== "ramsch" && v.declarer !== null ? [`${names[v.declarer]}: ${t("sk_" + v.mode)}`] : v.mode === "ramsch" ? [t("sk_ramsch")] : []),
+  extra: (v, names) => [t("roundNo", { a: v.round + 1, b: v.rounds }), ...teamLine(v.teamPts), ...(v.mode && v.mode !== "ramsch" && v.declarer !== null ? [`${names[v.declarer]}: ${t("sk_" + v.mode)}`] : v.mode === "ramsch" ? [t("sk_ramsch")] : []),
     ...(v.role ? [t("sk_role_" + v.role)] : []), ...(v.partnerKnown !== null ? [`${t("sk_partnerIs")} ${names[v.partnerKnown]}`] : [])],
   winner: (v) => v.scores.indexOf(Math.max(...v.scores)),
 };

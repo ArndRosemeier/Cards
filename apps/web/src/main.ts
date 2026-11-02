@@ -204,6 +204,8 @@ function showOnline(prefill = "", err0 = "") {
 
 function enterRoom(session: Session) {
   let started = false;
+  chatLog = []; chatSink = null;
+  session.on("chat", (seat, name, text) => { const l: ChatLine = { seat, name, text, mine: seat === session.mySeat }; chatLog.push(l); if (chatLog.length > 200) chatLog.shift(); chatSink?.(l); });
   const showLobby = () => {
     if (started) return;
     const l = session.lobby;
@@ -230,14 +232,18 @@ function enterRoom(session: Session) {
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
     setTableTheme(gameId);
     scene = entry().scene(app, ui, { submit: (m) => { lastUpdate = null; session.submit(m); }, onFinished: (w, names, _me, sc) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) });
-    addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); }, (id) => { const me = session.mySeat; if (me === null || Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); session.sendEmote(id); scene?.emote?.(me, id); });
+    addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); }, (id) => { const me = session.mySeat; if (me === null || Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); session.sendEmote(id); scene?.emote?.(me, id); }, (text) => session.sendChat(text));
   };
   showLobby();
 }
 
-function addHud(onMenu: () => void, onEmote?: (id: string) => void) {
+interface ChatLine { seat: number; name: string; text: string; mine: boolean }
+let chatLog: ChatLine[] = [];
+let chatSink: ((l: ChatLine) => void) | null = null;
+
+function addHud(onMenu: () => void, onEmote?: (id: string) => void, onChat?: (text: string) => void) {
   const hud = document.createElement("div"); hud.className = "hud";
-  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="emobtn" title="${t('emote')}">☺</button><button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
+  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="emobtn" title="${t('emote')}">☺</button>${onChat ? `<button class="btn" id="chatbtn" title="${t('chat')}">💬<span class="badge" hidden></span></button>` : ""}<button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
   (hud.querySelector("#hintbtn") as HTMLButtonElement).onclick = () => { sfx.hint(); hintNow(); };
   (hud.querySelector("#emobtn") as HTMLButtonElement).onclick = () => {
@@ -247,12 +253,45 @@ function addHud(onMenu: () => void, onEmote?: (id: string) => void) {
     pk.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.onclick = () => { pk.remove(); sfx.click(); onEmote?.(b.dataset.e!); }));
     ui.append(pk);
   };
+  if (onChat) mountChat(hud, onChat);
   (hud.querySelector("#rulesbtn") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
   (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
   (hud.querySelector("#mus") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = music.toggle() ? "♪̸" : "♪"; };
   ui.append(hud);
   music.start(gameId); sfx.shuffle();
   const rot = document.createElement("div"); rot.className = "rotate"; rot.innerHTML = `<div class="ico">⟳</div><div>${t("rotate")}</div>`; ui.append(rot);
+}
+
+/** Folding table chat: a panel under the HUD, a badge on the button and a short preview while it is folded. */
+function mountChat(hud: HTMLElement, send: (text: string) => void) {
+  const btn = hud.querySelector("#chatbtn") as HTMLButtonElement, badge = btn.querySelector(".badge") as HTMLElement;
+  const panelEl = document.createElement("div"); panelEl.className = "chatpanel"; panelEl.hidden = true;
+  panelEl.innerHTML = `<div class="chatlog"></div><form class="chatform"><input type="text" maxlength="240" autocomplete="off" placeholder="${esc(t("chatHint"))}"><button class="btn primary" type="submit">➤</button></form>`;
+  const preview = document.createElement("div"); preview.className = "chatpreview"; preview.hidden = true;
+  const log = panelEl.querySelector(".chatlog") as HTMLElement, input = panelEl.querySelector("input") as HTMLInputElement;
+  let unread = 0, previewTimer = 0;
+  const add = (l: ChatLine) => {
+    const row = document.createElement("div"); row.className = "chatline" + (l.mine ? " mine" : "");
+    const who = document.createElement("b"); who.textContent = l.mine ? t("you") : l.name || t("guest"); const tx = document.createElement("span"); tx.textContent = " " + l.text;
+    row.append(who, tx); log.append(row); log.scrollTop = log.scrollHeight;
+  };
+  chatLog.forEach(add);
+  const showBadge = () => { badge.hidden = unread === 0; badge.textContent = String(unread); };
+  chatSink = (l) => {
+    add(l);
+    if (l.mine || !panelEl.hidden) return;
+    unread++; showBadge(); sfx.click();
+    preview.textContent = `${l.name || t("guest")}: ${l.text}`; preview.hidden = false;
+    clearTimeout(previewTimer); previewTimer = window.setTimeout(() => { preview.hidden = true; }, 4500);
+  };
+  btn.onclick = () => {
+    panelEl.hidden = !panelEl.hidden; preview.hidden = true;
+    if (!panelEl.hidden) { unread = 0; showBadge(); log.scrollTop = log.scrollHeight; input.focus(); }
+  };
+  (panelEl.querySelector("form") as HTMLFormElement).onsubmit = (e) => { e.preventDefault(); const v = input.value.trim(); if (v) { send(v); input.value = ""; } };
+  input.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Escape") { panelEl.hidden = true; input.blur(); } });
+  unread = chatLog.filter((l) => !l.mine).length; showBadge();
+  ui.append(panelEl, preview);
 }
 
 function showResult(winner: number, names: string[], session: Session | null, again?: () => void, scores?: number[]) {

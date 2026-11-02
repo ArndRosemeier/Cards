@@ -22,6 +22,7 @@ type Msg =
   | { t: "rehello" }
   | { t: "full" }
   | { t: "emote"; seat: number; id: string }
+  | { t: "chat"; seat: number; name: string; text: string }
   | { t: "shadow"; snap: TableSnapshot<any>; lobby: LobbyState; tokens: (string | null)[] };
 
 export interface SessionOptions {
@@ -38,6 +39,7 @@ type Events<V, M, E> = {
   role: (isHost: boolean) => void;
   error: (code: string) => void;
   emote: (seat: number, id: string) => void;
+  chat: (seat: number, name: string, text: string) => void;
 };
 
 /**
@@ -55,7 +57,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
   private seatByPlayer = new Map<number, number>();
   private shadow: { snap: TableSnapshot<State>; lobby: LobbyState; tokens: (string | null)[] } | null = null;
   private listeners: { [K in keyof Events<View, Move, Ev>]: Set<Events<View, Move, Ev>[K]> } = {
-    update: new Set(), lobby: new Set(), seat: new Set(), role: new Set(), error: new Set(), emote: new Set(),
+    update: new Set(), lobby: new Set(), seat: new Set(), role: new Set(), error: new Set(), emote: new Set(), chat: new Set(),
   };
   private readonly def: GameDef<Config, State, Move, View, Ev>;
   private readonly opts: SessionOptions;
@@ -214,6 +216,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
       case "rehello": if (!this.isHost) this.hub.send({ t: "hello", token: this.opts.token, name: this.opts.name }, from); break;
       case "full": this.emit("error", "room_full"); break;
       case "emote": if (m.seat !== this.mySeat && typeof m.id === "string") this.emit("emote", m.seat, m.id.slice(0, 16)); break;
+      case "chat": if (m.seat !== this.mySeat && typeof m.text === "string") this.emit("chat", m.seat, String(m.name ?? "").slice(0, 24), m.text.slice(0, 240)); break;
       case "shadow": this.shadow = { snap: m.snap, lobby: m.lobby, tokens: m.tokens }; break;
     }
   }
@@ -254,6 +257,13 @@ export class OnlineSession<Config, State, Move, View, Ev> {
   }
 
   /** Show a quick reaction at the own seat for everyone at the table. */
+  /** Table chat: goes to everyone else in the room; the sender also gets it back through the "chat" event. */
+  sendChat(text: string) {
+    const msg = text.trim().slice(0, 240);
+    if (!msg || this.mySeat === null) return;
+    this.hub.send({ t: "chat", seat: this.mySeat, name: this.opts.name, text: msg });
+    this.emit("chat", this.mySeat, this.opts.name, msg);
+  }
   sendEmote(id: string) { if (this.mySeat !== null) this.hub.send({ t: "emote", seat: this.mySeat, id }); }
 
   private left = false;
