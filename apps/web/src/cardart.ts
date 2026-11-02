@@ -228,7 +228,7 @@ function refreshTextures() {
     if (k === "shadow") continue; // never changes; redrawing it in place produced opaque boxes
     const n = e.make(), ctx = e.c.getContext("2d");
     if (!ctx || n.width !== e.c.width || n.height !== e.c.height) continue;
-    ctx.clearRect(0, 0, e.c.width, e.c.height); ctx.drawImage(n, 0, 0); e.t.source.update();
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, e.c.width, e.c.height); ctx.drawImage(n, 0, 0); ctx.restore(); e.t.source.update(); // the canvas context keeps its draw scale
   }
 }
 export const faceTexture = (card: Card) => { const k = (card[0] === "X" ? "X1" : card.slice(0, 2)) as Card; return tex(k, () => drawFace(k)); };

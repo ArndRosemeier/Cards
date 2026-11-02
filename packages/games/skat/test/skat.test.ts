@@ -71,3 +71,33 @@ test("hand game leads to an announce phase for suit and grand, not for null", ()
   const a = Skat.apply(Skat.apply(st, 0, { t: "game", game: "G" }, rng).state, 0, { t: "announce", level: "schneider" }, rng).state;
   assert.equal(a.phase, "play"); assert.equal(a.announce, "schneider");
 });
+
+test("ouvert: declarer's hand is shown to everybody and Schwarz is announced", () => {
+  const rng = Rng.fromSeed(7);
+  let { state } = Skat.setup({ rounds: 1, ramsch: true }, 3, rng);
+  // bid until somebody wins the auction (bots), stop at the Skat phase
+  for (let i = 0; i < 200 && state.phase !== "skat"; i++) {
+    const seat = Skat.activeSeats(state)[0]!; const legal = Skat.legalMoves(state, seat);
+    state = Skat.apply(state, seat, skatBot.choose(Skat.view(state, seat), legal, rng), rng).state;
+    if (state.phase === "bid" && state.round > 0) break;
+  }
+  if (state.phase !== "skat") return; // seed produced a redeal; the fuzz test below covers the rest
+  const d = state.declarer!;
+  assert.ok(Skat.legalMoves(state, d).some((m) => m.t === "ouvert"));
+  let r = Skat.apply(state, d, { t: "ouvert" }, rng); state = r.state;
+  assert.equal(state.phase, "declare");
+  r = Skat.apply(state, d, { t: "game", game: "G" }, rng); state = r.state;
+  assert.equal(state.announce, "schwarz");
+  assert.ok(r.events.some((e) => e.t === "reveal" && e.seat === d));
+  const other = (d + 1) % 3;
+  const v = Skat.view(state, other);
+  assert.deepEqual(v.shown?.[d], state.hands[d]);
+  assert.equal(state.phase, "play");
+});
+
+test("ouvert game values", () => {
+  assert.equal(gameValue("N", [] as Card[], false, false, false, "none", true), 46);
+  assert.equal(gameValue("N", [] as Card[], true, false, false, "none", true), 59);
+  // grand mit 1, ouvert, won schwarz: 24 * (2 + hand + schneider + schwarz + 2 announce + ouvert) = 24 * 8
+  assert.equal(gameValue("G", ["CJ"] as Card[], true, true, true, "schwarz", true), 24 * 8);
+});

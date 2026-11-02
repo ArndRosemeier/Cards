@@ -23,9 +23,9 @@ export const RULES: Record<string, Text2> = {
   },
   skat: {
     en: ["Three players: one declarer against two. 32 cards, jacks are the top trumps, then the trump suit (or the jacks only in grand).", "Bidding: the player who bids highest picks up the 2 Skat cards, discards 2 and names the game (suit, grand or null).",
-      "The declarer needs 61 of the 120 card points (A 11, 10 = 10, K 4, Q 3, J 2). Game value = base value × multiplier (jacks with/without, hand, Schneider, Schwarz).", "In a hand game you skip the Skat and may announce Schneider or Schwarz. If everyone passes, Ramsch is played: take as few points as possible."],
+      "The declarer needs 61 of the 120 card points (A 11, 10 = 10, K 4, Q 3, J 2). Game value = base value × multiplier (jacks with/without, hand, Schneider, Schwarz).", "In a hand game you skip the Skat and may announce Schneider or Schwarz. Ouvert is a hand game played with your cards face-up (Schwarz is announced automatically, much higher value). If everyone passes, Ramsch is played: take as few points as possible."],
     de: ["Drei Spieler: ein Alleinspieler gegen zwei. 32 Karten, die Buben sind die höchsten Trümpfe, dann die Trumpffarbe (beim Grand nur die Buben).", "Reizen: Wer am höchsten reizt, nimmt den Skat, drückt 2 Karten und sagt das Spiel an (Farbe, Grand oder Null).",
-      "Der Alleinspieler braucht 61 der 120 Augen (A 11, 10 = 10, K 4, D 3, B 2). Spielwert = Grundwert × Multiplikator (Spitzen mit/ohne, Hand, Schneider, Schwarz).", "Beim Handspiel bleibt der Skat liegen; du darfst Schneider oder Schwarz ansagen. Passen alle, wird Ramsch gespielt: möglichst wenig Augen nehmen."],
+      "Der Alleinspieler braucht 61 der 120 Augen (A 11, 10 = 10, K 4, D 3, B 2). Spielwert = Grundwert × Multiplikator (Spitzen mit/ohne, Hand, Schneider, Schwarz).", "Beim Handspiel bleibt der Skat liegen; du darfst Schneider oder Schwarz ansagen. Ouvert ist ein Handspiel mit offen liegenden Karten (Schwarz wird automatisch angesagt, deutlich höherer Wert). Passen alle, wird Ramsch gespielt: möglichst wenig Augen nehmen."],
   },
   doppelkopf: {
     en: ["Four players, two teams: Re (holders of a queen of clubs) against Kontra. 48 cards (two decks, 9 to ace).", "Trumps: ten of hearts, queens, jacks, then diamonds. Win tricks, count card points: 240 in total, Re needs 121.",

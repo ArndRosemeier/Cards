@@ -42,6 +42,7 @@ export const skatBot: Bot<View, Move> = {
       if (next) return next;
       return has("pass") ?? legal[0]!;
     }
+    if (v.phase === "skat" && has("ouvert") && jackMultiplier(hand) >= 5 && hand.filter((c) => rankOf(c) === "A").length >= 3) return has("ouvert")!;   // four jacks and aces: play open
     if (v.phase === "skat") return bestGame(hand).score >= 18 && has("handgame") ? has("handgame")! : has("pickup")!;   // a very strong hand plays without the Skat
     if (v.phase === "discard") {
       const { game } = bestGame(hand);
