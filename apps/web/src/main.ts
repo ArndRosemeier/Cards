@@ -67,7 +67,7 @@ async function boot() {
     gameId = q.get("game") ?? "maumau"; const ok = entry().players, want = Number(q.get("players") ?? 3);
     return startLocal(q.get("name") ?? "Arnd", ok.includes(want) ? want : ok.includes(3) ? 3 : ok[ok.length - 1]!, Number(q.get("seed") ?? Date.now()));
   }
-  if (q.get("room")) return showOnline(q.get("room")!);
+  if (q.get("room")) return autoJoin(q.get("room")!.trim().toUpperCase());
   showMenu();
 }
 
@@ -126,8 +126,27 @@ function showStats() {
 }
 
 // ---------------------------------------------------------------- online
-function showOnline(prefill = "") {
-  let name = savedName(); let seats = entry().players.includes(4) ? 4 : entry().players[0]!; let err = "";
+/** A link like ?room=CODE (from the GameHub lobby or a friend): find out which game the room plays and go straight in. */
+async function autoJoin(code: string) {
+  const w = panel(`<h1>${t("online")}</h1><div class="sub">${t("connecting")}</div>`); void w;
+  const n = savedName() || `${t("guest")} ${10 + Math.floor(Math.random() * 90)}`;
+  const peek = connect({ url: HUB_URL, app: "cards", appKey: KEY });
+  try {
+    await peek.ready;
+    let game = ((await peek.listRooms()).find((r) => r.id === code)?.meta as any)?.game as string | undefined;
+    if (!game) { await peek.join(code); game = (peek.room?.meta as any)?.game; }   // private (already started) rooms are not listed
+    peek.close();
+    if (!game || !live(game)) throw Object.assign(new Error("bad room"), { code: "no_such_room" });
+    gameId = game;
+    enterRoom(await OnlineSession.join(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, code));
+  } catch (e: any) {
+    try { peek.close(); } catch { /* ignore */ }
+    showOnline(code, e?.code === "room_full" ? t("roomFull") : t("connFail"));
+  }
+}
+
+function showOnline(prefill = "", err0 = "") {
+  let name = savedName(); let seats = entry().players.includes(4) ? 4 : entry().players[0]!; let err = err0;
   let rooms: { id: string; name: string; players: number; maxPlayers: number; meta: any }[] = [];
   const hub = connect({ url: HUB_URL, app: "cards", appKey: KEY });
   const poll = async () => { try { rooms = (await hub.listRooms()).filter((r) => (r.meta as any)?.game === gameId); } catch { rooms = []; } if (alive) render(); };
@@ -150,7 +169,7 @@ function showOnline(prefill = "") {
     (w.querySelector("#back") as HTMLButtonElement).onclick = () => { stop(); showMenu(); };
     (w.querySelector("#create") as HTMLButtonElement).onclick = async () => {
       const n = nm(); stop();
-      try { enterRoom(await OnlineSession.create(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, { name: `${n}`, seats })); }
+      try { enterRoom(await OnlineSession.create(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, { name: `${t(gameId)} · ${n}`, seats, public: true })); }
       catch { err = t("connFail"); showOnline(); }
     };
     const joinCode = async (code: string) => {
