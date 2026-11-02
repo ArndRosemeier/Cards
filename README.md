@@ -32,7 +32,7 @@ Handy URL parameters for development: `?autostart=1&game=canasta&players=4&seed=
 ## Deploy
 
 `apps/web/dist` is a static site with relative paths: put it on any static host (GitHub Pages, Netlify, an nginx folder). A service worker caches it, so solo play against bots also works offline.
-The GameHub app id and key are in `apps/web/.env.production` (`VITE_APP_ID`, `VITE_APP_KEY`). Keys identify the app and are shipped in the client by design.
+The GameHub app key is in `apps/web/.env.production` (`VITE_GAMEHUB_KEY`, optional `VITE_GAMEHUB_URL`); the app id is `cards`. Keys identify the app and are shipped in the client by design.
 To list the app in the GameHub lobby, register its URL in GameHub's app list (see the gameserver repo).
 
 ## How it works
