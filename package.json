@@ -1,0 +1,12 @@
+{
+  "name": "cards",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "packages/games/*", "apps/*"],
+  "scripts": {
+    "test": "node --test \"packages/**/test/*.test.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "engines": { "node": ">=22.18" },
+  "devDependencies": { "@types/node": "^26.6.5", "typescript": "^7.0.2" }
+}
