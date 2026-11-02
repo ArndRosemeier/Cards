@@ -43,7 +43,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private flyLayer = new Container();
   private fxLayer = new Container();
   private geo: Geo = LAND;
-  private plates: { label: Text; count: Text; ring: Graphics; box: Container }[] = [];
+  private plates: { label: Text; count: Text; ring: Graphics; box: Container; won: Text }[] = [];
+  private tricksWon: number[] = [];
   private mine = new Map<Card, CardView>();
   private opp: CardView[][] = [];
   private talon: CardView[] = [];
@@ -151,12 +152,14 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
       box.roundRect(-w / 2, -h / 2, w, h, 27).fill({ color: 0x000000, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 31).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       label.position.set(-20, 0); count.position.set(w / 2 - 30, 0);
-      const plate = new Container(); plate.addChild(ring, box, label, count);
+      const won = new Text({ text: "", style: { fill: "#ffe9a0", fontSize: 16, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } }); won.anchor.set(0.5); won.position.set(0, h / 2 + 14);
+      const plate = new Container(); plate.addChild(ring, box, label, count, won);
       this.tableLayer.addChild(plate);
-      this.plates[s] = { label, count, ring, box: plate };
+      this.plates[s] = { label, count, ring, box: plate, won };
     }
     this.placePlates();
   }
+  private showWon() { this.plates.forEach((p, s) => { const n = this.tricksWon[s] ?? 0; p.won.text = n ? t("tricksWon", { n }) : ""; }); }
   private placePlates() {
     for (let s = 0; s < this.n; s++) { const rel = (s - this.me + this.n) % this.n, p = this.geo.plate(this.geo.layouts[this.n]![rel]!, rel); this.plates[s]!.box.position.set(p.x, p.y); }
   }
@@ -229,6 +232,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private async animate(ev: E, u: Update<V, M, E>) {
     switch (ev.t) {
       case "newRound": {
+        this.tricksWon = []; this.showWon();
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.talon, ...this.trick.values(), ...this.dummy.values()];
         this.dummy.clear(); this.dummySeat = null; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.talon = []; this.trick.clear();
         all.forEach((c) => { gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() }); });
@@ -266,6 +270,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         break;
       }
       case "trickDone": {
+        this.tricksWon[ev.winner] = (this.tricksWon[ev.winner] ?? 0) + 1; this.showWon();
         await sleep(650);
         const a = this.anchor(ev.winner);
         this.lastTrick = [...this.trick].map(([seat, cv]) => ({ seat, card: cv.id! })).filter((p) => p.card); this.lastBtn.style.display = this.lastTrick.length ? "block" : "none";
