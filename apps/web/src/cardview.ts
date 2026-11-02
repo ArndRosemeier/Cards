@@ -114,7 +114,7 @@ export class CardView extends Container {
     const move = (ev: PointerEvent) => {
       if (!this.dragging) {
         if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 10) return;
-        this.dragging = true; gsap.killTweensOf(this); gsap.killTweensOf(this.scale);
+        this.dragging = true; this.noTap = true; gsap.killTweensOf(this); gsap.killTweensOf(this.scale);
         const p0 = toLocal(sx, sy); grab = { x: this.x - p0.x, y: this.y - p0.y };
         this.scale.set(this.slot.scale * 1.06); this.parent?.addChild(this);
         this.overP = null; sfx.click();
@@ -129,7 +129,7 @@ export class CardView extends Container {
     const up = () => {
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
       if (!this.dragging) return;
-      this.dragging = false; this.noTap = true; setTimeout(() => { this.noTap = false; }, 120);
+      this.dragging = false; setTimeout(() => { this.noTap = false; }, 120);
       ctl.move(this.id!, Math.max(last, 0));
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);

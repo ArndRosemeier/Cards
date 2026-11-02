@@ -90,7 +90,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
       box.fill({ color: mate ? 0x3b2f08 : 0, alpha: 0.5 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: mate ? 0.9 : 0.5 });
       ring.stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count); if (s !== this.me && !compact) addAvatar(plate, this.names[s]!, name, -76, 0, 22);
-      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 664 } : a.dy === -1 ? { x: a.cx - 300, y: a.cy } : { x: a.cx, y: a.cy + 140 }; plate.position.set(pp.x, pp.y); }
+      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 664 } : a.dy === -1 ? { x: a.cx - 300, y: a.cy } : { x: a.cx, y: a.cy - 205 }; plate.position.set(pp.x, pp.y); }
       this.tableLayer.addChild(plate); this.plates[s] = { ring, count };
     }
     for (let i = 0; i < 4; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }

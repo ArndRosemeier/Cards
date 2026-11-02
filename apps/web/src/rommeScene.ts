@@ -50,7 +50,12 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     this.resize(); window.addEventListener("resize", this.onResize);
   }
   private onResize = () => this.resize();
-  private resize() { const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H); this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); document.body.classList.toggle("portrait", g.portrait); setActionsBottom(g, w, h, this.n || 4); cover(this.bg, w, h); }
+  private resize() { const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H); this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); document.body.classList.toggle("portrait", g.portrait); setActionsBottom(g, w, h, this.n || 4); cover(this.bg, w, h);
+    // landscape: keep the buttons to the right of the piles so they never cover the discard or the stock count
+    const st = this.actions.style;
+    if (g.portrait || w < 760) { st.left = ""; st.transform = ""; st.maxWidth = ""; st.justifyContent = ""; }
+    else { const left = (w - g.W * s) / 2 + (DISC.x + 110) * s; st.left = `${left}px`; st.transform = "none"; st.maxWidth = `${Math.max(240, w - left - 16)}px`; st.justifyContent = "flex-start"; }
+  }
   hint(cards: Card[]) { for (const c of cards) this.mine.get(c)?.glowFor(7); }
   destroy() { this.sortBtn.remove(); document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
 

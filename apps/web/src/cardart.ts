@@ -53,12 +53,12 @@ const art = new Map<string, HTMLImageElement>();
 export const BACKS = ["back", "back_red", "back_green", "back_black"] as const;
 let backName: string = (() => { try { const b = localStorage.getItem("cardBack"); return b && (BACKS as readonly string[]).includes(b) ? b : "back"; } catch { return "back"; } })();
 export const getBack = () => backName;
-export function setBack(n: string) { backName = n; try { localStorage.setItem("cardBack", n); } catch { /* ignore */ } cache.clear(); }
+export function setBack(n: string) { backName = n; try { localStorage.setItem("cardBack", n); } catch { /* ignore */ } refreshTextures(); }
 export function preloadCardArt() {
   const names = ["back", "back_red", "back_green", "back_black", "joker", ...["H", "D", "S", "C"].flatMap((s) => ["K", "Q", "J"].map((r) => r + s))];
   for (const n of names) {
     const img = new Image(); img.decoding = "async";
-    img.onload = () => { art.set(n, img); cache.clear(); };
+    img.onload = () => { art.set(n, img); refreshTextures(); };
     img.src = new URL(`cards/${n}.webp`, document.baseURI).href;
   }
 }
@@ -213,14 +213,23 @@ export function drawFelt(w: number, h: number): HTMLCanvasElement {
   return c;
 }
 
-const cache = new Map<string, Texture>();
+interface Entry { t: Texture; c: HTMLCanvasElement; make: () => HTMLCanvasElement }
+const cache = new Map<string, Entry>();
 const tex = (key: string, make: () => HTMLCanvasElement) => {
-  let t = cache.get(key);
-  if (!t) { t = Texture.from(make()); cache.set(key, t); }
-  return t;
+  let e = cache.get(key);
+  if (!e) { const c = make(); e = { t: Texture.from(c), c, make }; cache.set(key, e); }
+  return e.t;
 };
+/** Redraw every cached texture in place (new art arrived / card back changed), so cards that already exist update too. */
+function refreshTextures() {
+  for (const e of cache.values()) {
+    const n = e.make(), ctx = e.c.getContext("2d");
+    if (!ctx || n.width !== e.c.width || n.height !== e.c.height) continue;
+    ctx.clearRect(0, 0, e.c.width, e.c.height); ctx.drawImage(n, 0, 0); e.t.source.update();
+  }
+}
 export const faceTexture = (card: Card) => { const k = (card[0] === "X" ? "X1" : card.slice(0, 2)) as Card; return tex(k, () => drawFace(k)); };
-export const backTexture = () => tex("back:" + backName, drawBack);
+export const backTexture = () => tex("back", drawBack);
 export const shadowTexture = () => tex("shadow", drawShadow);
 export const suitTexture = (suit: Suit) => tex("suit" + suit, () => {
   const { c, ctx } = canvas(64, 64);
