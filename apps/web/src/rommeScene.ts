@@ -9,10 +9,11 @@ import { CardView, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { cover } from "./geo.ts";
-import { LAYOUTS, type GameScene, type SceneHooks } from "./trickScene.ts";
+import type { GameScene, SceneHooks } from "./trickScene.ts";
 
-const W = 1600, H = 900;
+import { pickGeo, setActionsBottom, type Geo } from "./geo.ts";
 const STOCK = { x: 700, y: 540 }, DISC = { x: 860, y: 540 };
+const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 800 }); Object.assign(DISC, { x: 410, y: 800 }); } else { Object.assign(STOCK, { x: 700, y: 540 }); Object.assign(DISC, { x: 860, y: 540 }); } };
 const SUIT_ORDER = ["C", "H", "S", "D"];
 const sortSuit = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)));
 const sortRank = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)));
@@ -20,7 +21,7 @@ const sortRank = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - 
 interface MeldView { owner: number; cards: CardView[]; frame: Graphics }
 
 export class RommeScene implements GameScene<Update<View, Move, Ev>> {
-  private world = new Container(); private bg = new Sprite();
+  private geo: Geo = pickGeo(window.innerWidth, window.innerHeight); private world = new Container(); private bg = new Sprite();
   private tableLayer = new Container(); private meldLayer = new Container(); private handLayer = new Container(); private flyLayer = new Container(); private fxLayer = new Container();
   private mine = new Map<Card, CardView>(); private opp: CardView[][] = []; private melds: MeldView[] = [];
   private stockStack = new Container(); private stockText = new Text({ text: "", style: { fill: "#fff", fontSize: 22, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
@@ -33,21 +34,21 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private readonly app: Application; private readonly ui: HTMLElement; private readonly hooks: SceneHooks<Move>;
 
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
-    this.app = app; this.ui = ui; this.hooks = hooks;
+    this.app = app; this.ui = ui; this.hooks = hooks; setPiles(this.geo);
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer); this.handLayer.sortableChildren = true;
-    this.bg.texture = tableTexture(W, H);
+    this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 92);
     this.tableLayer.addChild(this.stockStack, this.stockText);
     this.stockStack.eventMode = "static"; this.stockStack.cursor = "pointer"; this.stockStack.on("pointertap", () => this.draw("stock"));
-    this.actions.className = "actions"; this.actions.style.bottom = "calc(env(safe-area-inset-bottom) + 262px)";
+    this.actions.className = "actions"; if (!this.geo.portrait) this.actions.style.bottom = "calc(env(safe-area-inset-bottom) + 262px)";
     this.banner.className = "banner"; this.banner.style.display = "none"; this.board.className = "board";
     ui.append(this.actions, this.banner, this.board);
     this.resize(); window.addEventListener("resize", this.onResize);
   }
   private onResize = () => this.resize();
-  private resize() { const w = this.app.screen.width, h = this.app.screen.height, s = Math.min(w / W, h / H); this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2); cover(this.bg, w, h); }
-  destroy() { this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
+  private resize() { const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H); this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); document.body.classList.toggle("portrait", g.portrait); setActionsBottom(g, w, h, this.n || 4); cover(this.bg, w, h); }
+  destroy() { document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
 
   receive(u: Update<View, Move, Ev>) { this.queue.push(u); void this.drain(); }
   private async drain() {
@@ -67,7 +68,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
 
   private setup(u: Update<View, Move, Ev>) {
     this.me = u.view.you as number; this.n = u.view.handSizes.length; this.names = u.seats.map((s) => s.name); this.opp = Array.from({ length: this.n }, () => []);
-    const anchors = LAYOUTS[this.n]!;
+    const anchors = this.geo.layouts[this.n]!;
     for (let s = 0; s < this.n; s++) {
       const rel = (s - this.me + this.n) % this.n, a = anchors[rel]!;
       const box = new Graphics(), ring = new Graphics();
@@ -76,12 +77,12 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       box.roundRect(-100, -26, 200, 52, 26).fill({ color: 0, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-104, -30, 208, 60, 30).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count);
-      if (rel === 0) plate.position.set(260, 640); else if (a.dy === -1) plate.position.set(a.cx, a.cy + 100); else plate.position.set(a.cx + (a.dx === -1 ? 170 : -170), a.cy + 130);
+      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 260, y: 640 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy + 130 }; plate.position.set(pp.x, pp.y); }
       this.tableLayer.addChild(plate); this.plates[s] = { ring, count, name };
     }
     for (let i = 0; i < 3; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }
   }
-  private anchor(seat: number) { return LAYOUTS[this.n]![(seat - this.me + this.n) % this.n]!; }
+  private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
     const order = this.sortMode === "suit" ? sortSuit([...this.mine.keys()]) : sortRank([...this.mine.keys()]);
@@ -89,9 +90,9 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   }
   private fan(seat: number, i: number, n: number) {
     const a = this.anchor(seat), own = seat === this.me;
-    const step = own ? Math.min(62, 1050 / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
+    const g = this.geo, step = own ? Math.min(62, (g.portrait ? 540 : 1050) / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.5 : 0.3), cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin + (own ? 0 : 0), y: a.cy + (own ? 20 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? 0.95 : 0.5 };
+    return { x: a.cx + lx * cos - ly * sin + (own ? 0 : 0), y: a.cy + (own ? 20 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
   }
   private layout(seat: number, animate = true) {
     const hand = this.handOf(seat);
@@ -107,10 +108,10 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
 
   private layoutMelds(animate = true) {
     // left-to-right, wrapping rows, in the central area
-    let x = 250, y = 190; const rowH = 120, maxX = 1350;
+    const pt = this.geo.portrait, x0 = pt ? 150 : 250; let x = x0, y = pt ? 270 : 190; const rowH = pt ? 112 : 120, maxX = pt ? 580 : 1350;
     for (const m of this.melds) {
-      const step = 34, wdt = (m.cards.length - 1) * step + 70;
-      if (x + wdt > maxX) { x = 250; y += rowH; }
+      const step = pt ? 22 : 34, wdt = (m.cards.length - 1) * step + 70;
+      if (x + wdt > maxX) { x = x0; y += rowH; }
       m.cards.forEach((cv, i) => {
         if (cv.parent !== this.meldLayer) this.meldLayer.addChild(cv);
         const sl = { x: x + 35 + i * step, y: y + 50, rot: 0, scale: 0.5 }; cv.slot = sl;
@@ -195,7 +196,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     if (!this.discardView || this.discardView.id !== v.discardTop) { this.discardView?.destroy(); const cv = new CardView(v.discardTop, true); cv.position.set(DISC.x, DISC.y); cv.scale.set(0.8); this.tableLayer.addChild(cv); this.discardView = cv; this.discardView.eventMode = "static"; }
   }
   private toast(text: string) {
-    const tx = new Text({ text, style: { fill: "#ffe08a", fontSize: 44, fontWeight: "800", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 6 } } }); tx.anchor.set(0.5); tx.position.set(800, 120); tx.alpha = 0; this.fxLayer.addChild(tx);
+    const tx = new Text({ text, style: { fill: "#ffe08a", fontSize: 44, fontWeight: "800", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 6 } } }); tx.anchor.set(0.5); tx.position.set(this.geo.center.x, (this.geo.portrait ? 250 : 120)); tx.alpha = 0; this.fxLayer.addChild(tx);
     gsap.to(tx, { alpha: 1, duration: 0.3 }); gsap.to(tx, { alpha: 0, delay: 1.1, duration: 0.4, onComplete: () => tx.destroy() });
   }
 

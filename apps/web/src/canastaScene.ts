@@ -8,10 +8,11 @@ import { CardView, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { cover } from "./geo.ts";
-import { LAYOUTS, type GameScene, type SceneHooks } from "./trickScene.ts";
+import type { GameScene, SceneHooks } from "./trickScene.ts";
 
-const W = 1600, H = 900;
+import { pickGeo, setActionsBottom, type Geo } from "./geo.ts";
 const STOCK = { x: 270, y: 520 }, DISC = { x: 400, y: 520 };
+const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 640 }); Object.assign(DISC, { x: 410, y: 640 }); } else { Object.assign(STOCK, { x: 270, y: 520 }); Object.assign(DISC, { x: 400, y: 520 }); } };
 const SUIT_ORDER = ["C", "H", "S", "D"];
 const sortHand = (h: Card[]) => h.slice().sort((a, b) => (isWild(a) ? 1 : 0) - (isWild(b) ? 1 : 0) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)));
 const MS = 0.45, CW = CardView.W * MS, CH = CardView.H * MS; // meld card scale / size
@@ -20,7 +21,7 @@ interface MeldView { side: number; idx: number; kind: "meld" | "reds"; cards: Ca
 const FONT = "Segoe UI, sans-serif";
 
 export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
-  private world = new Container(); private bg = new Sprite();
+  private geo: Geo = pickGeo(window.innerWidth, window.innerHeight); private world = new Container(); private bg = new Sprite();
   private tableLayer = new Container(); private meldLayer = new Container(); private handLayer = new Container(); private flyLayer = new Container(); private fxLayer = new Container();
   private mine = new Map<Card, CardView>(); private opp: CardView[][] = []; private groups: MeldView[] = [];
   private stockStack = new Container(); private stockText = new Text({ text: "", style: { fill: "#fff", fontSize: 22, fontWeight: "700", fontFamily: FONT } });
@@ -36,24 +37,24 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
   private readonly app: Application; private readonly ui: HTMLElement; private readonly hooks: SceneHooks<Move>;
 
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
-    this.app = app; this.ui = ui; this.hooks = hooks;
+    this.app = app; this.ui = ui; this.hooks = hooks; setPiles(this.geo);
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer); this.handLayer.sortableChildren = true;
-    this.bg.texture = tableTexture(W, H);
+    this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 112);
     this.pileDepth.position.set(DISC.x, DISC.y); this.pileText.anchor.set(0.5); this.pileText.position.set(DISC.x, DISC.y + 112);
     this.frozenMark.anchor.set(0.5); this.frozenMark.position.set(DISC.x + 62, DISC.y - 86); this.frozenMark.visible = false;
     this.glow.roundRect(-70, -100, 140, 200, 14).stroke({ width: 5, color: 0xffe08a }); this.glow.position.set(DISC.x, DISC.y); this.glow.scale.set(0.8); this.glow.alpha = 0;
     this.tableLayer.addChild(this.stockStack, this.stockText, this.pileDepth, this.pileText, this.glow, this.frozenMark);
     this.stockStack.eventMode = "static"; this.stockStack.cursor = "pointer"; this.stockStack.on("pointertap", () => this.draw());
-    this.actions.className = "actions"; this.actions.style.bottom = "calc(env(safe-area-inset-bottom) + 262px)";
+    this.actions.className = "actions"; if (!this.geo.portrait) this.actions.style.bottom = "calc(env(safe-area-inset-bottom) + 262px)";
     this.banner.className = "banner"; this.banner.style.display = "none"; this.board.className = "board";
     ui.append(this.actions, this.banner, this.board);
     this.resize(); window.addEventListener("resize", this.onResize);
   }
   private onResize = () => this.resize();
-  private resize() { const w = this.app.screen.width, h = this.app.screen.height, s = Math.min(w / W, h / H); this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2); cover(this.bg, w, h); }
-  destroy() { this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
+  private resize() { const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H); this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); document.body.classList.toggle("portrait", g.portrait); setActionsBottom(g, w, h, this.n || 4); cover(this.bg, w, h); }
+  destroy() { document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
 
   receive(u: Update<View, Move, Ev>) { this.queue.push(u); void this.drain(); }
   private async drain() {
@@ -73,31 +74,34 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
 
   private setup(u: Update<View, Move, Ev>) {
     this.me = u.view.you as number; this.n = u.view.handSizes.length; this.names = u.seats.map((s) => s.name); this.opp = Array.from({ length: this.n }, () => []);
-    const anchors = LAYOUTS[this.n]!;
+    const anchors = this.geo.layouts[this.n]!;
     for (let s = 0; s < this.n; s++) {
       const rel = (s - this.me + this.n) % this.n, a = anchors[rel]!;
       const box = new Graphics(), ring = new Graphics();
       const name = new Text({ text: s === this.me ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 22, fontWeight: "600", fontFamily: FONT } }); name.anchor.set(0.5); name.position.set(-18, 0);
       const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 20, fontWeight: "700", fontFamily: FONT } }); count.anchor.set(0.5); count.position.set(78, 0);
       const mate = u.view.teams && sideOf(this.n, s) === sideOf(this.n, this.me);
-      box.roundRect(-100, -26, 200, 52, 26).fill({ color: mate ? 0x3b2f08 : 0, alpha: 0.5 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: mate ? 0.9 : 0.5 });
-      ring.roundRect(-104, -30, 208, 60, 30).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
+      const compact = this.geo.portrait && rel !== 0 && a.dy === 0; // narrow stacked plate for the side seats on a phone
+      if (compact) { name.position.set(0, -13); name.style.fontSize = 18; count.position.set(0, 14); box.roundRect(-52, -32, 104, 64, 20); ring.roundRect(-56, -36, 112, 72, 24); }
+      else { box.roundRect(-100, -26, 200, 52, 26); ring.roundRect(-104, -30, 208, 60, 30); }
+      box.fill({ color: mate ? 0x3b2f08 : 0, alpha: 0.5 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: mate ? 0.9 : 0.5 });
+      ring.stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count);
-      if (rel === 0) plate.position.set(250, 835); else if (a.dy === -1) plate.position.set(a.cx - 300, a.cy); else plate.position.set(a.cx, a.cy + 200);
+      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 250, y: 835 } : a.dy === -1 ? { x: a.cx - 300, y: a.cy } : { x: a.cx, y: a.cy + 200 }; plate.position.set(pp.x, pp.y); }
       this.tableLayer.addChild(plate); this.plates[s] = { ring, count };
     }
     for (let i = 0; i < 4; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }
   }
-  private anchor(seat: number) { return LAYOUTS[this.n]![(seat - this.me + this.n) % this.n]!; }
+  private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
     return sortHand([...this.mine.keys()]).map((c) => this.mine.get(c)!);
   }
   private fan(seat: number, i: number, n: number) {
     const a = this.anchor(seat), own = seat === this.me;
-    const step = own ? Math.min(62, 1050 / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
+    const g = this.geo, step = own ? Math.min(62, (g.portrait ? 540 : 1050) / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.5 : 0.3), cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin, y: a.cy + (own ? 20 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? 0.95 : 0.5 };
+    return { x: a.cx + lx * cos - ly * sin, y: a.cy + (own ? 20 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
   }
   private layout(seat: number, animate = true) {
     const hand = this.handOf(seat);
@@ -119,12 +123,13 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
   }
   private layoutMelds(animate = true) {
     const own = this.view?.mySide ?? 0;
-    const regions = [{ x0: 470, y0: 455, sides: [own] }, { x0: 470, y0: 215, sides: Array.from({ length: this.view?.sides ?? 0 }, (_, i) => i).filter((i) => i !== own) }];
+    const pt = this.geo.portrait, others = Array.from({ length: this.view?.sides ?? 0 }, (_, i) => i).filter((i) => i !== own);
+    const regions = pt ? [{ x0: 150, y0: 725, sides: [own], rows: 2 }, { x0: 150, y0: 325, sides: others, rows: 3 }] : [{ x0: 470, y0: 455, sides: [own], rows: 2 }, { x0: 470, y0: 215, sides: others, rows: 2 }];
     for (const r of regions) {
       const items = this.groups.filter((g) => r.sides.includes(g.side)).sort((a, b) => r.sides.indexOf(a.side) - r.sides.indexOf(b.side) || (a.kind === "reds" ? -1 : 0) - (b.kind === "reds" ? -1 : 0) || a.idx - b.idx);
-      const maxX = 1450, gap = 18; let step = 26, rows = 1;
+      const maxX = pt ? 570 : 1450, gap = pt ? 10 : 18; let step = 26, rows = 1;
       const fit = (st: number) => { let x = r.x0, rr = 1; for (const g of items) { const w = (Math.max(g.cards.length, 1) - 1) * st + CW; if (x + w > maxX) { x = r.x0; rr++; } x += w + gap; } return rr; };
-      for (const st of [26, 22, 18, 15, 12]) { step = st; rows = fit(st); if (rows <= 2) break; }
+      for (const st of [26, 22, 18, 15, 12, 10, 8]) { step = st; rows = fit(st); if (rows <= r.rows) break; }
       let x = r.x0, row = 0;
       for (const g of items) {
         const w = (Math.max(g.cards.length, 1) - 1) * step + CW;
@@ -233,7 +238,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     await Promise.all([...this.mine.values()].map((cv, i) => sleep(i * 35).then(() => cv.flip(true)))); this.layoutAll();
   }
   private toast(text: string) {
-    const tx = new Text({ text, style: { fill: "#ffe08a", fontSize: 54, fontWeight: "800", fontFamily: FONT, stroke: { color: "#000", width: 7 } } }); tx.anchor.set(0.5); tx.position.set(800, 400); tx.alpha = 0; tx.scale.set(0.6); this.fxLayer.addChild(tx);
+    const tx = new Text({ text, style: { fill: "#ffe08a", fontSize: 54, fontWeight: "800", fontFamily: FONT, stroke: { color: "#000", width: 7 } } }); tx.anchor.set(0.5); tx.position.set(this.geo.center.x, this.geo.center.y - 40); tx.alpha = 0; tx.scale.set(0.6); this.fxLayer.addChild(tx);
     gsap.to(tx, { alpha: 1, duration: 0.25 }); gsap.to(tx.scale, { x: 1, y: 1, duration: 0.4, ease: "back.out(2)" }); gsap.to(tx, { alpha: 0, delay: 1.0, duration: 0.4, onComplete: () => tx.destroy() });
   }
   private note(text: string) { this.banner.textContent = text; this.banner.style.display = "block"; this.banner.classList.add("err"); setTimeout(() => { this.banner.classList.remove("err"); this.refresh(); }, 1800); sfx.tick(); }

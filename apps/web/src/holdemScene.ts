@@ -10,11 +10,15 @@ import { t } from "./i18n.ts";
 import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
-const W = 1600, H = 900;
-const TABLE = { x: 800, y: 430, rx: 640, ry: 290 };
-const DECK = { x: 800, y: 175 };
-const SLOT = (i: number) => ({ x: 800 + (i - 2) * 128, y: 405 });
-const POT = { x: 800, y: 300 };
+import { pickGeo, type Geo } from "./geo.ts";
+// table geometry; set once per scene from the screen orientation (see setGeo)
+const TABLE = { x: 800, y: 430, rx: 640, ry: 290 }, DECK = { x: 800, y: 175 }, POT = { x: 800, y: 300 };
+const K = { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 690, ownPlateY: 790, seatIn: 40, ownDX: 150, ownScale: 0.95 };
+const SLOT = (i: number) => ({ x: TABLE.x + (i - 2) * K.slotDX, y: K.slotY });
+function setGeo(g: Geo) {
+  if (g.portrait) { Object.assign(TABLE, { x: 360, y: 560, rx: 310, ry: 480 }); Object.assign(DECK, { x: 360, y: 300 }); Object.assign(POT, { x: 360, y: 440 }); Object.assign(K, { slotDX: 112, slotY: 560, cardScale: 0.72, ownY: 900, ownPlateY: 1062, seatIn: 95, ownDX: 130, ownScale: 1 }); }
+  else { Object.assign(TABLE, { x: 800, y: 430, rx: 640, ry: 290 }); Object.assign(DECK, { x: 800, y: 175 }); Object.assign(POT, { x: 800, y: 300 }); Object.assign(K, { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 690, ownPlateY: 790, seatIn: 40, ownDX: 150, ownScale: 0.95 }); }
+}
 
 const CHIPS: [number, number][] = [[1000, 0xe3b341], [500, 0x7c4dab], [100, 0x2b2b30], [25, 0x2e8b57], [5, 0xc0392b], [1, 0xe9e4d4]];
 function chipStack(amount: number): Container {
@@ -51,14 +55,15 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private view: View | null = null; private legal: Move[] = [];
   private me = 0; private n = 0; private names: string[] = [];
   private controls = document.createElement("div"); private banner = document.createElement("div"); private board = document.createElement("div");
+  private readonly geo: Geo = pickGeo(window.innerWidth, window.innerHeight);
   private readonly app: Application; private readonly ui: HTMLElement; private readonly hooks: SceneHooks<Move>;
   private raiseTo = 0;
 
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
-    this.app = app; this.ui = ui; this.hooks = hooks;
+    this.app = app; this.ui = ui; this.hooks = hooks; setGeo(this.geo);
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableG, this.layerA, this.layerB, this.layerFx);
-    this.bg.texture = tableTexture(W, H);
+    this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.drawTable();
     this.potNode.position.set(POT.x, POT.y); this.potText.anchor.set(0.5); this.potText.position.set(POT.x, POT.y + 34);
     this.layerA.addChild(this.potNode, this.potText);
@@ -70,11 +75,12 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   }
   private onResize = () => this.resize();
   private resize() {
-    const w = this.app.screen.width, h = this.app.screen.height, s = Math.min(w / W, h / H);
-    this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2); cover(this.bg, w, h);
+    const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H);
+    this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); cover(this.bg, w, h);
+    document.body.classList.toggle("portrait", g.portrait);
   }
   destroy() {
-    this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*");
+    document.body.classList.remove("portrait"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*");
     this.controls.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren();
   }
   private drawTable() {
@@ -106,7 +112,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private seatPos(seat: number) {
     const rel = (seat - this.me + this.n) % this.n;
     const th = (rel / this.n) * Math.PI * 2;
-    return { x: TABLE.x - Math.sin(th) * (TABLE.rx - 40), y: TABLE.y + Math.cos(th) * (TABLE.ry - 20), th };
+    return { x: TABLE.x - Math.sin(th) * (TABLE.rx - K.seatIn), y: TABLE.y + Math.cos(th) * (TABLE.ry - 20), th };
   }
   private setup(u: Update<View, Move, Ev>) {
     this.me = u.view.you as number; this.n = u.view.stacks.length; this.names = u.seats.map((s) => s.name);
@@ -114,7 +120,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     this.disp.stacks = u.view.stacks.map((x, i) => (first ? x + u.view.bets[i]! : x)); this.disp.bets = first ? Array(this.n).fill(0) : u.view.bets.slice(); this.disp.pot = first ? 0 : u.view.pot - u.view.bets.reduce((a, b) => a + b, 0);
     for (let s = 0; s < this.n; s++) {
       const p = this.seatPos(s); const mine = s === this.me;
-      const plate = new Container(); plate.position.set(p.x, mine ? 790 : p.y + (p.y < TABLE.y ? 62 : -62));
+      const plate = new Container(); plate.position.set(p.x, mine ? K.ownPlateY : p.y + (p.y < TABLE.y ? 62 : -62));
       const box = new Graphics().roundRect(-100, -34, 200, 68, 20).fill({ color: 0x000000, alpha: 0.6 }).stroke({ width: 2, color: 0xe8c66a, alpha: 0.6 });
       const ring = new Graphics().roundRect(-106, -40, 212, 80, 24).stroke({ width: 4, color: 0xffe08a }); ring.alpha = 0;
       const name = new Text({ text: mine ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 21, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } }); name.anchor.set(0.5); name.position.set(0, -12);
@@ -130,7 +136,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
 
   private holeSlot(seat: number, i: number) {
     const mine = seat === this.me, sp = this.seats[seat]!;
-    if (mine) return { x: 800 + (i - 0.5) * 150, y: 690, rot: (i - 0.5) * 0.12, scale: 0.95 };
+    if (mine) return { x: TABLE.x + (i - 0.5) * K.ownDX, y: K.ownY, rot: (i - 0.5) * 0.12, scale: K.ownScale };
     return { x: sp.pos.x + (i - 0.5) * 46, y: sp.pos.y + (sp.pos.y < TABLE.y ? 0 : -4), rot: (i - 0.5) * 0.15, scale: 0.42 };
   }
   private mk(id: Card | null, up: boolean, at = DECK) { const cv = new CardView(id, up); cv.position.set(at.x, at.y); cv.scale.set(0.4); this.layerB.addChild(cv); return cv; }
@@ -209,7 +215,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
         const start = ev.street === "flop" ? 0 : ev.street === "turn" ? 3 : 4;
         for (let i = 0; i < ev.cards.length; i++) {
           const cv = this.mk(ev.cards[i]!, false); this.community[start + i] = cv; const sl = SLOT(start + i);
-          await this.fly(cv, { ...sl, rot: 0, scale: 0.82 }, 0.5); await cv.flip(true, 0.3); await sleep(80);
+          await this.fly(cv, { ...sl, rot: 0, scale: K.cardScale }, 0.5); await cv.flip(true, 0.3); await sleep(80);
         }
         break;
       }
@@ -251,7 +257,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     this.renderStacks(); this.renderPot(); v.bets.forEach((b, i) => this.setBet(i, b));
     for (let i = 0; i < 5; i++) {
       const want = v.community[i]; const cur = this.community[i];
-      if (want && cur?.id !== want) { cur?.destroy(); const cv = this.mk(want, true, SLOT(i)); const sl = SLOT(i); cv.position.set(sl.x, sl.y); cv.scale.set(0.82); this.community[i] = cv; }
+      if (want && cur?.id !== want) { cur?.destroy(); const cv = this.mk(want, true, SLOT(i)); const sl = SLOT(i); cv.position.set(sl.x, sl.y); cv.scale.set(K.cardScale); this.community[i] = cv; }
       if (!want && cur) { cur.destroy(); this.community[i] = null; }
     }
     v.out.forEach((o, i) => { this.seats[i]!.plate.alpha = o ? 0.3 : v.folded[i] && v.phase !== "over" ? 0.5 : 1; });

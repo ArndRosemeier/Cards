@@ -35,7 +35,7 @@ export const PORT: Geo = {
     5: [A(360, 1075, 0, 0, 1), A(90, 720, P / 2, -1, 0), A(200, 170, P, -0.6, -1), A(520, 170, P, 0.6, -1), A(630, 720, -P / 2, 1, 0)],
   },
   ownPlate: { x: 150, y: 1240 }, talonY: 390, toast: { dx: 250, dy: 290 }, ownStep: 80, ownWidth: 560, ownScale: 1.15, dummyWidth: 480, dummyStep: 36, dummyScale: 0.52,
-  plate: (a, rel) => (rel === 0 ? { x: 150, y: 1240 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 40 : -40), y: a.cy + 230 }),
+  plate: (a, rel) => (rel === 0 ? { x: 150, y: 1240 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 20 : -20), y: a.cy + 235 }),
 };
 
 /** Upright phones (tall, narrow screens) get the portrait geometry. */
@@ -45,4 +45,12 @@ export const pickGeo = (w: number, h: number, allowPortrait = true): Geo => (all
 export function cover(bg: Sprite, w: number, h: number) {
   const tw = bg.texture.width || 1, th = bg.texture.height || 1, s = Math.max(w / tw, h / th);
   bg.scale.set(s); bg.position.set((w - tw * s) / 2, (h - th * s) / 2);
+}
+
+/** Keep the action buttons just above the own hand: portrait publishes a CSS variable, landscape keeps the stylesheet default. */
+export function setActionsBottom(g: Geo, w: number, h: number, seats: number) {
+  const root = document.documentElement.style;
+  if (!g.portrait) { root.removeProperty("--actions-bottom"); return; }
+  const s = Math.min(w / g.W, h / g.H), top = (h - g.H * s) / 2 + (g.layouts[seats]![0]!.cy - 150 * g.ownScale) * s;
+  root.setProperty("--actions-bottom", `${Math.round(h - top + 8)}px`);
 }

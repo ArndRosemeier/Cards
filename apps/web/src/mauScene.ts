@@ -10,19 +10,12 @@ import { CARD_H, CARD_W, tableTexture, suitTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { cover } from "./geo.ts";
 
-const W = 1600, H = 900;
+import { LAND, PORT, pickGeo, type Geo } from "./geo.ts";
 const DECK = { x: 690, y: 450 }, DISCARD = { x: 910, y: 450 };
+const setPiles = (g: Geo) => { const c = g.center; DECK.x = c.x - (g.portrait ? 80 : 110); DISCARD.x = c.x + (g.portrait ? 80 : 110); DECK.y = DISCARD.y = c.y + (g.portrait ? 0 : 10); };
 const SUIT_ORDER: Suit[] = ["C", "H", "S", "D"];
 const RANK_ORDER = ["7", "8", "9", "T", "J", "Q", "K", "A"];
 const sortKey = (c: Card) => SUIT_ORDER.indexOf(suitOf(c)) * 10 + RANK_ORDER.indexOf(rankOf(c));
-
-type Anchor = { cx: number; cy: number; rot: number };
-const LAYOUTS: Record<number, Anchor[]> = {
-  2: [{ cx: 800, cy: 770, rot: 0 }, { cx: 800, cy: 125, rot: Math.PI }],
-  3: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 450, rot: Math.PI / 2 }, { cx: 1470, cy: 450, rot: -Math.PI / 2 }],
-  4: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 450, rot: Math.PI / 2 }, { cx: 800, cy: 125, rot: Math.PI }, { cx: 1470, cy: 450, rot: -Math.PI / 2 }],
-  5: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 500, rot: Math.PI / 2 }, { cx: 520, cy: 125, rot: Math.PI }, { cx: 1080, cy: 125, rot: Math.PI }, { cx: 1470, cy: 500, rot: -Math.PI / 2 }],
-};
 
 export interface SceneHooks { submit(move: Move): void; onFinished(winner: number, names: string[], me: number): void; }
 
@@ -33,7 +26,8 @@ export class MauScene {
   private handLayer = new Container();
   private flyLayer = new Container();
   private fxLayer = new Container();
-  private plates: { box: Graphics; label: Text; count: Text; ring: Graphics }[] = [];
+  private geo: Geo = LAND;
+  private plates: { holder: Container; box: Graphics; label: Text; count: Text; ring: Graphics }[] = [];
   private deckStack = new Container();
   private deckCount = new Text({ text: "", style: { fill: "#f4efe4", fontSize: 26, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
   private wishSprite = new Sprite();
@@ -57,10 +51,10 @@ export class MauScene {
   private destroyed = false;
 
   constructor(private app: Application, ui: HTMLElement, hooks: SceneHooks) {
-    this.hooks = hooks; this.ui = ui;
+    this.hooks = hooks; this.ui = ui; this.geo = pickGeo(app.screen.width, app.screen.height); setPiles(this.geo);
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
-    this.bg.texture = tableTexture(W, H);
+    this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.deckStack.position.set(DECK.x, DECK.y);
     this.deckCount.anchor.set(0.5); this.deckCount.position.set(DECK.x, DECK.y + CARD_H / 2 + 28);
     this.wishSprite.anchor.set(0.5); this.wishSprite.position.set(DISCARD.x + 150, DISCARD.y); this.wishSprite.visible = false; this.wishSprite.scale.set(0.45);
@@ -76,12 +70,25 @@ export class MauScene {
   }
   private onResize = () => this.resize();
   resize() {
-    const w = this.app.screen.width, h = this.app.screen.height;
-    const s = Math.min(w / W, h / H);
-    this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2);
+    const w = this.app.screen.width, h = this.app.screen.height, g = pickGeo(w, h), changed = g !== this.geo;
+    this.geo = g; setPiles(g);
+    const s = Math.min(w / g.W, h / g.H);
+    this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2);
     cover(this.bg, w, h);
+    document.body.classList.toggle("portrait", g.portrait);
+    if (g.portrait) document.documentElement.style.setProperty("--actions-bottom", `${Math.round(h - ((h - g.H * s) / 2 + (g.layouts[this.n || 4]![0]!.cy - 150 * g.ownScale) * s) + 8)}px`); else document.documentElement.style.removeProperty("--actions-bottom");
+    if (changed && this.ready) this.applyGeo();
+  }
+  private applyGeo() {
+    this.deckStack.position.set(DECK.x, DECK.y); this.deckCount.position.set(DECK.x, DECK.y + CARD_H / 2 + 28); this.wishSprite.position.set(DISCARD.x + 150, DISCARD.y);
+    this.discardViews.forEach((cv) => { gsap.killTweensOf(cv); cv.position.set(DISCARD.x, DISCARD.y); });
+    this.placePlates(); this.layoutAll(false);
+  }
+  private placePlates() {
+    for (let s = 0; s < this.n; s++) { const rel = (s - this.me + this.n) % this.n, p = this.geo.plate(this.geo.layouts[this.n]![rel]!, rel); this.plates[s]!.holder.position.set(p.x, p.y); }
   }
   destroy() {
+    document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
     this.destroyed = true;
     window.removeEventListener("resize", this.onResize);
     gsap.killTweensOf("*");
@@ -117,34 +124,24 @@ export class MauScene {
     for (let i = 0; i < stack; i++) {
       const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); this.deckStack.addChild(c);
     }
-    const anchors = LAYOUTS[this.n]!;
     for (let s = 0; s < this.n; s++) {
-      const rel = (s - this.me + this.n) % this.n; const a = anchors[rel]!;
       const box = new Graphics(); const ring = new Graphics();
       const label = new Text({ text: s === this.me ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 24, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } });
       const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 22, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
       label.anchor.set(0.5); count.anchor.set(0.5);
-      const off = rel === 0 ? { x: -420, y: 40 } : { x: a.cx < 400 ? 0 : a.cx > 1200 ? 0 : 260, y: a.cy < 300 && rel !== 0 ? 0 : 0 };
-      const px = rel === 0 ? 800 : a.cx, py = rel === 0 ? 700 - 60 : a.cy;
-      void off;
       const plate = new Container();
       const w = 200, h = 54;
       box.roundRect(-w / 2, -h / 2, w, h, 27).fill({ color: 0x000000, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 31).stroke({ width: 3, color: 0xffe08a, alpha: 1 }); ring.alpha = 0;
       label.position.set(-20, 0); count.position.set(w / 2 - 30, 0);
       plate.addChild(ring, box, label, count);
-      // plates sit between hand and table centre
-      const dir = rel === 0 ? { x: 0, y: -170 } : Math.abs(Math.cos(a.rot)) > 0.5 ? { x: 0, y: 160 } : { x: a.rot > 0 ? 170 : -170, y: 0 };
-      const dx = rel === 0 ? 0 : dir.x, dy = rel === 0 ? -170 : dir.y;
-      plate.position.set(px + (rel === 0 ? 0 : dx), py + (rel === 0 ? dy : dy));
-      if (rel !== 0 && Math.abs(Math.sin(a.rot)) > 0.5) plate.rotation = 0;
-      if (rel === 0) plate.position.set(330, 820);
       this.tableLayer.addChild(plate);
-      this.plates[s] = { box, label, count, ring };
+      this.plates[s] = { holder: plate, box, label, count, ring };
     }
+    this.placePlates();
   }
 
-  private seatAnchor(seat: number): Anchor { return LAYOUTS[this.n]![(seat - this.me + this.n) % this.n]!; }
+  private seatAnchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
     return [...this.mine.values()].sort((a, b) => sortKey(a.id!) - sortKey(b.id!));
@@ -153,11 +150,11 @@ export class MauScene {
   /** Target slot for card i of n in a fan, in world coordinates. */
   private fanSlot(seat: number, i: number, n: number) {
     const a = this.seatAnchor(seat); const own = seat === this.me;
-    const step = own ? Math.min(82, 1000 / Math.max(n, 1)) : Math.min(30, 420 / Math.max(n, 1));
+    const g = this.geo, step = own ? Math.min(g.ownStep + 4, g.ownWidth / Math.max(n, 1)) : Math.min(30, 420 / Math.max(n, 1));
     const tt = i - (n - 1) / 2;
     const lx = tt * step, ly = tt * tt * (own ? 1.1 : 0.5);
     const cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.035 : 0.03), scale: own ? 1 : 0.56 };
+    return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.035 : 0.03), scale: own ? g.ownScale : 0.56 };
   }
 
   private layout(seat: number, animate = true, stagger = 0) {
@@ -281,7 +278,7 @@ export class MauScene {
 
   private toast(text: string) {
     const tx = new Text({ text, style: { fill: "#ffe08a", fontSize: 54, fontWeight: "800", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 6 } } });
-    tx.anchor.set(0.5); tx.position.set(800, 330); tx.alpha = 0; this.fxLayer.addChild(tx);
+    tx.anchor.set(0.5); tx.position.set(this.geo.center.x, this.geo.center.y - 110); tx.alpha = 0; this.fxLayer.addChild(tx);
     gsap.to(tx, { alpha: 1, y: 300, duration: 0.3 }); gsap.to(tx, { alpha: 0, delay: 0.9, duration: 0.4, onComplete: () => tx.destroy() });
   }
 
@@ -291,7 +288,7 @@ export class MauScene {
     const colors = [0xffd166, 0xef476f, 0x06d6a0, 0x118ab2, 0xffffff];
     for (let i = 0; i < 140; i++) {
       const p = new Graphics().rect(-5, -3, 10, 6).fill(colors[i % colors.length]!);
-      p.position.set(800 + (Math.random() - 0.5) * 300, 380); p.rotation = Math.random() * 6; this.fxLayer.addChild(p);
+      p.position.set(this.geo.center.x + (Math.random() - 0.5) * 300, this.geo.center.y - 60); p.rotation = Math.random() * 6; this.fxLayer.addChild(p);
       const dx = (Math.random() - 0.5) * 1400, up = 200 + Math.random() * 350;
       gsap.to(p, { x: p.x + dx, duration: 2.4, ease: "power1.out" });
       gsap.to(p, { y: p.y - up, duration: 0.7, ease: "power2.out" });
