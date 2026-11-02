@@ -103,4 +103,4 @@ body.portrait .actions { gap:6px; max-width:min(96vw, 340px); }
 body.portrait .actions .btn { padding:8px 12px; font-size:14px; }
 .sortbtn { position:absolute; right:12px; bottom:calc(env(safe-area-inset-bottom) + 14px); z-index:5; background:rgba(0,0,0,.45); }
 .trumpchip { position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 58px); transform:translateX(-50%); padding:4px 14px; border-radius:999px; background:rgba(0,0,0,.45); border:1px solid rgba(232,198,106,.5); color:#ffe08a; font-size:14px; pointer-events:none; }
-body.portrait .trumpchip { top:142px; font-size:13px; }
+body.portrait .trumpchip { top:14px; left:auto; right:8px; transform:none; font-size:12px; padding:3px 10px; }

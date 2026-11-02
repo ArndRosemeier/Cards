@@ -149,7 +149,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
         const mineSide = g.side === own;
         g.frame.clear().roundRect(x - 6, y - 8, w + 12, CH + 24, 12)
           .stroke({ width: can ? 3.5 : 2, color: can ? (natural ? 0xffd34d : 0xd8dde6) : mineSide ? 0xffe08a : 0xffffff, alpha: can ? 0.95 : 0.35 }).fill({ color: can ? 0xffd34d : 0, alpha: can ? 0.1 : 0.12 });
-        g.label.text = g.kind === "reds" ? "" : g.cards.length >= 7 ? (natural ? "★ " : "☆ ") + g.cards.length : String(g.cards.length);
+        g.label.text = g.kind === "reds" ? `♥3 ×${g.cards.length}` : g.cards.length >= 7 ? (natural ? "★ " : "☆ ") + g.cards.length : String(g.cards.length);
         g.label.position.set(x + w - 4, y + CH + 10); g.label.visible = g.kind === "meld";
         g.frame.eventMode = g.kind === "meld" && mineSide ? "static" : "none"; g.frame.cursor = "pointer"; g.frame.removeAllListeners();
         if (g.kind === "meld" && mineSide) g.frame.on("pointertap", () => this.addToMeld(g.idx));

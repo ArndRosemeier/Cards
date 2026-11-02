@@ -182,8 +182,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.9 : 0.5);
     if (dum && a.dx !== 0) {
       // a dummy at the side: an upright column, each card overlapping the next so the index corners stay readable
-      const vs = Math.min(38, 560 / Math.max(n, 1));
-      return { x: Math.max(a.cx, 48) + (a.dx === 1 ? -14 : 14), y: a.cy + (i - (n - 1) / 2) * vs, rot: 0, scale: g.dummyScale };
+      const sc = g.dummyScale * 1.2, vs = Math.min(44, 600 / Math.max(n, 1));
+      return { x: Math.max(a.cx, 56) + (a.dx === 1 ? -14 : 14), y: a.cy + (i - (n - 1) / 2) * vs, rot: 0, scale: sc };
     }
     const cos = Math.cos(a.rot), sin = Math.sin(a.rot);
     return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.03 : 0.03), scale: own ? g.ownScale : dum ? g.dummyScale : 0.56 };
