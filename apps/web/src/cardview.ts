@@ -6,6 +6,7 @@ import { backTexture, faceTexture, shadowTexture, CARD_H, CARD_W, S } from "./ca
 
 const D = 1150;                     // camera distance for the perspective projection, in card pixels
 const HW = CARD_W / 2, HH = CARD_H / 2;
+export const reducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
 let glareTex: Texture | null = null;
@@ -91,8 +92,9 @@ export class CardView extends Container {
     // lean into the direction of travel (the card is a loose sheet on the table)
     const dx = Number.isNaN(this.lastX) ? 0 : clamp(this.x - this.lastX, -60, 60), dy = Number.isNaN(this.lastY) ? 0 : clamp(this.y - this.lastY, -60, 60);
     this.lastX = this.x; this.lastY = this.y;
-    this.leanY += (clamp(dx * 0.011, -0.42, 0.42) - this.leanY) * 0.2;
-    this.leanX += (clamp(-dy * 0.011, -0.42, 0.42) - this.leanX) * 0.2;
+    const k = reducedMotion ? 0 : 1;
+    this.leanY += (clamp(dx * 0.011 * k, -0.42, 0.42) - this.leanY) * 0.2;
+    this.leanX += (clamp(-dy * 0.011 * k, -0.42, 0.42) - this.leanX) * 0.2;
     // tilt towards the pointer while hovered
     const p = this.overP, hy = p ? clamp(-(p.x / HW) * 0.42, -0.45, 0.45) : 0, hx = p ? clamp((p.y / HH) * 0.4, -0.45, 0.45) : 0;
     this.hoverY += (hy - this.hoverY) * 0.25; this.hoverX += (hx - this.hoverX) * 0.25;
@@ -107,7 +109,7 @@ export class CardView extends Container {
     this.inner.visible = flat;
     if (flat) { this.sh = { w: 1, h: 1, x: 0, y: 0 }; this.lift = this._lift; }
     if (this.mesh) this.mesh.visible = !flat;
-    if (this.sheen) this.sheen.visible = !flat;
+    if (this.sheen) this.sheen.visible = !flat && this.sheen.alpha > 0.01;
   }
   private ensureMesh() {
     if (this.mesh) return;
@@ -137,6 +139,7 @@ export class CardView extends Container {
     const facing = cy * cx, shade = clamp(0.8 + 0.2 * facing + 0.07 * (sy - sx) * (cy >= 0 ? 1 : -1), 0.55, 1.05), g = Math.round(clamp(shade, 0, 1) * 255);
     mesh.tint = (g << 16) | (g << 8) | g;
     sheen.alpha = front ? clamp(1 - Math.abs(ty * 1.1 + tx * 0.8 - 0.2) * 3.4, 0, 1) * 0.42 * Math.min(1, Math.abs(ty) * 6 + Math.abs(tx) * 6) : 0;
+    sheen.visible = sheen.alpha > 0.01;
     this.showFlat(false);
     if (this.flipA > Math.PI / 2 && !this.soundDone) { this.soundDone = true; sfx.flip(); }
   }

@@ -145,7 +145,7 @@ function enterRoom(session: Session) {
     gameShown = started = true;
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
     setTableTheme(gameId);
-    scene = entry().scene(app, ui, { submit: (m) => session.submit(m), onFinished: (w, names) => setTimeout(() => showResult(w, names, session), 1500) });
+    scene = entry().scene(app, ui, { submit: (m) => session.submit(m), onFinished: (w, names, _me, sc) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) });
     addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); });
   };
   showLobby();
@@ -163,12 +163,12 @@ function addHud(onMenu: () => void) {
   const rot = document.createElement("div"); rot.className = "rotate"; rot.innerHTML = `<div class="ico">⟳</div><div>${t("rotate")}</div>`; ui.append(rot);
 }
 
-function showResult(winner: number, names: string[], session: Session | null, again?: () => void) {
+function showResult(winner: number, names: string[], session: Session | null, again?: () => void, scores?: number[]) {
   if (ui.querySelector(".result")) return;
   const me = session ? session.mySeat : 0;
   if (winner === me) sfx.win(); else sfx.lose();
   const r = document.createElement("div"); r.className = "result";
-  r.innerHTML = `<div class="panel"><h1>${winner === me ? t("youWin") : t("wins", { n: esc(names[winner] ?? "") })}</h1>
+  r.innerHTML = `<div class="panel"><h1>${winner === me ? t("youWin") : t("wins", { n: esc(names[winner] ?? "") })}</h1>${scores ? `<div class="final">${scores.map((s, i) => `<div class="${i === winner ? "win" : ""}"><span>${i === me ? esc(t("you")) : esc(names[i] ?? "")}</span><b>${s}</b></div>`).join("")}</div>` : ""}
     <div class="btns">${again ? `<button class="btn primary" id="again">${t("again")}</button>` : ""}<button class="btn" id="menu">${t("menu")}</button></div></div>`;
   (r.querySelector("#again") as HTMLButtonElement | null)?.addEventListener("click", () => again!());
   (r.querySelector("#menu") as HTMLButtonElement).onclick = () => { session?.leave(); showMenu(); };
@@ -185,7 +185,7 @@ function startLocal(name: string, players: number, seed: number) {
   setTableTheme(gameId);
   scene = entry().scene(app, ui, {
     submit: (m: any) => host.submit(0, m),
-    onFinished: (w) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now())), 1500),
+    onFinished: (w, _n, _m, sc) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now()), sc), 1500),
   });
   teardown = () => host.dispose();
   addHud(() => { host.dispose(); scene?.destroy(); scene = null; showMenu(); });

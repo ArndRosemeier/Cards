@@ -82,3 +82,6 @@ body.portrait .hcontrols { right:auto; left:50%; transform:translateX(-50%); fle
 .rules .btns { display:flex; justify-content:flex-end; margin-top:16px; }
 .lasttrick { position:absolute; left:12px; top:64px; background:rgba(0,0,0,.55); backdrop-filter:blur(6px); }
 body.portrait .lasttrick { top:62px; left:12px; }
+.result .final { display:grid; gap:4px; margin:14px auto 0; min-width:220px; padding:10px 16px; border-radius:14px; background:rgba(0,0,0,.35); border:1px solid rgba(232,198,106,.3); }
+.result .final div { display:flex; justify-content:space-between; gap:24px; opacity:.8; }
+.result .final div.win { opacity:1; color:#ffe08a; }

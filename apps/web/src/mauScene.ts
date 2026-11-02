@@ -18,7 +18,7 @@ const SUIT_ORDER: Suit[] = ["C", "H", "S", "D"];
 const RANK_ORDER = ["7", "8", "9", "T", "J", "Q", "K", "A"];
 const sortKey = (c: Card) => SUIT_ORDER.indexOf(suitOf(c)) * 10 + RANK_ORDER.indexOf(rankOf(c));
 
-export interface SceneHooks { submit(move: Move): void; onFinished(winner: number, names: string[], me: number): void; }
+export interface SceneHooks { submit(move: Move): void; onFinished(winner: number, names: string[], me: number, scores?: number[]): void; }
 
 export class MauScene {
   private world = new Container();
@@ -114,7 +114,7 @@ export class MauScene {
       if (!this.queue.length) { this.busy = false; this.legal = u.legal; this.refreshInteractive(); }
     }
     this.running = false;
-    if (this.lastView && this.lastView.winner !== null && !this.destroyed) this.hooks.onFinished(this.lastView.winner, this.names, this.me);
+    if (this.lastView && this.lastView.winner !== null && !this.destroyed) this.hooks.onFinished(this.lastView.winner, this.names, this.me, (this.lastView as { scores?: number[] }).scores?.slice());
   }
 
   private setup(u: Update<View, Move, Ev>) {

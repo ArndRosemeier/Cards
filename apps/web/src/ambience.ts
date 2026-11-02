@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import gsap from "gsap";
+import { reducedMotion } from "./cardview.ts";
 
 let vignetteTex: Texture | null = null;
 function vignette(): Texture {
@@ -23,6 +24,7 @@ function listen() {
  * backdrop that follows the pointer (or the tilt of the phone). Removes itself when the scene's backdrop goes away.
  */
 export function attachAmbience(app: Application, bg: Sprite) {
+  if (reducedMotion) return;
   listen();
   const vig = new Sprite(vignette()); const motes = new Container();
   app.stage.addChildAt(vig, 1); app.stage.addChild(motes);

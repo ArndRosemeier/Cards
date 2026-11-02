@@ -107,7 +107,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
       if (!this.queue.length) { this.busy = false; this.legal = u.legal; this.refresh(); }
     }
     this.running = false;
-    if (this.view?.over && !this.finished && !this.destroyed) { this.finished = true; this.hooks.onFinished(this.view.stacks.findIndex((x) => x > 0), this.names, this.me); }
+    if (this.view?.over && !this.finished && !this.destroyed) { this.finished = true; this.hooks.onFinished(this.view.stacks.findIndex((x) => x > 0), this.names, this.me, this.view.stacks.slice()); }
   }
 
   private seatPos(seat: number) {

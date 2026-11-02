@@ -70,7 +70,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
       if (!this.queue.length) { this.busy = false; this.legal = u.legal; this.refresh(); }
     }
     this.running = false;
-    if (this.view?.over && !this.finished && !this.destroyed) { this.finished = true; const sc = this.view.scores; this.hooks.onFinished(sc.indexOf(Math.max(...sc)), this.names, this.me); }
+    if (this.view?.over && !this.finished && !this.destroyed) { this.finished = true; const sc = this.view.scores; const best = Math.max(...sc); this.hooks.onFinished(sc[this.me] === best ? this.me : sc.indexOf(best), this.names, this.me, sc.slice()); }
   }
 
   private setup(u: Update<View, Move, Ev>) {

@@ -26,7 +26,7 @@ export interface TrickUi<M, V> {
   winner(v: V): number;                        // who won the match (for the result screen)
 }
 
-export interface SceneHooks<M> { submit(m: M): void; onFinished(winner: number, names: string[], me: number): void }
+export interface SceneHooks<M> { submit(m: M): void; onFinished(winner: number, names: string[], me: number, scores?: number[]): void }
 export interface GameScene<U> { receive(u: U): void; destroy(): void }
 
 export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implements GameScene<Update<V, M, E>> {
@@ -126,7 +126,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.running = false;
     if (this.view?.over && !this.finished && !this.destroyed) {
       this.finished = true;
-      this.hooks.onFinished(this.adapter.winner(this.view), this.names, this.me);
+      this.hooks.onFinished(this.adapter.winner(this.view), this.names, this.me, this.view.scores.slice());
     }
   }
 
