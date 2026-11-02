@@ -85,3 +85,13 @@ body.portrait .lasttrick { top:62px; left:12px; }
 .result .final { display:grid; gap:4px; margin:14px auto 0; min-width:220px; padding:10px 16px; border-radius:14px; background:rgba(0,0,0,.35); border:1px solid rgba(232,198,106,.3); }
 .result .final div { display:flex; justify-content:space-between; gap:24px; opacity:.8; }
 .result .final div.win { opacity:1; color:#ffe08a; }
+
+.hint-toast { position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 62px); transform:translateX(-50%); z-index:30; max-width:88vw; text-align:center;
+  padding:10px 20px; border-radius:999px; background:rgba(40,30,6,.88); color:#ffe9a0; border:1px solid rgba(255,211,92,.7); box-shadow:0 0 24px rgba(255,211,92,.25); font-size:15px; pointer-events:none; animation:hintin .25s ease-out; }
+@keyframes hintin { from { opacity:0; transform:translate(-50%, -8px); } to { opacity:1; transform:translate(-50%, 0); } }
+table.stats { width:100%; border-collapse:collapse; font-size:15px; }
+table.stats th { color:#e8c66a; font-weight:600; text-align:right; padding:4px 8px; }
+table.stats td { text-align:right; padding:6px 8px; border-top:1px solid rgba(255,255,255,.1); }
+table.stats th:first-child, table.stats td:first-child { text-align:left; }
+.rules .btns { gap:8px; }
+body.portrait .hint-toast { top:112px; }

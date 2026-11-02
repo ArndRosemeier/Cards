@@ -8,6 +8,9 @@ import type { GameScene } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
 import { setTableTheme, preloadBackgrounds, preloadCardArt } from "./cardart.ts";
 import { getLang, setLang, t } from "./i18n.ts";
+import { Rng } from "@cards/engine";
+import { cardsInMove, hintText } from "./hint.ts";
+import { getStats, recordResult, resetStats } from "./stats.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
 let gameId = "maumau";
@@ -25,6 +28,21 @@ let scene: GameScene<any> | null = null;
 document.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest?.(".btn")) sfx.click(); });
 preloadBackgrounds(); preloadCardArt();
 let teardown: (() => void) | null = null;
+/** the newest update for the own seat: what the hint button asks the bot about */
+let lastUpdate: any = null;
+
+function toast(text: string) {
+  ui.querySelector(".hint-toast")?.remove();
+  const el = document.createElement("div"); el.className = "hint-toast"; el.textContent = text; ui.append(el);
+  setTimeout(() => el.remove(), 5000);
+}
+function hintNow() {
+  const u = lastUpdate;
+  if (!u || !u.legal?.length || u.result) return toast(t("hintWait"));
+  const m: any = defOf().makeBot({ kind: "bot", name: "", level: 1 }).choose(u.view, u.legal, Rng.fromSeed(Date.now()));
+  scene?.hint?.(cardsInMove(m));
+  toast(hintText(m, gameId));
+}
 
 const token = (() => {
   try { let v = sessionStorage.getItem("token"); if (!v) { v = crypto.randomUUID(); sessionStorage.setItem("token", v); } return v; } catch { return crypto.randomUUID(); }
@@ -70,7 +88,8 @@ function showMenu() {
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
       <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
       ${langRow()}
-      <div class="row" style="justify-content:flex-end"><button class="btn" id="rules">${t("rules")}</button><button class="btn" id="online">${t("online")}</button><button class="btn primary" id="go">${t("play")}</button></div>`);
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="stats">${t("stats")}</button><button class="btn" id="rules">${t("rules")}</button><button class="btn" id="online">${t("online")}</button><button class="btn primary" id="go">${t("play")}</button></div>`);
+    (w.querySelector("#stats") as HTMLButtonElement).onclick = showStats;
     (w.querySelector("#rules") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
     w.querySelectorAll<HTMLButtonElement>("#lv button").forEach((b) => (b.onclick = () => { saveLevel(Number(b.dataset.lv)); w.querySelectorAll("#lv button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     const nm = () => (name = (w.querySelector("#nm") as HTMLInputElement).value.trim());
@@ -81,6 +100,16 @@ function showMenu() {
     (w.querySelector("#online") as HTMLButtonElement).onclick = () => { nm(); if (name) saveName(name); showOnline(); };
   };
   render();
+}
+
+function showStats() {
+  const all = getStats(), rows = GAMES.filter((g) => all[g]);
+  const o = document.createElement("div"); o.className = "rules-overlay";
+  o.innerHTML = `<div class="rules"><h2>${t("stats")}</h2>${rows.length ? `<table class="stats"><tr><th></th><th>${t("statsPlayed")}</th><th>${t("statsWon")}</th><th>${t("statsRate")}</th><th>${t("statsStreak")}</th></tr>${rows.map((g) => { const r = all[g]!; return `<tr><td>${t(g)}</td><td>${r.played}</td><td>${r.won}</td><td>${Math.round((100 * r.won) / r.played)}%</td><td>${r.streak} (${r.best})</td></tr>`; }).join("")}</table>` : `<div class="sub">${t("statsEmpty")}</div>`}
+    <div class="btns" style="gap:8px">${rows.length ? `<button class="btn" id="rst">${t("statsReset")}</button>` : ""}<button class="btn primary" id="x">${t("close")}</button></div></div>`;
+  (o.querySelector("#x") as HTMLButtonElement).onclick = () => o.remove();
+  (o.querySelector("#rst") as HTMLButtonElement | null)?.addEventListener("click", () => { resetStats(); o.remove(); showStats(); });
+  ui.append(o);
 }
 
 // ---------------------------------------------------------------- online
@@ -143,13 +172,13 @@ function enterRoom(session: Session) {
   };
   let gameShown = false;
   session.on("lobby", (l) => { if (l.phase === "lobby") showLobby(); else if (!gameShown) showGame(); });
-  session.on("update", (u) => { if (!gameShown) showGame(); scene?.receive(u); });
+  session.on("update", (u) => { if (!gameShown) showGame(); lastUpdate = u; scene?.receive(u); });
   session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); } else if (c === "room_full") { showMenu(); } });
   const showGame = () => {
     gameShown = started = true;
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
     setTableTheme(gameId);
-    scene = entry().scene(app, ui, { submit: (m) => session.submit(m), onFinished: (w, names, _me, sc) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) });
+    scene = entry().scene(app, ui, { submit: (m) => { lastUpdate = null; session.submit(m); }, onFinished: (w, names, _me, sc) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) });
     addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); });
   };
   showLobby();
@@ -157,8 +186,9 @@ function enterRoom(session: Session) {
 
 function addHud(onMenu: () => void) {
   const hud = document.createElement("div"); hud.className = "hud";
-  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
+  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
+  (hud.querySelector("#hintbtn") as HTMLButtonElement).onclick = hintNow;
   (hud.querySelector("#rulesbtn") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
   (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
   (hud.querySelector("#mus") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = music.toggle() ? "♪̸" : "♪"; };
@@ -170,6 +200,7 @@ function addHud(onMenu: () => void) {
 function showResult(winner: number, names: string[], session: Session | null, again?: () => void, scores?: number[]) {
   if (ui.querySelector(".result")) return;
   const me = session ? session.mySeat : 0;
+  recordResult(gameId, winner === me);
   if (winner === me) sfx.win(); else sfx.lose();
   const r = document.createElement("div"); r.className = "result";
   r.innerHTML = `<div class="panel"><h1>${winner === me ? t("youWin") : t("wins", { n: esc(names[winner] ?? "") })}</h1>${scores ? `<div class="final">${scores.map((s, i) => `<div class="${i === winner ? "win" : ""}"><span>${i === me ? esc(t("you")) : esc(names[i] ?? "")}</span><b>${s}</b></div>`).join("")}</div>` : ""}
@@ -188,13 +219,13 @@ function startLocal(name: string, players: number, seed: number) {
   const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, ...(fast ? { botDelay: () => 100 } : {}) });
   setTableTheme(gameId);
   scene = entry().scene(app, ui, {
-    submit: (m: any) => host.submit(0, m),
+    submit: (m: any) => { lastUpdate = null; host.submit(0, m); },
     onFinished: (w, _n, _m, sc) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now()), sc), 1500),
   });
   teardown = () => host.dispose();
   addHud(() => { host.dispose(); scene?.destroy(); scene = null; showMenu(); });
   host.attach(0, (u: any) => {
-    scene?.receive(u);
+    lastUpdate = u; scene?.receive(u);
     if (q.get("auto") && u.legal.length && !u.result) setTimeout(() => host.submit(0, d.makeBot({ kind: "bot", name: "" }).choose(u.view, u.legal, host.rng)), fast ? 150 : 1800);
   });
   host.start();

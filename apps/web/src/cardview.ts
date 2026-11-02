@@ -1,4 +1,4 @@
-import { Container, PerspectiveMesh, Rectangle, Sprite, Texture } from "pixi.js";
+import { Container, Graphics, PerspectiveMesh, Rectangle, Sprite, Texture } from "pixi.js";
 import gsap from "gsap";
 import type { Card } from "@cards/engine";
 import { sfx } from "./sfx.ts";
@@ -47,6 +47,7 @@ export class CardView extends Container {
   private hoverX = 0; private hoverY = 0;             // smoothed tilt towards the pointer
   private overP: { x: number; y: number } | null = null;
   private sh = { w: 1, h: 1, x: 0, y: 0 };                // the shadow follows the projected outline
+  private glowG: Graphics | null = null; private glowUntil = 0;
 
   constructor(id: Card | null, faceUp: boolean) {
     super();
@@ -88,7 +89,25 @@ export class CardView extends Container {
   }
   reveal(id: Card) { this.id = id; if (this.faceUp) this.setFace(true); }
 
+  /** Pulse a gold outline around the card for a few seconds (used by the hint button). */
+  glowFor(seconds: number) {
+    if (!this.glowG) {
+      const g = new Graphics();
+      g.roundRect(-HW - 7, -HH - 7, CARD_W + 14, CARD_H + 14, 16).stroke({ width: 12, color: 0xffd35c, alpha: 0.28 });
+      g.roundRect(-HW - 3, -HH - 3, CARD_W + 6, CARD_H + 6, 12).stroke({ width: 4, color: 0xffe9a0, alpha: 1 });
+      g.eventMode = "none"; this.glowG = g; this.addChild(g);
+    }
+    this.glowUntil = performance.now() + seconds * 1000; this.glowG.visible = true;
+  }
+  private tickGlow() {
+    const g = this.glowG; if (!g || !g.visible) return;
+    const left = this.glowUntil - performance.now();
+    if (left <= 0) { g.visible = false; return; }
+    g.alpha = Math.min(1, left / 400) * (reducedMotion ? 1 : 0.65 + 0.35 * Math.sin(performance.now() / 160));
+  }
+
   private tick = () => {
+    this.tickGlow();
     // lean into the direction of travel (the card is a loose sheet on the table)
     const dx = Number.isNaN(this.lastX) ? 0 : clamp(this.x - this.lastX, -60, 60), dy = Number.isNaN(this.lastY) ? 0 : clamp(this.y - this.lastY, -60, 60);
     this.lastX = this.x; this.lastY = this.y;
@@ -116,6 +135,7 @@ export class CardView extends Container {
     this.mesh = new PerspectiveMesh({ texture: this.back.texture, verticesX: 9, verticesY: 9 });
     this.sheen = new PerspectiveMesh({ texture: glareTexture(), verticesX: 5, verticesY: 5 }); this.sheen.blendMode = "add"; this.sheen.alpha = 0;
     this.addChild(this.mesh, this.sheen);
+    if (this.glowG) this.addChild(this.glowG);
   }
   private renderMesh(ty: number, tx: number) {
     this.ensureMesh(); const mesh = this.mesh!, sheen = this.sheen!;

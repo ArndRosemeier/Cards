@@ -27,7 +27,11 @@ export interface TrickUi<M, V> {
 }
 
 export interface SceneHooks<M> { submit(m: M): void; onFinished(winner: number, names: string[], me: number, scores?: number[]): void }
-export interface GameScene<U> { receive(u: U): void; destroy(): void }
+export interface GameScene<U> {
+  receive(u: U): void; destroy(): void;
+  /** Hint button: make these cards of the own hand glow. */
+  hint?(cards: Card[]): void;
+}
 
 export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implements GameScene<Update<V, M, E>> {
   private world = new Container();
@@ -100,6 +104,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     for (const cv of this.trick.keys()) { const sl = this.trickSlot(cv); const v = this.trick.get(cv)!; gsap.killTweensOf(v); v.position.set(sl.x, sl.y); }
     this.layoutAll(false); this.layoutTalon();
   }
+  hint(cards: Card[]) { for (const c of cards) (this.mine.get(c) ?? this.dummy.get(c))?.glowFor(7); }
   destroy() {
     this.destroyed = true; document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
     window.removeEventListener("resize", this.onResize);
