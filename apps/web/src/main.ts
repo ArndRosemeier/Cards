@@ -88,7 +88,7 @@ function showMenu() {
   music.stop(); if (!menuFx) menuFx = createMenuScene(app);
   let players = entry().players.includes(3) ? 3 : entry().players[0]!; let name = savedName();
   const render = () => {
-    const w = panel(`<h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div>
+    const w = panel(`<img class="logo" src="cards/logo.webp" alt=""><h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div>
       <div class="games">${GAMES.map((g) => `<button class="game ${g === gameId ? "sel" : ""}" data-g="${g}" ${live(g) ? "" : "disabled"}>${t(g)}${live(g) ? "" : `<small>${t("soon")}</small>`}</button>`).join("")}</div>
       <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"></div>
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>

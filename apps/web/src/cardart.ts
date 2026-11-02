@@ -183,6 +183,7 @@ function drawShadow(): HTMLCanvasElement {
 /** Painted table backgrounds (public/bg/*.webp, generated, see audio/manifest-like notes in README). The procedural felt below is the fallback. */
 const THEME_OF: Record<string, string> = { maumau: "maumau", hearts: "felt", doppelkopf: "felt", skat: "bavaria", schafkopf: "bavaria", holdem: "casino", romme: "salon", canasta: "salon", bridge: "bridge" };
 const painted = new Map<string, HTMLImageElement>();
+const isPortrait = () => typeof window !== "undefined" && window.innerHeight > window.innerWidth;
 let theme = "felt";
 export function setTableTheme(gameId: string) { theme = THEME_OF[gameId] ?? "felt"; }
 export function preloadBackgrounds() {
@@ -190,10 +191,11 @@ export function preloadBackgrounds() {
     const img = new Image(); img.decoding = "async";
     img.onload = () => painted.set(n, img);
     img.src = new URL(`bg/${n}.webp`, document.baseURI).href;
+    const p = new Image(); p.decoding = "async"; p.onload = () => painted.set(n + "_p", p); p.src = new URL(`bg/${n}_p.webp`, document.baseURI).href;
   }
 }
 export function tableTexture(w: number, h: number): Texture {
-  const img = painted.get(theme);
+  const img = (isPortrait() ? painted.get(theme + "_p") : undefined) ?? painted.get(theme);
   return img ? Texture.from(img) : Texture.from(drawFelt(w, h));
 }
 
