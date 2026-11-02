@@ -21,6 +21,7 @@ type Msg =
   | { t: "update"; u: Update<any, any, any> }
   | { t: "rehello" }
   | { t: "full" }
+  | { t: "emote"; seat: number; id: string }
   | { t: "shadow"; snap: TableSnapshot<any>; lobby: LobbyState; tokens: (string | null)[] };
 
 export interface SessionOptions {
@@ -36,6 +37,7 @@ type Events<V, M, E> = {
   seat: (seat: number) => void;
   role: (isHost: boolean) => void;
   error: (code: string) => void;
+  emote: (seat: number, id: string) => void;
 };
 
 /**
@@ -53,7 +55,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
   private seatByPlayer = new Map<number, number>();
   private shadow: { snap: TableSnapshot<State>; lobby: LobbyState; tokens: (string | null)[] } | null = null;
   private listeners: { [K in keyof Events<View, Move, Ev>]: Set<Events<View, Move, Ev>[K]> } = {
-    update: new Set(), lobby: new Set(), seat: new Set(), role: new Set(), error: new Set(),
+    update: new Set(), lobby: new Set(), seat: new Set(), role: new Set(), error: new Set(), emote: new Set(),
   };
   private readonly def: GameDef<Config, State, Move, View, Ev>;
   private readonly opts: SessionOptions;
@@ -210,6 +212,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
       case "update": this.emit("update", m.u as Update<View, Move, Ev>); break;
       case "rehello": if (!this.isHost) this.hub.send({ t: "hello", token: this.opts.token, name: this.opts.name }, from); break;
       case "full": this.emit("error", "room_full"); break;
+      case "emote": if (m.seat !== this.mySeat && typeof m.id === "string") this.emit("emote", m.seat, m.id.slice(0, 16)); break;
       case "shadow": this.shadow = { snap: m.snap, lobby: m.lobby, tokens: m.tokens }; break;
     }
   }
@@ -248,6 +251,9 @@ export class OnlineSession<Config, State, Move, View, Ev> {
       }
     } else if (this.hub.host !== null) this.hub.send({ t: "move", move }, this.hub.host);
   }
+
+  /** Show a quick reaction at the own seat for everyone at the table. */
+  sendEmote(id: string) { if (this.mySeat !== null) this.hub.send({ t: "emote", seat: this.mySeat, id }); }
 
   leave() { this.hub.close(); this.table?.dispose(); }
 }

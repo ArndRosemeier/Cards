@@ -1,7 +1,7 @@
 import { Container, Graphics, Sprite, Texture, type Text } from "pixi.js";
 
 /** Painted portraits for the computer players (public/avatars/<name>.webp). A missing file just leaves the plain plate. */
-const KNOWN = new Set(["anna", "ben", "clara", "dario", "eva", "finn"]);
+const KNOWN = new Set(["anna", "ben", "clara", "dario", "eva", "finn", "gina", "hugo", "ines", "jonas", "kira", "leo"]);
 const cache = new Map<string, Promise<Texture | null>>();
 function load(key: string): Promise<Texture | null> {
   let p = cache.get(key);

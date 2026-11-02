@@ -7,6 +7,7 @@ import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
+import { EMOTES } from "./emote.ts";
 import { setTableTheme, preloadBackgrounds, preloadCardArt, BACKS, getBack, setBack } from "./cardart.ts";
 import { getLang, setLang, t } from "./i18n.ts";
 import { Rng } from "@cards/engine";
@@ -16,7 +17,8 @@ import { getStats, recordResult, resetStats } from "./stats.ts";
 type Session = OnlineSession<any, any, any, any, any>;
 let gameId = "maumau";
 const ui = document.getElementById("ui")!;
-const BOT_NAMES = ["Anna", "Ben", "Clara", "Dario", "Eva", "Finn"];
+const ALL_BOTS = ["Anna", "Ben", "Clara", "Dario", "Eva", "Finn", "Gina", "Hugo", "Ines", "Jonas", "Kira", "Leo"];
+const pickBotNames = () => ALL_BOTS.map((n) => ({ n, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.n).slice(0, 6);
 const q = new URLSearchParams(location.search);
 const fast = !!q.get("fast");
 const KEY = import.meta.env.VITE_GAMEHUB_KEY, HUB_URL = import.meta.env.VITE_GAMEHUB_URL;
@@ -32,6 +34,7 @@ preloadBackgrounds(); preloadCardArt();
 gsap.ticker.lagSmoothing(0);
 let teardown: (() => void) | null = null;
 /** the newest update for the own seat: what the hint button asks the bot about */
+let lastEmote = 0;
 let lastUpdate: any = null;
 
 function toast(text: string) {
@@ -175,28 +178,36 @@ function enterRoom(session: Session) {
     w.querySelectorAll<HTMLButtonElement>("[data-i]").forEach((b) => (b.onclick = () => session.setSeatKind(Number(b.dataset.i), b.dataset.k as "open" | "bot")));
     (w.querySelector("#copy") as HTMLButtonElement).onclick = (e) => { void navigator.clipboard?.writeText(link); (e.target as HTMLElement).textContent = t("copied"); };
     (w.querySelector("#leave") as HTMLButtonElement).onclick = () => { session.leave(); showMenu(); };
-    (w.querySelector("#start") as HTMLButtonElement | null)?.addEventListener("click", () => session.startGame(BOT_NAMES));
+    (w.querySelector("#start") as HTMLButtonElement | null)?.addEventListener("click", () => session.startGame(pickBotNames()));
     teardown = () => { /* lobby view only */ };
   };
   let gameShown = false;
   session.on("lobby", (l) => { if (l.phase === "lobby") showLobby(); else if (!gameShown) showGame(); });
   session.on("update", (u) => { if (!gameShown) showGame(); lastUpdate = u; scene?.receive(u); });
+  session.on("emote", (seat, id) => scene?.emote?.(seat, id));
   session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); } else if (c === "room_full") { showMenu(); } });
   const showGame = () => {
     gameShown = started = true;
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
     setTableTheme(gameId);
     scene = entry().scene(app, ui, { submit: (m) => { lastUpdate = null; session.submit(m); }, onFinished: (w, names, _me, sc) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) });
-    addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); });
+    addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); }, (id) => { const me = session.mySeat; if (me === null || Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); session.sendEmote(id); scene?.emote?.(me, id); });
   };
   showLobby();
 }
 
-function addHud(onMenu: () => void) {
+function addHud(onMenu: () => void, onEmote?: (id: string) => void) {
   const hud = document.createElement("div"); hud.className = "hud";
-  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
+  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="emobtn" title="${t('emote')}">☺</button><button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
   (hud.querySelector("#hintbtn") as HTMLButtonElement).onclick = () => { sfx.hint(); hintNow(); };
+  (hud.querySelector("#emobtn") as HTMLButtonElement).onclick = () => {
+    const old = ui.querySelector(".emopick"); if (old) { old.remove(); return; }
+    const pk = document.createElement("div"); pk.className = "emopick";
+    pk.innerHTML = EMOTES.map((id) => `<button data-e="${id}"><img src="emotes/${id}.webp" alt="${id}"></button>`).join("");
+    pk.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.onclick = () => { pk.remove(); sfx.click(); onEmote?.(b.dataset.e!); }));
+    ui.append(pk);
+  };
   (hud.querySelector("#rulesbtn") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
   (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
   (hud.querySelector("#mus") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = music.toggle() ? "♪̸" : "♪"; };
@@ -222,7 +233,8 @@ function showResult(winner: number, names: string[], session: Session | null, ag
 // ---------------------------------------------------------------- local play
 function startLocal(name: string, players: number, seed: number) {
   killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
-  const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: BOT_NAMES[i]!, level: savedLevel() }))];
+  const botNames = pickBotNames();
+  const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: botNames[i]!, level: savedLevel() }))];
   const d = defOf();
   const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, ...(fast ? { botDelay: () => 100 } : {}) });
   setTableTheme(gameId);
@@ -231,9 +243,15 @@ function startLocal(name: string, players: number, seed: number) {
     onFinished: (w, _n, _m, sc) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now()), sc), 1500),
   });
   teardown = () => host.dispose();
-  addHud(() => { host.dispose(); scene?.destroy(); scene = null; showMenu(); });
+  const botEmote = (id?: string) => { if (players < 2) return; const seat = 1 + Math.floor(Math.random() * (players - 1)); scene?.emote?.(seat, id ?? EMOTES[Math.floor(Math.random() * EMOTES.length)]!); lastBotEmote = Date.now(); };
+  addHud(() => { host.dispose(); scene?.destroy(); scene = null; showMenu(); }, (id) => {
+    if (Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); scene?.emote?.(0, id);
+    if (Math.random() < 0.6) setTimeout(() => botEmote(id === "thumbs" ? "clap" : id === "oops" ? "hmm" : id === "clap" ? "thumbs" : "oops"), 900 + Math.random() * 900);
+  });
+  let lastBotEmote = Date.now();
   host.attach(0, (u: any) => {
     lastUpdate = u; scene?.receive(u);
+    if (!q.get("auto") && Date.now() - lastBotEmote > 45000 && Math.random() < 0.03) botEmote();
     if (q.get("auto") && u.legal.length && !u.result) setTimeout(() => host.submit(0, d.makeBot({ kind: "bot", name: "" }).choose(u.view, u.legal, host.rng)), fast ? 150 : 1800);
   });
   host.start();

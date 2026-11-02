@@ -4,6 +4,7 @@ import type { Card } from "@cards/engine";
 import type { Ev, Move, View } from "@cards/holdem";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
+import { popEmote } from "./emote.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -90,6 +91,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); cover(this.bg, w, h);
     document.body.classList.toggle("portrait", g.portrait);
   }
+  emote(seat: number, id: string) { const sp = this.seats[seat]; if (sp) popEmote(this.layerFx, sp.plate.position.x, sp.plate.position.y, id); }
   destroy() {
     document.body.classList.remove("portrait"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*");
     this.controls.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren();

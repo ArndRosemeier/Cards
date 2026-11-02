@@ -4,6 +4,7 @@ import type { Card, TrickEv, TrickViewBase, Seat } from "@cards/engine";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { addAvatar } from "./avatar.ts";
+import { popEmote } from "./emote.ts";
 import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -36,6 +37,8 @@ export interface GameScene<U> {
   receive(u: U): void; destroy(): void;
   /** Hint button: make these cards of the own hand glow. */
   hint?(cards: Card[]): void;
+  /** A reaction from a seat: show it at that seat's plate. */
+  emote?(seat: number, id: string): void;
 }
 
 export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implements GameScene<Update<V, M, E>> {
@@ -111,6 +114,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     for (const cv of this.trick.keys()) { const sl = this.trickSlot(cv); const v = this.trick.get(cv)!; gsap.killTweensOf(v); v.position.set(sl.x, sl.y); }
     this.layoutAll(false); this.layoutTalon();
   }
+  emote(seat: number, id: string) { const p = this.plates[seat]; if (p) popEmote(this.fxLayer, p.box.position.x, p.box.position.y, id); }
   hint(cards: Card[]) { for (const c of cards) (this.mine.get(c) ?? this.dummy.get(c))?.glowFor(7); }
   destroy() {
     this.destroyed = true; document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
@@ -308,7 +312,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const counts = new Map<Seat | "talon", number>();
     for (const e of u.events) if (e.t === "dealt") counts.set(e.seat, e.count);
     const mineCards = u.view.hand.slice();
-    const per = Math.max(...counts.values());
+    const per = Math.max(...counts.values()), dt = Math.max(24, Math.min(75, 1800 / [...counts.values()].reduce((a, b) => a + b, 0)));
     const order: (Seat | "talon")[] = [];
     for (let k = 0; k < this.n; k++) order.push((this.me + k) % this.n);
     order.push("talon");
@@ -321,7 +325,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         if (who === "talon") { const cv = this.newView(null, false); this.talon.push(cv); this.layoutTalon(); }
         else if (who === this.me) { const id = mineCards[have]!; const cv = this.newView(id, false); this.mine.set(id, cv); this.layout(who); }
         else { const cv = this.newView(null, false); this.opp[who]!.push(cv); this.layout(who); }
-        sfx.deal(); await sleep(75);
+        sfx.deal(); await sleep(dt);
       }
     }
     await sleep(450);
