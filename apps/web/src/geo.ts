@@ -51,6 +51,6 @@ export function cover(bg: Sprite, w: number, h: number) {
 /** Keep the action buttons just above the own hand at every window size by publishing a CSS variable. */
 export function setActionsBottom(g: Geo, w: number, h: number, seats: number) {
   const root = document.documentElement.style;
-  const s = Math.min(w / g.W, h / g.H), top = (h - g.H * s) / 2 + (g.layouts[seats]![0]!.cy - 150 * g.ownScale) * s;
+  const s = Math.min(w / g.W, h / g.H), top = (h - g.H * s) / 2 + (g.layouts[seats]![0]!.cy - 150 * g.ownScale - (g.portrait ? 70 : 0)) * s;
   root.setProperty("--actions-bottom", `${Math.round(h - top + 8)}px`);
 }

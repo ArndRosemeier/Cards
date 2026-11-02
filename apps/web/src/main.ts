@@ -1,4 +1,5 @@
 import { Application } from "pixi.js";
+import gsap from "gsap";
 import { confetti } from "./fx.ts";
 import { createMenuScene } from "./menuScene.ts";
 import { showRules } from "./rulesText.ts";
@@ -27,6 +28,8 @@ let app: Application;
 let scene: GameScene<any> | null = null;
 document.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest?.(".btn")) sfx.click(); });
 preloadBackgrounds(); preloadCardArt();
+/* keep tweens on the wall clock (the default lag smoothing slows them on a busy frame, so a slow device would look stuck while dealing) */
+gsap.ticker.lagSmoothing(0);
 let teardown: (() => void) | null = null;
 /** the newest update for the own seat: what the hint button asks the bot about */
 let lastUpdate: any = null;
@@ -57,7 +60,10 @@ async function boot() {
   app = new Application();
   await app.init({ resizeTo: window, antialias: true, backgroundAlpha: 0, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true });
   document.getElementById("stage")!.append(app.canvas);
-  if (q.get("autostart")) return (gameId = q.get("game") ?? "maumau", startLocal(q.get("name") ?? "Arnd", Number(q.get("players") ?? 3), Number(q.get("seed") ?? Date.now())));
+  if (q.get("autostart")) {
+    gameId = q.get("game") ?? "maumau"; const ok = entry().players, want = Number(q.get("players") ?? 3);
+    return startLocal(q.get("name") ?? "Arnd", ok.includes(want) ? want : ok.includes(3) ? 3 : ok[ok.length - 1]!, Number(q.get("seed") ?? Date.now()));
+  }
   if (q.get("room")) return showOnline(q.get("room")!);
   showMenu();
 }

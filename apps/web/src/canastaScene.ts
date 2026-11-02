@@ -13,7 +13,7 @@ import type { GameScene, SceneHooks } from "./trickScene.ts";
 
 import { pickGeo, setActionsBottom, type Geo } from "./geo.ts";
 const STOCK = { x: 270, y: 520 }, DISC = { x: 400, y: 520 };
-const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 640 }); Object.assign(DISC, { x: 410, y: 640 }); } else { Object.assign(STOCK, { x: 270, y: 520 }); Object.assign(DISC, { x: 400, y: 520 }); } };
+const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 600 }); Object.assign(DISC, { x: 410, y: 600 }); } else { Object.assign(STOCK, { x: 270, y: 520 }); Object.assign(DISC, { x: 400, y: 520 }); } };
 const SUIT_ORDER = ["C", "H", "S", "D"];
 const sortHand = (h: Card[]) => h.slice().sort((a, b) => (isWild(a) ? 1 : 0) - (isWild(b) ? 1 : 0) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)));
 const MS = 0.45, CW = CardView.W * MS, CH = CardView.H * MS; // meld card scale / size

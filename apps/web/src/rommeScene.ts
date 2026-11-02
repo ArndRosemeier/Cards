@@ -13,8 +13,8 @@ import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
 import { pickGeo, setActionsBottom, type Geo } from "./geo.ts";
-const STOCK = { x: 700, y: 540 }, DISC = { x: 860, y: 540 };
-const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 800 }); Object.assign(DISC, { x: 410, y: 800 }); } else { Object.assign(STOCK, { x: 700, y: 540 }); Object.assign(DISC, { x: 860, y: 540 }); } };
+const STOCK = { x: 700, y: 480 }, DISC = { x: 860, y: 480 };
+const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 800 }); Object.assign(DISC, { x: 410, y: 800 }); } else { Object.assign(STOCK, { x: 700, y: 480 }); Object.assign(DISC, { x: 860, y: 480 }); } };
 const SUIT_ORDER = ["C", "H", "S", "D"];
 const sortSuit = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)));
 const sortRank = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)));
@@ -79,7 +79,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       box.roundRect(-100, -26, 200, 52, 26).fill({ color: 0, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-104, -30, 208, 60, 30).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count);
-      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 260, y: 640 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy + 130 }; plate.position.set(pp.x, pp.y); }
+      { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 668 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy + 130 }; plate.position.set(pp.x, pp.y); }
       this.tableLayer.addChild(plate); this.plates[s] = { ring, count, name };
     }
     for (let i = 0; i < 3; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }

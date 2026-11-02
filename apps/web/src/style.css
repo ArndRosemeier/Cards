@@ -39,7 +39,7 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
 .result .panel { text-align:center; }
 .result h1 { font-size:40px; }
 .result .btns { display:flex; gap:10px; justify-content:center; margin-top:18px; }
-.actions { position:absolute; left:50%; bottom:var(--actions-bottom, calc(env(safe-area-inset-bottom) + 250px)); transform:translateX(-50%); display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:90vw; }
+.actions { position:absolute; left:50%; width:max-content; bottom:var(--actions-bottom, calc(env(safe-area-inset-bottom) + 250px)); transform:translateX(-50%); display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:90vw; }
 .actions .btn { background:rgba(0,0,0,.55); backdrop-filter:blur(6px); }
 .actions .btn.primary { background:linear-gradient(#f2d37e,#d9ac3f); }
 .actions .btn:disabled { opacity:.45; cursor:default; }
@@ -55,9 +55,9 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
 .hcontrols .btn { background:rgba(0,0,0,.6); backdrop-filter:blur(6px); }
 .hcontrols .btn.primary { background:linear-gradient(#f2d37e,#d9ac3f); }
 .panelbox { position:absolute; left:50%; top:50%; transform:translate(-50%,-52%); max-width:94vw; }
-.bidbox { padding:12px; border-radius:16px; background:rgba(8,20,14,.86); border:1px solid rgba(232,198,106,.45); backdrop-filter:blur(8px); box-shadow:0 18px 50px rgba(0,0,0,.5); }
+.bidbox { padding:9px 12px; border-radius:16px; background:rgba(8,20,14,.86); border:1px solid rgba(232,198,106,.45); backdrop-filter:blur(8px); box-shadow:0 18px 50px rgba(0,0,0,.5); }
 .bidgrid { display:grid; grid-template-columns:repeat(5,minmax(44px,58px)); gap:5px; }
-.bidgrid button, .bidrow button { padding:8px 4px; border-radius:9px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:var(--ink); font-size:15px; cursor:pointer; }
+.bidgrid button, .bidrow button { padding:5px 4px; border-radius:9px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:var(--ink); font-size:15px; cursor:pointer; }
 .bidgrid button:hover:not([disabled]), .bidrow button:hover:not([disabled]) { background:rgba(232,198,106,.3); }
 .bidgrid button[disabled], .bidrow button[disabled] { opacity:.25; cursor:default; }
 .bidrow { display:flex; gap:6px; margin-top:8px; justify-content:center; }
@@ -71,9 +71,12 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
   body:not(.portrait) .rotate .ico { font-size:64px; color:#e8c66a; animation:spin 2.4s ease-in-out infinite; }
 }
 @keyframes spin { 0%,30% { transform:rotate(0) } 70%,100% { transform:rotate(-90deg) } }
-body.portrait .board { font-size:11px; padding:5px 9px; min-width:96px; top:8px; right:8px; }
-body.portrait .board div { padding:1px 0; gap:10px; }
-body.portrait .banner { top:64px; max-width:92vw; text-align:center; }
+body.portrait .hud { gap:5px; left:8px; top:8px; }
+body.portrait .hud .btn { padding:6px 9px; font-size:13px; }
+body.portrait .board { font-size:11px; line-height:1.15; padding:3px 10px; min-width:0; top:48px; left:50%; right:auto; transform:translateX(-50%); display:flex; flex-wrap:wrap; justify-content:center; gap:0 14px; max-width:94vw; }
+body.portrait .board div { padding:1px 0; gap:6px; }
+body.portrait .board .x { border-top:0; margin:0; padding:1px 0; }
+body.portrait .banner { top:102px; max-width:92vw; text-align:center; }
 body.portrait .hcontrols { right:auto; left:50%; transform:translateX(-50%); flex-direction:column; align-items:center; width:94vw; bottom:calc(env(safe-area-inset-bottom) + 8px); }
 .rules-overlay { position:absolute; inset:0; z-index:60; display:grid; place-items:center; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); }
 .rules { max-width:min(560px, 92vw); max-height:86vh; overflow:auto; padding:22px 24px; border-radius:20px; background:rgba(12,28,20,.94); border:1px solid rgba(232,198,106,.4); text-align:left; }
@@ -81,7 +84,7 @@ body.portrait .hcontrols { right:auto; left:50%; transform:translateX(-50%); fle
 .rules ul { margin:0; padding-left:20px; display:grid; gap:8px; line-height:1.4; }
 .rules .btns { display:flex; justify-content:flex-end; margin-top:16px; }
 .lasttrick { position:absolute; left:12px; top:64px; background:rgba(0,0,0,.55); backdrop-filter:blur(6px); }
-body.portrait .lasttrick { top:62px; left:12px; }
+body.portrait .lasttrick { top:134px; left:auto; right:8px; }
 .result .final { display:grid; gap:4px; margin:14px auto 0; min-width:220px; padding:10px 16px; border-radius:14px; background:rgba(0,0,0,.35); border:1px solid rgba(232,198,106,.3); }
 .result .final div { display:flex; justify-content:space-between; gap:24px; opacity:.8; }
 .result .final div.win { opacity:1; color:#ffe08a; }
@@ -94,5 +97,7 @@ table.stats th { color:#e8c66a; font-weight:600; text-align:right; padding:4px 8
 table.stats td { text-align:right; padding:6px 8px; border-top:1px solid rgba(255,255,255,.1); }
 table.stats th:first-child, table.stats td:first-child { text-align:left; }
 .rules .btns { gap:8px; }
-body.portrait .hint-toast { top:112px; }
+body.portrait .hint-toast { top:140px; }
 #stage canvas { touch-action:none; }
+body.portrait .actions { gap:6px; max-width:min(96vw, 340px); }
+body.portrait .actions .btn { padding:8px 12px; font-size:14px; }
