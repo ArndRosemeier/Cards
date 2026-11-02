@@ -152,7 +152,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       }
       case "dealt": if (!this.dealt) await this.dealAll(u); break;
       case "draw": {
-        const own = ev.seat === this.me; let cv: CardView;
+        const own = ev.seat === this.me; let cv: CardView; if (ev.from === "stock") sfx.draw();
         if (ev.from === "discard") { cv = this.discardView ?? this.mk(ev.card, true, DISC); this.discardView = null; cv.reveal(ev.card); } else { cv = this.mk(own ? ev.card : null, false); }
         if (own) this.mine.set(ev.card, cv); else this.opp[ev.seat]!.push(cv);
         this.layout(ev.seat); const sl = this.fan(ev.seat, 0, 1);
@@ -176,6 +176,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
         this.layoutMelds(); this.layout(ev.seat); await sleep(350); break;
       }
       case "swap": {
+        sfx.joker();
         const mv = this.melds[ev.meld]; if (!mv) break; const own = ev.seat === this.me;
         const jv = mv.cards.find((c) => c.id === ev.joker); if (jv) mv.cards = mv.cards.filter((c) => c !== jv);
         const cv = this.takeFrom(ev.seat, ev.card); cv.reveal(ev.card); if (!own) void cv.flip(true, 0.3);

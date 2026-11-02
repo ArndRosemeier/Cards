@@ -187,6 +187,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
       }
       case "dealt": if (!this.dealt) await this.dealAll(u); break;
       case "draw": {
+        sfx.draw();
         const own = ev.seat === this.me; const cv = this.mk(own ? ev.card : null, false);
         if (own) this.mine.set(ev.card, cv); else this.opp[ev.seat]!.push(cv);
         this.layout(ev.seat); await this.fly(cv, this.fan(ev.seat, 0, 1), 0.45); if (own && !cv.faceUp) await cv.flip(true, 0.25); this.layout(ev.seat); break;

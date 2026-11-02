@@ -208,6 +208,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
       case "act": {
         const sp = this.seats[ev.seat]!;
         const label = ev.action === "fold" ? t("hFold") : ev.action === "check" ? t("hCheck") : ev.action === "call" ? t("hCall") : ev.action === "allin" ? t("hAllIn") : t("hRaiseTo", { n: ev.to });
+        if (ev.action === "allin") sfx.allin(); else if (ev.action === "check") sfx.knock();
         sp.status.text = label; gsap.fromTo(sp.status.scale, { x: 1.4, y: 1.4 }, { x: 1, y: 1, duration: 0.3, ease: "back.out(2)" });
         if (ev.amount > 0) {
           this.disp.stacks[ev.seat]! -= ev.amount; this.disp.bets[ev.seat]! += ev.amount; this.renderStacks();
@@ -242,7 +243,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
       }
       case "award": {
         this.handDone = true; for (const st of this.seats) gsap.to(st.ring, { alpha: 0, duration: 0.2 });
-        const sp = this.seats[ev.seat]!;
+        const sp = this.seats[ev.seat]!; sfx.chipstack();
         await this.flyChips(POT, sp.plate.position, ev.amount); this.disp.pot = Math.max(0, this.disp.pot - ev.amount); this.disp.stacks[ev.seat]! += ev.amount; this.renderPot(); this.renderStacks();
         sp.status.text = `+${ev.amount}`; gsap.fromTo(sp.plate.scale, { x: 1.12, y: 1.12 }, { x: 1, y: 1, duration: 0.5, ease: "elastic.out(1,0.5)" });
         this.sparkle(sp.plate.position); await sleep(900); break;

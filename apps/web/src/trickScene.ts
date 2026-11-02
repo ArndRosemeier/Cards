@@ -279,12 +279,13 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         this.lastTrick = [...this.trick].map(([seat, cv]) => ({ seat, card: cv.id! })).filter((p) => p.card); this.lastBtn.style.display = this.lastTrick.length ? "block" : "none";
         { const pts = this.adapter.points?.(this.lastTrick.map((p) => p.card)) ?? 0, pl = this.plates[ev.winner];
           if (pts > 0 && pl) {
+            sfx.points();
             const tx = new Text({ text: `+${pts}`, style: { fill: "#ffe08a", fontSize: 34, fontWeight: "800", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 5 } } });
             tx.anchor.set(0.5); const bp = pl.box.position; tx.position.set(bp.x, bp.y - 30); tx.alpha = 0; tx.scale.set(0.6); this.fxLayer.addChild(tx);
             gsap.to(tx, { alpha: 1, duration: 0.2 }); gsap.to(tx.scale, { x: 1, y: 1, duration: 0.35, ease: "back.out(2)" });
             gsap.to(tx, { y: bp.y - 80, duration: 1.3, ease: "power2.out" }); gsap.to(tx, { alpha: 0, delay: 0.9, duration: 0.4, onComplete: () => tx.destroy() });
           } }
-        const views = [...this.trick.values()]; this.trick.clear();
+        const views = [...this.trick.values()]; this.trick.clear(); sfx.trick();
         await Promise.all(views.map((cv, i) => tween(cv, { x: a.cx, y: a.cy, rotation: cv.rotation + 0.6, alpha: 0, duration: 0.55, delay: i * 0.05, ease: "power2.in" })));
         views.forEach((v) => v.destroy());
         break;
@@ -298,7 +299,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         await Promise.all([...this.dummy.values()].map((cv, i) => sleep(i * 40).then(() => cv.flip(true, 0.3)))); this.layout(ev.seat); await sleep(250);
         break;
       }
-      case "say": this.toast(ev.seat, t(ev.key, ev.vars ?? {})); await sleep(700); break;
+      case "say": this.toast(ev.seat, t(ev.key, ev.vars ?? {})); if (ev.key === "dk_re" || ev.key === "dk_kontra") sfx.reveal(); else if (ev.key === "sk_won") sfx.roundwin(); else if (ev.key === "sk_lost") sfx.roundlose(); await sleep(700); break;
     }
   }
 
@@ -416,7 +417,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   }
   private reject(cv: CardView) {
     gsap.fromTo(cv, { x: cv.slot.x - 10 }, { x: cv.slot.x, duration: 0.4, ease: "elastic.out(1, 0.25)", overwrite: "auto" });
-    this.toast(this.me, t("illegalCard"));
+    this.toast(this.me, t("illegalCard")); sfx.nope();
   }
   private send(m: M) { if (this.busy) return; this.busy = true; this.legal = []; this.selection.clear(); this.refresh(); this.hooks.submit(m); }
 
