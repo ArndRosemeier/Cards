@@ -7,7 +7,7 @@ import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
-import { setTableTheme, preloadBackgrounds, preloadCardArt } from "./cardart.ts";
+import { setTableTheme, preloadBackgrounds, preloadCardArt, BACKS, getBack, setBack } from "./cardart.ts";
 import { getLang, setLang, t } from "./i18n.ts";
 import { Rng } from "@cards/engine";
 import { cardsInMove, hintText } from "./hint.ts";
@@ -94,6 +94,7 @@ function showMenu() {
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
       <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
       ${langRow()}
+      <div class="row"><label>${t("cardBack")}</label><div class="seg backs" id="bk">${BACKS.map((b) => `<button class="${getBack() === b ? "sel" : ""}" data-b="${b}"><img src="cards/${b}.webp" alt=""></button>`).join("")}</div></div>
       <div class="row" style="justify-content:flex-end"><button class="btn" id="stats">${t("stats")}</button><button class="btn" id="rules">${t("rules")}</button><button class="btn" id="online">${t("online")}</button><button class="btn primary" id="go">${t("play")}</button></div>`);
     (w.querySelector("#stats") as HTMLButtonElement).onclick = showStats;
     (w.querySelector("#rules") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
@@ -101,6 +102,7 @@ function showMenu() {
     const nm = () => (name = (w.querySelector("#nm") as HTMLInputElement).value.trim());
     w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); players = Number(b.dataset.n); render(); }));
     w.querySelectorAll<HTMLButtonElement>("[data-g]:not([disabled])").forEach((b) => (b.onclick = () => { nm(); gameId = b.dataset.g!; if (!entry().players.includes(players)) players = entry().players[entry().players.length - 1]!; render(); }));
+    w.querySelectorAll<HTMLButtonElement>("#bk button").forEach((b) => (b.onclick = () => { setBack(b.dataset.b!); w.querySelectorAll("#bk button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     bindLang(w, () => { nm(); render(); });
     (w.querySelector("#go") as HTMLButtonElement).onclick = () => { nm(); name ||= t("you"); saveName(name); startLocal(name, players, Date.now()); };
     (w.querySelector("#online") as HTMLButtonElement).onclick = () => { nm(); if (name) saveName(name); showOnline(); };
@@ -207,7 +209,7 @@ function showResult(winner: number, names: string[], session: Session | null, ag
   if (ui.querySelector(".result")) return;
   const me = session ? session.mySeat : 0;
   recordResult(gameId, winner === me);
-  if (winner === me) sfx.win(); else sfx.lose();
+  if (winner === me) { sfx.win(); sparkles(); } else sfx.lose();
   const r = document.createElement("div"); r.className = "result";
   r.innerHTML = `<div class="panel"><h1>${winner === me ? t("youWin") : t("wins", { n: esc(names[winner] ?? "") })}</h1>${scores ? `<div class="final">${scores.map((s, i) => `<div class="${i === winner ? "win" : ""}"><span>${i === me ? esc(t("you")) : esc(names[i] ?? "")}</span><b>${s}</b></div>`).join("")}</div>` : ""}
     <div class="btns">${again ? `<button class="btn primary" id="again">${t("again")}</button>` : ""}<button class="btn" id="menu">${t("menu")}</button></div></div>`;
@@ -239,3 +241,14 @@ function startLocal(name: string, players: number, seed: number) {
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 void boot();
+
+/** celebratory sparkles (painted spark sprite, additive blend) rising over the result screen */
+function sparkles() {
+  const src = new URL("cards/spark.webp", document.baseURI).href;
+  for (let i = 0; i < 28; i++) {
+    const im = document.createElement("img"); im.src = src; im.alt = ""; im.className = "spark";
+    const size = 40 + Math.random() * 90, x = Math.random() * 100, dur = 1800 + Math.random() * 1800;
+    im.style.cssText = `left:${x}vw;bottom:-10vh;width:${size}px;height:${size}px;animation-duration:${dur}ms;animation-delay:${Math.random() * 900}ms`;
+    ui.append(im); setTimeout(() => im.remove(), dur + 1200);
+  }
+}

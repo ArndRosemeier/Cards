@@ -50,8 +50,12 @@ const PIPS: Record<string, [number, number][]> = {
 };
 /** Painted court/joker/back art (public/cards/*.webp). Procedural drawing remains the fallback until/if it loads. */
 const art = new Map<string, HTMLImageElement>();
+export const BACKS = ["back", "back_red", "back_green", "back_black"] as const;
+let backName: string = (() => { try { const b = localStorage.getItem("cardBack"); return b && (BACKS as readonly string[]).includes(b) ? b : "back"; } catch { return "back"; } })();
+export const getBack = () => backName;
+export function setBack(n: string) { backName = n; try { localStorage.setItem("cardBack", n); } catch { /* ignore */ } cache.clear(); }
 export function preloadCardArt() {
-  const names = ["back", "joker", ...["H", "D", "S", "C"].flatMap((s) => ["K", "Q", "J"].map((r) => r + s))];
+  const names = ["back", "back_red", "back_green", "back_black", "joker", ...["H", "D", "S", "C"].flatMap((s) => ["K", "Q", "J"].map((r) => r + s))];
   for (const n of names) {
     const img = new Image(); img.decoding = "async";
     img.onload = () => { art.set(n, img); cache.clear(); };
@@ -150,7 +154,7 @@ function drawBack(): HTMLCanvasElement {
   const g = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
   g.addColorStop(0, "#1c3a8a"); g.addColorStop(1, "#0d1f57");
   ctx.fillStyle = "#f4efe4"; rr(ctx, 1, 1, CARD_W - 2, CARD_H - 2, 14); ctx.fill();
-  const ba = art.get("back");
+  const ba = art.get(backName);
   if (ba) { ctx.save(); rr(ctx, 6, 6, CARD_W - 12, CARD_H - 12, 10); ctx.clip(); cover(ctx, ba, 6, 6, CARD_W - 12, CARD_H - 12); ctx.restore(); return c; }
   ctx.fillStyle = g; rr(ctx, 7, 7, CARD_W - 14, CARD_H - 14, 9); ctx.fill();
   ctx.save(); rr(ctx, 7, 7, CARD_W - 14, CARD_H - 14, 9); ctx.clip();
@@ -214,7 +218,7 @@ const tex = (key: string, make: () => HTMLCanvasElement) => {
   return t;
 };
 export const faceTexture = (card: Card) => { const k = (card[0] === "X" ? "X1" : card.slice(0, 2)) as Card; return tex(k, () => drawFace(k)); };
-export const backTexture = () => tex("back", drawBack);
+export const backTexture = () => tex("back:" + backName, drawBack);
 export const shadowTexture = () => tex("shadow", drawShadow);
 export const suitTexture = (suit: Suit) => tex("suit" + suit, () => {
   const { c, ctx } = canvas(64, 64);
