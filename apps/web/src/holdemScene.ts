@@ -238,7 +238,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
         this.handDone = true; for (const st of this.seats) gsap.to(st.ring, { alpha: 0, duration: 0.2 });
         const sp = this.seats[ev.seat]!;
         if (ev.seat !== this.me) {
-          sp.cards.forEach((c, i) => { c.reveal(ev.cards[i]!); gsap.to(c.scale, { x: 0.62, y: 0.62, duration: 0.3 }); gsap.to(c, { y: c.y - (sp.pos.y < TABLE.y ? -30 : 30), duration: 0.3 }); });
+          sp.cards.forEach((c, i) => { c.reveal(ev.cards[i]!); gsap.to(c.scale, { x: 0.5, y: 0.5, duration: 0.3 }); gsap.to(c, { y: c.y + (sp.pos.y < TABLE.y ? -22 : 22), duration: 0.3 }); });
           await Promise.all(sp.cards.map((c) => c.flip(true, 0.35)));
         }
         sp.handLabel.text = t("hh_" + ev.hand); await sleep(450); break;

@@ -140,7 +140,7 @@ body.portrait.dummytop .trumpchip { left:auto; right:8px; top:14px; }
 /* online table chat */
 .hud .badge { display:inline-block; min-width:16px; margin-left:4px; padding:0 4px; border-radius:9px; background:#e0453a; color:#fff; font-size:11px; font-weight:700; line-height:16px; vertical-align:top; }
 .hud .badge[hidden] { display:none; }
-.chatpanel { position:absolute; left:12px; top:58px; width:min(320px, calc(100vw - 24px)); height:min(46vh, 340px); display:flex; flex-direction:column; background:rgba(8,28,20,.94); border:1px solid rgba(232,198,106,.6); border-radius:14px; backdrop-filter:blur(6px); z-index:21; pointer-events:auto; overflow:hidden; }
+.chatpanel { position:absolute; left:12px; top:58px; width:min(260px, calc(100vw - 24px)); height:min(34vh, 260px); display:flex; flex-direction:column; background:rgba(8,28,20,.8); border:1px solid rgba(232,198,106,.6); border-radius:14px; backdrop-filter:blur(6px); z-index:21; pointer-events:auto; overflow:hidden; }
 .chatpanel[hidden], .chatpreview[hidden] { display:none; }
 .chatlog { flex:1; overflow-y:auto; padding:8px 10px; font-size:14px; line-height:1.35; }
 .chatline { margin:2px 0; word-break:break-word; }
@@ -151,7 +151,7 @@ body.portrait.dummytop .trumpchip { left:auto; right:8px; top:14px; }
 .chatpreview { position:absolute; left:12px; top:58px; max-width:min(320px, calc(100vw - 24px)); padding:8px 12px; border-radius:12px; background:rgba(8,28,20,.92); border:1px solid rgba(232,198,106,.6); color:#f4efe4; font-size:14px; z-index:21; pointer-events:none; animation:chatpop .25s ease-out; }
 @keyframes chatpop { from { transform:translateY(-6px); opacity:0; } to { transform:none; opacity:1; } }
 body.portrait .chatpanel, body.portrait .chatpreview { left:8px; top:54px; }
-body.portrait .chatpanel { height:min(42vh, 300px); width:calc(100vw - 16px); }
+body.portrait .chatpanel { height:min(30vh, 220px); width:min(280px, calc(100vw - 16px)); }
 
 /* volume sliders */
 .volrows { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
@@ -164,3 +164,10 @@ body.portrait .chatpanel { height:min(42vh, 300px); width:calc(100vw - 16px); }
 .volrow input[type=range]::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#f4efe4; border:2px solid #e8c66a; cursor:pointer; }
 .volpop { position:absolute; top:58px; left:12px; width:min(300px, calc(100vw - 24px)); padding:10px 14px; background:rgba(8,28,20,.94); border:1px solid rgba(232,198,106,.6); border-radius:14px; backdrop-filter:blur(6px); z-index:22; pointer-events:auto; }
 body.portrait .volpop { top:54px; left:8px; }
+
+/* cued guest-game badge */
+.cuedbadge { display:flex; align-items:center; gap:8px; margin:6px 0 2px; font-size:13px; opacity:.9; }
+.cuedbadge img, .cuedav { width:26px; height:26px; border-radius:50%; object-fit:cover; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+.cuedbadge b { color:#e8c66a; }
+.cuedbadge.warn { color:#ffb36b; }
+input[readonly] { opacity:.8; cursor:default; }

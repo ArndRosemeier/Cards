@@ -1,3 +1,4 @@
+import { loadCuedSession, type CuedSession } from "./cued.ts";
 import { Application } from "pixi.js";
 import gsap from "gsap";
 import { confetti } from "./fx.ts";
@@ -53,10 +54,14 @@ function hintNow() {
 const token = (() => {
   try { let v = sessionStorage.getItem("token"); if (!v) { v = crypto.randomUUID(); sessionStorage.setItem("token", v); } return v; } catch { return crypto.randomUUID(); }
 })();
-const savedName = () => { try { return localStorage.getItem("name") ?? ""; } catch { return ""; } };
+/** Opened from cued (the friends' portal)? Then the pass tells who is playing; without a pass everything is as before. */
+let cued: CuedSession | null = null, cuedError = "";
+try { cued = loadCuedSession("cards.cued-pass"); } catch (e) { cuedError = e instanceof Error ? e.message : String(e); }
+const cuedName = cued && !cued.expired ? cued.identity.name.slice(0, 20) : "";
+const savedName = () => { if (cuedName) return cuedName; try { return localStorage.getItem("name") ?? ""; } catch { return ""; } };
 const savedLevel = (): number => { try { return localStorage.getItem("level") === "0" ? 0 : 1; } catch { return 1; } };
 const saveLevel = (n: number) => { try { localStorage.setItem("level", String(n)); } catch { /* ignore */ } };
-const saveName = (n: string) => { try { localStorage.setItem("name", n); } catch { /* ignore */ } };
+const saveName = (n: string) => { if (cuedName) return; try { localStorage.setItem("name", n); } catch { /* ignore */ } };
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 async function boot() {
@@ -74,6 +79,15 @@ async function boot() {
 const GAMES: string[] = ["maumau", "hearts", "holdem", "skat", "doppelkopf", "romme", "bridge", "schafkopf", "canasta"];
 const live = (g: string) => GAME_ENTRIES.some((e) => e.id === g);
 
+/** "Playing as <avatar> Name" for cued members, a hint when the pass expired or is broken, nothing otherwise. */
+function cuedBadge(): string {
+  if (cuedError) return `<div class="cuedbadge warn">${esc(t("cuedBad"))}</div>`;
+  if (!cued) return "";
+  const id = cued.identity;
+  if (cued.expired) return `<div class="cuedbadge warn">${esc(t("cuedExpired"))}</div>`;
+  const av = id.avatarUrl ? `<img src="${esc(id.avatarUrl)}" alt="">` : `<span class="cuedav" style="background:${esc(id.circle.background)};color:${esc(id.circle.text)}">${esc(id.initials)}</span>`;
+  return `<div class="cuedbadge">${av}<span>${esc(t("cuedAs"))} <b>${esc(id.name)}</b></span></div>`;
+}
 function panel(html: string): HTMLElement {
   teardown?.(); teardown = null; scene?.destroy(); scene = null; ui.innerHTML = "";
   const wrap = document.createElement("div"); wrap.className = "menu";
@@ -108,9 +122,9 @@ function showMenu() {
   music.stop(); if (!menuFx) menuFx = createMenuScene(app);
   let players = entry().players.includes(3) ? 3 : entry().players[0]!; let name = savedName();
   const render = () => {
-    const w = panel(`<img class="logo" src="cards/logo.webp" alt=""><h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div>
+    const w = panel(`<img class="logo" src="cards/logo.webp" alt=""><h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div>${cuedBadge()}
       <div class="games">${GAMES.map((g) => `<button class="game ${g === gameId ? "sel" : ""}" data-g="${g}" ${live(g) ? "" : "disabled"}>${t(g)}${live(g) ? "" : `<small>${t("soon")}</small>`}</button>`).join("")}</div>
-      <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"></div>
+      <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"${cuedName ? " readonly" : ""}></div>
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
       <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
       <div id="volslot"></div>
@@ -174,8 +188,8 @@ function showOnline(prefill = "", err0 = "") {
   const timer = setInterval(poll, 5000); void poll();
   const stop = () => { alive = false; clearInterval(timer); hub.close(); };
   const render = () => {
-    const w = panel(`<h1>${t("online")}</h1><div class="sub">${t(gameId)}</div>
-      <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"></div>
+    const w = panel(`<h1>${t("online")}</h1><div class="sub">${t(gameId)}</div>${cuedBadge()}
+      <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"${cuedName ? " readonly" : ""}></div>
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === seats ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div>
         <button class="btn primary" id="create">${t("createRoom")}</button></div>
       <div class="row"><label>${t("code")}</label><input type="text" id="code" maxlength="6" value="${esc(prefill)}" style="text-transform:uppercase"><button class="btn" id="join">${t("join")}</button></div>
