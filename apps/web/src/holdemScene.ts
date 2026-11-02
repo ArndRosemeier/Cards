@@ -7,6 +7,7 @@ import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
+import { attachAmbience } from "./ambience.ts";
 import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
@@ -61,7 +62,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
 
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
     this.app = app; this.ui = ui; this.hooks = hooks; setGeo(this.geo);
-    app.stage.addChild(this.bg, this.world);
+    app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
     this.world.addChild(this.tableG, this.layerA, this.layerB, this.layerFx);
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.drawTable();

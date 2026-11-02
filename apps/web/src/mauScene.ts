@@ -8,6 +8,7 @@ import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { CARD_H, CARD_W, tableTexture, suitTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
+import { attachAmbience } from "./ambience.ts";
 import { cover } from "./geo.ts";
 
 import { LAND, PORT, pickGeo, type Geo } from "./geo.ts";
@@ -52,7 +53,7 @@ export class MauScene {
 
   constructor(private app: Application, ui: HTMLElement, hooks: SceneHooks) {
     this.hooks = hooks; this.ui = ui; this.geo = pickGeo(app.screen.width, app.screen.height); setPiles(this.geo);
-    app.stage.addChild(this.bg, this.world);
+    app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
     this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.deckStack.position.set(DECK.x, DECK.y);

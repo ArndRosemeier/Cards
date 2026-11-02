@@ -8,6 +8,7 @@ import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
+import { attachAmbience } from "./ambience.ts";
 import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
@@ -35,7 +36,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
 
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
     this.app = app; this.ui = ui; this.hooks = hooks; setPiles(this.geo);
-    app.stage.addChild(this.bg, this.world);
+    app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
     this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer); this.handLayer.sortableChildren = true;
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 92);

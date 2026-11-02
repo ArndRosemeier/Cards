@@ -6,6 +6,7 @@ import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
+import { attachAmbience } from "./ambience.ts";
 import { LAND, pickGeo, cover, type Anchor, type Geo } from "./geo.ts";
 export const W = LAND.W, H = LAND.H, LAYOUTS = LAND.layouts;
 export type { Anchor };
@@ -68,7 +69,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   constructor(app: Application, ui: HTMLElement, adapter: TrickUi<M, V>, hooks: SceneHooks<M>) {
     this.geo = pickGeo(app.screen.width, app.screen.height);
     this.app = app; this.ui = ui; this.adapter = adapter; this.hooks = hooks;
-    app.stage.addChild(this.bg, this.world);
+    app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
     this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
     this.handLayer.sortableChildren = true;
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);

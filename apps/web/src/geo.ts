@@ -43,8 +43,9 @@ export const pickGeo = (w: number, h: number, allowPortrait = true): Geo => (all
 
 /** Scale a background sprite to cover the screen without distorting it. */
 export function cover(bg: Sprite, w: number, h: number) {
-  const tw = bg.texture.width || 1, th = bg.texture.height || 1, s = Math.max(w / tw, h / th);
+  const tw = bg.texture.width || 1, th = bg.texture.height || 1, s = Math.max(w / tw, h / th) * 1.04; // a little overscan for the parallax
   bg.scale.set(s); bg.position.set((w - tw * s) / 2, (h - th * s) / 2);
+  (bg as unknown as { base: { x: number; y: number } }).base = { x: bg.position.x, y: bg.position.y };
 }
 
 /** Keep the action buttons just above the own hand: portrait publishes a CSS variable, landscape keeps the stylesheet default. */
