@@ -1,0 +1,24 @@
+{
+  "title": "Cards",
+  "tagline": "Nine card games in one app — Mau-Mau, Hearts, Skat, Doppelkopf, Schafkopf, Hold'em, Rommé, Bridge and Canasta. Online, or any seat played by the computer.",
+  "tags": [
+    "games",
+    "cards",
+    "multiplayer",
+    "pwa"
+  ],
+  "screenshot": "/shots/cards.png",
+  "description": "Cards packs nine of the classic European and American card games into one table: Mau-Mau, Hearts, Skat, Doppelkopf, Schafkopf, Texas Hold'em, Rommé, Bridge and Canasta. Each game is a complete rules engine with bots, so a table is never short of players.\n\nPlay solo against the computer at an Easy or Normal level, ask the hint button to suggest a move, and keep a win/loss record per game. Open a room and invite friends through GameHub — the room creator hosts, bots hold empty seats, and a dropped player's seat is taken over until they come back. Procedurally drawn cards, an animated table, synthesized sound, German and English UI, and it installs as a PWA so a solo game works offline.",
+  "highlights": [
+    "Nine games with full rules engines and bots",
+    "Multiplayer rooms over GameHub — bots fill empty seats",
+    "Installable PWA: solo play works offline, UI in German and English"
+  ],
+  "links": [
+    {
+      "label": "Source",
+      "url": "https://github.com/ArndRosemeier/Cards"
+    }
+  ],
+  "cta": "Deal a hand"
+}
