@@ -6,7 +6,7 @@ import { parseMeld } from "@cards/romme";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
-import { drawFelt } from "./cardart.ts";
+import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { LAYOUTS, type GameScene, type SceneHooks } from "./trickScene.ts";
 
@@ -35,7 +35,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     this.app = app; this.ui = ui; this.hooks = hooks;
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer); this.handLayer.sortableChildren = true;
-    this.bg.texture = Texture.from(drawFelt(W, H));
+    this.bg.texture = tableTexture(W, H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 92);
     this.tableLayer.addChild(this.stockStack, this.stockText);
     this.stockStack.eventMode = "static"; this.stockStack.cursor = "pointer"; this.stockStack.on("pointertap", () => this.draw("stock"));

@@ -3,6 +3,7 @@ import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
+import { setTableTheme, preloadBackgrounds } from "./cardart.ts";
 import { getLang, setLang, t } from "./i18n.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
@@ -19,6 +20,7 @@ const defOf = () => { const d = entry().def; return fast ? { ...d, botDelay: () 
 let app: Application;
 let scene: GameScene<any> | null = null;
 document.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest?.(".btn")) sfx.click(); });
+preloadBackgrounds();
 let teardown: (() => void) | null = null;
 
 const token = (() => {
@@ -136,6 +138,7 @@ function enterRoom(session: Session) {
   const showGame = () => {
     gameShown = started = true;
     teardown?.(); scene?.destroy(); ui.innerHTML = "";
+    setTableTheme(gameId);
     scene = entry().scene(app, ui, { submit: (m) => session.submit(m), onFinished: (w, names) => setTimeout(() => showResult(w, names, session), 1500) });
     addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); });
   };
@@ -171,6 +174,7 @@ function startLocal(name: string, players: number, seed: number) {
   const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: BOT_NAMES[i]! }))];
   const d = defOf();
   const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, ...(fast ? { botDelay: () => 100 } : {}) });
+  setTableTheme(gameId);
   scene = entry().scene(app, ui, {
     submit: (m: any) => host.submit(0, m),
     onFinished: (w) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now())), 1500),

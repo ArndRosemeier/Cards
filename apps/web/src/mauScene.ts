@@ -6,7 +6,7 @@ import type { Ev, Move, View } from "@cards/maumau";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
-import { CARD_H, CARD_W, drawFelt, suitTexture } from "./cardart.ts";
+import { CARD_H, CARD_W, tableTexture, suitTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 
 const W = 1600, H = 900;
@@ -59,7 +59,7 @@ export class MauScene {
     this.hooks = hooks; this.ui = ui;
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
-    this.bg.texture = Texture.from(drawFelt(W, H));
+    this.bg.texture = tableTexture(W, H);
     this.deckStack.position.set(DECK.x, DECK.y);
     this.deckCount.anchor.set(0.5); this.deckCount.position.set(DECK.x, DECK.y + CARD_H / 2 + 28);
     this.wishSprite.anchor.set(0.5); this.wishSprite.position.set(DISCARD.x + 150, DISCARD.y); this.wishSprite.visible = false; this.wishSprite.scale.set(0.45);

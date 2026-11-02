@@ -4,7 +4,7 @@ import type { Card, TrickEv, TrickViewBase, Seat } from "@cards/engine";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
-import { CARD_H, drawFelt } from "./cardart.ts";
+import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 
 export const W = 1600, H = 900;
@@ -78,7 +78,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
     this.handLayer.sortableChildren = true;
-    this.bg.texture = Texture.from(drawFelt(W, H));
+    this.bg.texture = tableTexture(W, H);
     this.banner.className = "banner"; this.banner.style.display = "none";
     this.actions.className = "actions";
     this.board.className = "board";

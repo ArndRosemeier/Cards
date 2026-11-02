@@ -140,6 +140,23 @@ function drawShadow(): HTMLCanvasElement {
   return c;
 }
 
+/** Painted table backgrounds (public/bg/*.webp, generated, see audio/manifest-like notes in README). The procedural felt below is the fallback. */
+const THEME_OF: Record<string, string> = { maumau: "maumau", hearts: "felt", doppelkopf: "felt", skat: "bavaria", schafkopf: "bavaria", holdem: "casino", romme: "salon", canasta: "salon", bridge: "bridge" };
+const painted = new Map<string, HTMLImageElement>();
+let theme = "felt";
+export function setTableTheme(gameId: string) { theme = THEME_OF[gameId] ?? "felt"; }
+export function preloadBackgrounds() {
+  for (const n of new Set(Object.values(THEME_OF))) {
+    const img = new Image(); img.decoding = "async";
+    img.onload = () => painted.set(n, img);
+    img.src = new URL(`bg/${n}.webp`, document.baseURI).href;
+  }
+}
+export function tableTexture(w: number, h: number): Texture {
+  const img = painted.get(theme);
+  return img ? Texture.from(img) : Texture.from(drawFelt(w, h));
+}
+
 export function drawFelt(w: number, h: number): HTMLCanvasElement {
   const { c, ctx } = canvas(w / 2, h / 2); // half-res is plenty for a soft surface
   const g = ctx.createRadialGradient(w / 4, h / 4 - 40, 40, w / 4, h / 4, w / 2.2);

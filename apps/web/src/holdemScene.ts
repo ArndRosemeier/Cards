@@ -5,7 +5,7 @@ import type { Ev, Move, View } from "@cards/holdem";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
-import { drawFelt } from "./cardart.ts";
+import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
@@ -57,7 +57,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     this.app = app; this.ui = ui; this.hooks = hooks;
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableG, this.layerA, this.layerB, this.layerFx);
-    this.bg.texture = Texture.from(drawFelt(W, H));
+    this.bg.texture = tableTexture(W, H);
     this.drawTable();
     this.potNode.position.set(POT.x, POT.y); this.potText.anchor.set(0.5); this.potText.position.set(POT.x, POT.y + 34);
     this.layerA.addChild(this.potNode, this.potText);

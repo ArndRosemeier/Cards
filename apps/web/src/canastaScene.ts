@@ -5,7 +5,7 @@ import { checkMelds, checkPile, isCanasta, isWild, points, seatsOf, sideOf, type
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
-import { drawFelt } from "./cardart.ts";
+import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { LAYOUTS, type GameScene, type SceneHooks } from "./trickScene.ts";
 
@@ -38,7 +38,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     this.app = app; this.ui = ui; this.hooks = hooks;
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer); this.handLayer.sortableChildren = true;
-    this.bg.texture = Texture.from(drawFelt(W, H));
+    this.bg.texture = tableTexture(W, H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 112);
     this.pileDepth.position.set(DISC.x, DISC.y); this.pileText.anchor.set(0.5); this.pileText.position.set(DISC.x, DISC.y + 112);
     this.frozenMark.anchor.set(0.5); this.frozenMark.position.set(DISC.x + 62, DISC.y - 86); this.frozenMark.visible = false;
