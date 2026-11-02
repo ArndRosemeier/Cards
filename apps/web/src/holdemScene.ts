@@ -81,7 +81,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     this.layerA.addChild(this.potNode, this.potText);
     const d = new Graphics().circle(0, 0, 16).fill(0xf4efe4).stroke({ width: 2, color: 0x222222 }); const dt = new Text({ text: "D", style: { fill: "#222", fontSize: 18, fontWeight: "800" } }); dt.anchor.set(0.5); this.dealerBtn.addChild(d, dt);
     this.layerB.addChild(this.dealerBtn);
-    this.controls.className = "hcontrols"; this.banner.className = "banner"; this.banner.style.display = "none"; this.board.className = "board";
+    this.controls.className = "hcontrols"; this.banner.className = "banner hbanner"; this.banner.style.display = "none"; this.board.className = "board hboard";
     ui.append(this.controls, this.banner, this.board);
     this.resize(); window.addEventListener("resize", this.onResize);
   }
@@ -322,7 +322,8 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
         const quick = (label: string, to: number) => { const b = document.createElement("button"); b.className = "btn small"; b.textContent = label; b.onclick = () => { this.raiseTo = Math.max(lo, Math.min(hi, Math.round(to))); slider.value = String(this.raiseTo); upd(); }; r2.append(b); };
         const pot = v.pot;
         quick("½", v.bets[this.me]! + v.toCall + (pot + v.toCall) / 2 + 0); quick("¾", v.bets[this.me]! + v.toCall + (pot + v.toCall) * 0.75); quick("Pot", v.bets[this.me]! + v.toCall + (pot + v.toCall)); quick("All-in", hi);
-        r2.append(slider, lab, go); upd(); this.controls.append(r2);
+        if (this.geo.portrait) { r2.append(slider, lab); row.append(go); } else r2.append(slider, lab, go);
+        upd(); this.controls.append(r2);
       }
     }
     this.banner.textContent = v.over ? "" : v.phase === "between" ? (nextMove ? t("hHandOver") : t("hWaitHost")) : v.turn === this.me ? (v.toCall > 0 ? t("hCallPrompt", { n: Math.min(v.toCall, v.stacks[this.me] ?? v.toCall) }) : t("hCheckPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });

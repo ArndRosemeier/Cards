@@ -178,3 +178,11 @@ input[readonly] { opacity:.55; cursor:not-allowed; border-style:dashed; }
 .volinline .volname { display:none; }
 .volinline input[type=range] { min-width:0; }
 @media (max-width:480px) { .volinline .volrows { gap:10px; } }
+
+/* Hold'em on a phone: the banner sits on the table centre (the score box is above it), controls wrap centred */
+body.portrait .banner.hbanner { top:46%; transform:translate(-50%,-50%); font-size:15px; padding:6px 14px; max-width:92vw; text-align:center; }
+body.portrait .hcontrols .hrow { justify-content:center; }
+@media (max-height:760px) { body.portrait .hcontrols { gap:4px; } body.portrait .hcontrols .btn { padding:7px 12px; font-size:14px; } body.portrait .hcontrols .hrow { gap:6px; } body.portrait .hamt { min-width:0; font-size:14px; } }
+body.portrait .board.hboard > div:not(.x) { display:none; }   /* the plates already show every stack */
+body.portrait .hcontrols .hrow .btn.small { padding:6px 9px; }
+body.portrait .board.hboard { top:14px; left:auto; right:8px; transform:none; max-width:none; padding:3px 10px; }
