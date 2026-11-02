@@ -44,6 +44,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private dummy = new Map<Card, CardView>();
   private dummySeat: number | null = null;
   private panelEl = document.createElement("div");
+  private lastTrick: { seat: Seat; card: Card }[] = []; private lastBtn = document.createElement("button");
   private trick = new Map<Seat, CardView>();
   private queue: Update<V, M, E>[] = [];
   private running = false;
@@ -77,7 +78,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.actions.className = "actions";
     this.board.className = "board";
     this.panelEl.className = "panelbox"; this.panelEl.style.display = "none";
-    ui.append(this.banner, this.actions, this.board, this.panelEl);
+    this.lastBtn.className = "btn lasttrick"; this.lastBtn.textContent = t("lastTrick"); this.lastBtn.style.display = "none"; this.lastBtn.onclick = () => this.showLastTrick();
+    ui.append(this.banner, this.actions, this.board, this.panelEl, this.lastBtn);
     this.resize();
     window.addEventListener("resize", this.onResize);
   }
@@ -102,7 +104,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.destroyed = true; document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
     window.removeEventListener("resize", this.onResize);
     gsap.killTweensOf("*");
-    this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove();
+    this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove(); this.lastBtn.remove();
     this.app.stage.removeChildren();
   }
 
@@ -214,7 +216,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.talon, ...this.trick.values(), ...this.dummy.values()];
         this.dummy.clear(); this.dummySeat = null; this.mine.clear(); this.opp = Array.from({ length: this.n }, () => []); this.talon = []; this.trick.clear();
         all.forEach((c) => { gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() }); });
-        this.dealt = false; this.selection.clear();
+        this.dealt = false; this.selection.clear(); this.lastTrick = []; this.lastBtn.style.display = "none";
         await sleep(this.ready && all.length ? 450 : 0);
         break;
       }
@@ -250,6 +252,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
       case "trickDone": {
         await sleep(650);
         const a = this.anchor(ev.winner);
+        this.lastTrick = [...this.trick].map(([seat, cv]) => ({ seat, card: cv.id! })).filter((p) => p.card); this.lastBtn.style.display = this.lastTrick.length ? "block" : "none";
         const views = [...this.trick.values()]; this.trick.clear();
         await Promise.all(views.map((cv, i) => tween(cv, { x: a.cx, y: a.cy, rotation: cv.rotation + 0.6, alpha: 0, duration: 0.55, delay: i * 0.05, ease: "power2.in" })));
         views.forEach((v) => v.destroy());
@@ -294,6 +297,22 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.layoutAll();
     await Promise.all([...this.mine.values()].map((cv, i) => sleep(i * 55).then(() => cv.flip(true))));
     this.layoutAll(); await sleep(200);
+  }
+
+  /** Show the previous trick again, face up, until tapped. */
+  private showLastTrick() {
+    if (!this.lastTrick.length) return;
+    const g = this.geo, layer = new Container(); this.fxLayer.addChild(layer);
+    const dim = new Graphics().rect(0, 0, g.W, g.H).fill({ color: 0x000000, alpha: 0.6 }); dim.eventMode = "static"; dim.cursor = "pointer"; layer.addChild(dim);
+    const title = new Text({ text: t("lastTrick"), style: { fill: "#ffe08a", fontSize: 44, fontWeight: "800", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 6 } } }); title.anchor.set(0.5); title.position.set(g.center.x, g.center.y - (g.portrait ? 300 : 280)); layer.addChild(title);
+    for (const [i, { seat, card }] of this.lastTrick.entries()) {
+      const a = this.anchor(seat), cv = new CardView(card, true);
+      cv.position.set(g.center.x + a.dx * (g.portrait ? 120 : 170), g.center.y + a.dy * (g.portrait ? 140 : 120)); cv.scale.set(0); cv.rotation = (Math.random() - 0.5) * 0.2; layer.addChild(cv);
+      gsap.to(cv.scale, { x: 1.15, y: 1.15, duration: 0.35, ease: "back.out(1.6)", delay: 0.06 * i });
+      const nm = new Text({ text: seat === this.me ? t("you") : this.names[seat] ?? "", style: { fill: "#f4efe4", fontSize: 24, fontWeight: "600", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 4 } } }); nm.anchor.set(0.5); nm.position.set(cv.x, cv.y + 150); layer.addChild(nm);
+    }
+    layer.alpha = 0; gsap.to(layer, { alpha: 1, duration: 0.2 });
+    dim.on("pointertap", () => gsap.to(layer, { alpha: 0, duration: 0.2, onComplete: () => layer.destroy({ children: true }) }));
   }
 
   private impact(x: number, y: number) {
