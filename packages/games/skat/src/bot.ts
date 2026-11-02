@@ -42,7 +42,7 @@ export const skatBot: Bot<View, Move> = {
       if (next) return next;
       return has("pass") ?? legal[0]!;
     }
-    if (v.phase === "skat") return has("pickup")!;
+    if (v.phase === "skat") return bestGame(hand).score >= 18 && has("handgame") ? has("handgame")! : has("pickup")!;   // a very strong hand plays without the Skat
     if (v.phase === "discard") {
       const { game } = bestGame(hand);
       const nonTrump = hand.filter((c) => !isTrump(c, game));
@@ -55,7 +55,10 @@ export const skatBot: Bot<View, Move> = {
       const pick = ranked.slice(0, 2);
       return legal.find((m) => m.t === "cards" && pick.every((c) => m.cards.includes(c))) ?? legal[0]!;
     }
-    if (v.phase === "announce") return legal.find((m) => m.t === "announce" && m.level === "none")!;
+    if (v.phase === "announce") {                          // only a crushing hand risks an announcement
+      const sc = bestGame(hand).score, want = sc >= 25 ? "schwarz" : sc >= 20 ? "schneider" : "none";
+      return legal.find((m) => m.t === "announce" && m.level === want)!;
+    }
     if (v.phase === "declare") {
       const { game } = bestGame(hand);
       return legal.find((m) => m.t === "game" && m.game === game) ?? legal[0]!;

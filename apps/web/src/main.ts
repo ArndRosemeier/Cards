@@ -30,6 +30,8 @@ const token = (() => {
   try { let v = sessionStorage.getItem("token"); if (!v) { v = crypto.randomUUID(); sessionStorage.setItem("token", v); } return v; } catch { return crypto.randomUUID(); }
 })();
 const savedName = () => { try { return localStorage.getItem("name") ?? ""; } catch { return ""; } };
+const savedLevel = (): number => { try { return localStorage.getItem("level") === "0" ? 0 : 1; } catch { return 1; } };
+const saveLevel = (n: number) => { try { localStorage.setItem("level", String(n)); } catch { /* ignore */ } };
 const saveName = (n: string) => { try { localStorage.setItem("name", n); } catch { /* ignore */ } };
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
@@ -66,9 +68,11 @@ function showMenu() {
       <div class="games">${GAMES.map((g) => `<button class="game ${g === gameId ? "sel" : ""}" data-g="${g}" ${live(g) ? "" : "disabled"}>${t(g)}${live(g) ? "" : `<small>${t("soon")}</small>`}</button>`).join("")}</div>
       <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"></div>
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
+      <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
       ${langRow()}
       <div class="row" style="justify-content:flex-end"><button class="btn" id="rules">${t("rules")}</button><button class="btn" id="online">${t("online")}</button><button class="btn primary" id="go">${t("play")}</button></div>`);
     (w.querySelector("#rules") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
+    w.querySelectorAll<HTMLButtonElement>("#lv button").forEach((b) => (b.onclick = () => { saveLevel(Number(b.dataset.lv)); w.querySelectorAll("#lv button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     const nm = () => (name = (w.querySelector("#nm") as HTMLInputElement).value.trim());
     w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); players = Number(b.dataset.n); render(); }));
     w.querySelectorAll<HTMLButtonElement>("[data-g]:not([disabled])").forEach((b) => (b.onclick = () => { nm(); gameId = b.dataset.g!; if (!entry().players.includes(players)) players = entry().players[entry().players.length - 1]!; render(); }));
@@ -179,7 +183,7 @@ function showResult(winner: number, names: string[], session: Session | null, ag
 // ---------------------------------------------------------------- local play
 function startLocal(name: string, players: number, seed: number) {
   killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
-  const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: BOT_NAMES[i]! }))];
+  const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: BOT_NAMES[i]!, level: savedLevel() }))];
   const d = defOf();
   const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, ...(fast ? { botDelay: () => 100 } : {}) });
   setTableTheme(gameId);

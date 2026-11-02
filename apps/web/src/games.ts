@@ -16,6 +16,7 @@ import { MauScene } from "./mauScene.ts";
 import { HoldemScene } from "./holdemScene.ts";
 import { TrickScene, type GameScene, type SceneHooks, type TrickUi } from "./trickScene.ts";
 import { t } from "./i18n.ts";
+import { withLevel } from "./levels.ts";
 
 const skatSuit = ["C", "S", "H", "D"];
 const skatRank = ["A", "T", "K", "Q", "9", "8", "7"];
@@ -180,47 +181,47 @@ const heartsUi: TrickUi<HMove, HView> = {
 export const GAME_ENTRIES: GameEntry[] = [
   {
     id: "maumau", players: [2, 3, 4, 5],
-    def: { id: "maumau", rules: MauMau, config: mauCfg, makeBot: () => mauMauBot },
+    def: { id: "maumau", rules: MauMau, config: mauCfg, makeBot: (spec) => withLevel(mauMauBot, spec.level) },
     scene: (app, ui, hooks) => new MauScene(app, ui, hooks),
   },
   {
     id: "hearts", players: [4],
-    def: { id: "hearts", rules: Hearts, config: heartsCfg, makeBot: () => heartsBot },
+    def: { id: "hearts", rules: Hearts, config: heartsCfg, makeBot: (spec) => withLevel(heartsBot, spec.level) },
     scene: (app, ui, hooks) => new TrickScene(app, ui, heartsUi, hooks),
   },
   {
     id: "skat", players: [3],
-    def: { id: "skat", rules: Skat, config: skatCfg, makeBot: () => skatBot },
+    def: { id: "skat", rules: Skat, config: skatCfg, makeBot: (spec) => withLevel(skatBot, spec.level) },
     scene: (app, ui, hooks) => new TrickScene(app, ui, skatUi, hooks),
   },
   {
     id: "doppelkopf", players: [4],
-    def: { id: "doppelkopf", rules: Doppelkopf, config: dokoCfg, makeBot: () => dokoBot },
+    def: { id: "doppelkopf", rules: Doppelkopf, config: dokoCfg, makeBot: (spec) => withLevel(dokoBot, spec.level) },
     scene: (app, ui, hooks) => new TrickScene(app, ui, dokoUi, hooks),
   },
   {
     id: "schafkopf", players: [4],
-    def: { id: "schafkopf", rules: Schafkopf, config: schafCfg, makeBot: () => schafkopfBot },
+    def: { id: "schafkopf", rules: Schafkopf, config: schafCfg, makeBot: (spec) => withLevel(schafkopfBot, spec.level) },
     scene: (app, ui, hooks) => new TrickScene(app, ui, schafUi, hooks),
   },
   {
     id: "holdem", players: [2, 3, 4, 5, 6],
-    def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: () => holdemBot },
+    def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: (spec) => withLevel(holdemBot, spec.level) },
     scene: (app, ui, hooks) => new HoldemScene(app, ui, hooks),
   },
   {
     id: "romme", players: [2, 3, 4],
-    def: { id: "romme", rules: Romme, config: rommeCfg, makeBot: () => rommeBot },
+    def: { id: "romme", rules: Romme, config: rommeCfg, makeBot: (spec) => withLevel(rommeBot, spec.level) },
     scene: (app, ui, hooks) => new RommeScene(app, ui, hooks),
   },
   {
     id: "canasta", players: [2, 3, 4],
-    def: { id: "canasta", rules: Canasta, config: canastaCfg, makeBot: () => canastaBot },
+    def: { id: "canasta", rules: Canasta, config: canastaCfg, makeBot: (spec) => withLevel(canastaBot, spec.level) },
     scene: (app, ui, hooks) => new CanastaScene(app, ui, hooks),
   },
   {
     id: "bridge", players: [4],
-    def: { id: "bridge", rules: Bridge, config: bridgeCfg, makeBot: () => bridgeBot },
+    def: { id: "bridge", rules: Bridge, config: bridgeCfg, makeBot: (spec) => withLevel(bridgeBot, spec.level) },
     scene: (app, ui, hooks) => new TrickScene(app, ui, bridgeUi, hooks),
   },
 ];

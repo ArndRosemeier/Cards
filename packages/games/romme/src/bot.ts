@@ -104,6 +104,12 @@ export const rommeBot: Bot<View, Move> = {
       return { t: "draw", from: "stock" };
     }
     const me = v.you as number;
+    if (v.opened[me]) {                                   // trade a natural card for a joker lying in a table meld
+      for (let mi = 0; mi < v.melds.length; mi++) {
+        const m = v.melds[mi]!, jk = m.cards.find(isJoker); if (!jk) continue;
+        for (const c of new Set(hand)) if (!isJoker(c) && parseMeld(m.cards.map((x) => (x === jk ? c : x)))) return { t: "swap", meld: mi, card: c };
+      }
+    }
     const plan = bestPlan(hand);
     const keepForOut = v.melds.length === 0 && !v.opened[me];
     if (plan.groups.length && (v.opened[me] || plan.value >= v.minOpen)) {
