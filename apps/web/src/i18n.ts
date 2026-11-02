@@ -20,6 +20,9 @@ const de: Dict = {
   dk_healthyBtn: "Gesund", dk_hochzeit: "Hochzeit", dk_soloC: "Kreuz-Solo", dk_soloS: "Pik-Solo", dk_soloH: "Herz-Solo", dk_soloD: "Karo-Solo", dk_soloQ: "Damen-Solo", dk_soloJ: "Buben-Solo",
   dk_askReserve: "Gesund oder Vorbehalt?", dk_reserving: "{n} überlegt …", dk_team: "Partei", dk_reserve: "Vorbehalt!", dk_healthy: "Gesund", dk_re: "Re!", dk_kontra: "Kontra!",
   dk_partner: "Partner gefunden", dk_forcedSolo: "Stilles Solo", dk_reWon: "Re gewinnt ({re} Augen) · {n}", dk_kontraWon: "Kontra gewinnt · {n}",
+  sk_passBtn: "Weiter", sk_sauC: "Rufspiel Eichel", sk_sauS: "Rufspiel Gras", sk_sauD: "Rufspiel Schellen", sk_wenz: "Wenz", sk_soloC: "Eichel-Solo", sk_soloS: "Gras-Solo", sk_soloH: "Herz-Solo", sk_soloD: "Schellen-Solo",
+  sk_ramsch: "Ramsch", sk_pass: "Weiter", sk_choose: "Was spielst du?", sk_choosing: "{n} überlegt …", sk_partner: "Die Sau!", sk_partnerIs: "Partner:", sk_won: "Gewonnen! {pts} Augen", sk_lost: "Verloren! {pts} Augen",
+  sk_durchmarsch: "Durchmarsch!", sk_ramschLoser: "Verloren mit {pts}", sk_role_declarer: "Du spielst", sk_role_partner: "Du bist Partner", sk_role_opponent: "Du spielst dagegen",
 };
 const en: Dict = {
   title: "Card Games", play: "Play", you: "You", players: "Players", name: "Your name",
@@ -42,6 +45,9 @@ const en: Dict = {
   dk_healthyBtn: "Healthy", dk_hochzeit: "Marriage", dk_soloC: "Clubs solo", dk_soloS: "Spades solo", dk_soloH: "Hearts solo", dk_soloD: "Diamonds solo", dk_soloQ: "Queens solo", dk_soloJ: "Jacks solo",
   dk_askReserve: "Healthy or reservation?", dk_reserving: "{n} is thinking …", dk_team: "Team", dk_reserve: "Reservation!", dk_healthy: "Healthy", dk_re: "Re!", dk_kontra: "Kontra!",
   dk_partner: "Partner found", dk_forcedSolo: "Silent solo", dk_reWon: "Re wins ({re} points) · {n}", dk_kontraWon: "Kontra wins · {n}",
+  sk_passBtn: "Pass", sk_sauC: "Call ace of Acorns", sk_sauS: "Call ace of Leaves", sk_sauD: "Call ace of Bells", sk_wenz: "Wenz", sk_soloC: "Acorns solo", sk_soloS: "Leaves solo", sk_soloH: "Hearts solo", sk_soloD: "Bells solo",
+  sk_ramsch: "Ramsch", sk_pass: "Pass", sk_choose: "What do you play?", sk_choosing: "{n} is thinking …", sk_partner: "The ace!", sk_partnerIs: "Partner:", sk_won: "Won! {pts} points", sk_lost: "Lost! {pts} points",
+  sk_durchmarsch: "Grand slam!", sk_ramschLoser: "Lost with {pts}", sk_role_declarer: "You play", sk_role_partner: "You are the partner", sk_role_opponent: "You play against",
 };
 let lang: "de" | "en" = (() => {
   try { const s = localStorage.getItem("lang"); if (s === "de" || s === "en") return s; } catch { /* ignore */ }

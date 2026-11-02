@@ -5,6 +5,7 @@ import { Hearts, defaultConfig as heartsCfg, heartsBot, type View as HView, type
 import { RANKS, suitOf, rankOf, type Card } from "@cards/engine";
 import { Skat, defaultConfig as skatCfg, skatBot, BIDS, type View as SView, type Move as SMove } from "@cards/skat";
 import { Doppelkopf, defaultConfig as dokoCfg, dokoBot, isTrump as dokoTrump, strength as dokoStrength, type View as DView, type Move as DMove, type Mode as DMode } from "@cards/doppelkopf";
+import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTrump, strength as schafStrength, type View as SKView, type Move as SKMove, type Mode as SKMode } from "@cards/schafkopf";
 import { MauScene } from "./mauScene.ts";
 import { TrickScene, type GameScene, type SceneHooks, type TrickUi } from "./trickScene.ts";
 import { t } from "./i18n.ts";
@@ -74,6 +75,27 @@ const dokoUi: TrickUi<DMove, DView> = {
 };
 let currentDokoTeam: DView["team"] = null;
 
+const schafOrder = (hand: Card[], v?: SKView) => {
+  const mode: SKMode = v?.mode ?? "sauC";
+  const key = (c: Card) => schafTrump(c, mode) ? -1000 - schafStrength(c, mode) : SUIT_ORDER.indexOf(suitOf(c)) * 100 - schafStrength(c, mode);
+  return hand.slice().sort((a, b) => key(a) - key(b));
+};
+const schafUi: TrickUi<SKMove, SKView> = {
+  cardOfMove: (m) => (m.t === "play" ? m.card : null),
+  cardsOfMove: () => null,
+  label: (m) => (m.t === "pass" ? t("sk_passBtn") : m.t === "game" ? t("sk_" + m.mode) : null),
+  order: schafOrder,
+  status: (v, names, me) => {
+    if (v.over) return "";
+    const who = v.turn === me ? "" : names[v.turn ?? 0] ?? "";
+    if (v.phase === "choose") return v.turn === me ? t("sk_choose") : t("sk_choosing", { n: who });
+    return v.turn === me ? t("yourTurn") : t("turnOf", { n: who });
+  },
+  extra: (v, names) => [t("roundNo", { a: v.round + 1, b: v.rounds }), ...(v.mode && v.mode !== "ramsch" && v.declarer !== null ? [`${names[v.declarer]}: ${t("sk_" + v.mode)}`] : v.mode === "ramsch" ? [t("sk_ramsch")] : []),
+    ...(v.role ? [t("sk_role_" + v.role)] : []), ...(v.partnerKnown !== null ? [`${t("sk_partnerIs")} ${names[v.partnerKnown]}`] : [])],
+  winner: (v) => v.scores.indexOf(Math.max(...v.scores)),
+};
+
 export interface GameEntry {
   id: string;
   players: number[];            // selectable seat counts
@@ -118,6 +140,11 @@ export const GAME_ENTRIES: GameEntry[] = [
     id: "doppelkopf", players: [4],
     def: { id: "doppelkopf", rules: Doppelkopf, config: dokoCfg, makeBot: () => dokoBot },
     scene: (app, ui, hooks) => new TrickScene(app, ui, dokoUi, hooks),
+  },
+  {
+    id: "schafkopf", players: [4],
+    def: { id: "schafkopf", rules: Schafkopf, config: schafCfg, makeBot: () => schafkopfBot },
+    scene: (app, ui, hooks) => new TrickScene(app, ui, schafUi, hooks),
   },
 ];
 export const entryOf = (id: string) => GAME_ENTRIES.find((g) => g.id === id)!;
