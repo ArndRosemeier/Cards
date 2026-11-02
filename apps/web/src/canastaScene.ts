@@ -6,7 +6,7 @@ import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { addAvatar } from "./avatar.ts";
 import { popEmote } from "./emote.ts";
-import { roundSummary } from "./summary.ts";
+import { roundSummary, patchBoard } from "./summary.ts";
 import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -186,7 +186,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
       case "newRound": {
         if (this.view && u.view.sideScores.some((x, i) => x !== this.view!.sideScores[i])) {
           const rows = Array.from({ length: u.view.sides }, (_, sd) => ({ name: seatsOf(this.n, sd).map((s) => (s === this.me ? t("you") : this.names[s])).join(" + "), from: this.view!.sideScores[sd] ?? 0, to: u.view.sideScores[sd] ?? 0, me: sideOf(this.n, this.me) === sd }));
-          await roundSummary(this.ui, rows, t("roundDone"));
+          patchBoard(this.board, u.view.sideScores); await roundSummary(this.ui, rows, t("roundDone"));
         }
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.groups.flatMap((g) => g.cards), ...(this.discardView ? [this.discardView] : [])];
         this.groups.forEach((g) => { g.frame.destroy(); g.label.destroy(); }); this.groups = []; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();

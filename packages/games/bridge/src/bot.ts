@@ -24,6 +24,7 @@ function conventional(v: View, calls: Call[]): Call | null {
   const longestSuit = (suits: Strain[]) => suits.slice().sort((a, b) => cn[b]! - cn[a]!)[0]!;
   const second = (excl: string) => (["S", "H", "D", "C"] as Strain[]).filter((x) => x !== excl).sort((a, b) => cn[b]! - cn[a]!)[0]!;
   const bal = balanced(cn);
+  const aces = (cs: Card[]) => cs.filter((c) => rankOf(c) === "A").length;
 
   // ---------------- opening
   if (mine.length === 0 && A.every((a) => a.call.t === "pass")) {
@@ -81,6 +82,7 @@ function conventional(v: View, calls: Call[]): Call | null {
     const sup = (cn[o.suit]!) , shortPts = (() => { let d = 0; for (const [s, n] of Object.entries(cn)) if (s !== o.suit) d += n === 0 ? 3 : n === 1 ? 2 : n === 2 ? 1 : 0; return d; })();
     if (isMajor(o.suit) && sup >= 3) {
       const sp = h + (sup >= 4 ? shortPts : Math.min(shortPts, 1));
+      if (sp >= 17 && sup >= 4 && aces(hand) >= 1) return bid(4, "N") ?? bid(4, o.suit) ?? pass;            // Blackwood: slam is possible
       if (sp >= 13) return bid(4, o.suit) ?? pass;                                   // a 5-3 or 5-4 major fit plays better than 3NT
       if (sp >= 10) return bid(3, o.suit) ?? pass;
       if (sp >= 6) return bid(2, o.suit) ?? pass;
@@ -124,6 +126,10 @@ function conventional(v: View, calls: Call[]): Call | null {
       if (rc.level === 3) return isMajor(o.suit) && h >= 14 ? bid(4, o.suit) ?? pass : pass;
       return pass;
     }
+    if (rc.suit === "N" && rc.level === 4 && isMajor(o.suit)) {                    // Blackwood: answer with the number of aces
+      const n = aces(hand);
+      return (n === 1 ? bid(5, "D") : n === 2 ? bid(5, "H") : n === 3 ? bid(5, "S") : bid(5, "C")) ?? pass;
+    }
     if (rc.suit === "N") {                                                         // 1NT 6-9 / 2NT 10-12 / 3NT
       if (rc.level >= 3) return pass;
       if (rc.level === 2) return h >= 14 ? bid(3, "N") ?? pass : pass;
@@ -143,6 +149,20 @@ function conventional(v: View, calls: Call[]): Call | null {
     const other = second(o.suit);
     if (cn[other]! >= 4 && other !== rc.suit) { const b = cheapest(calls, other); if (b && b.t === "bid" && b.level <= 2) return b; }
     return bid(1, "N") ?? bid(2, "N") ?? (cheapest(calls, o.suit) ?? pass);
+  }
+
+  // ---------------- I asked with Blackwood and partner answered
+  const asked = ownBids.find((a) => (a.call as Extract<Call, { t: "bid" }>).suit === "N" && (a.call as Extract<Call, { t: "bid" }>).level === 4);
+  if (asked && mine[0]!.seat === partner) {
+    const trump = (mine[0]!.call as Extract<Call, { t: "bid" }>).suit;
+    const ans = [...partnerBids].reverse()[0]!.call as Extract<Call, { t: "bid" }>;
+    if (ans.level === 5 && ans.suit !== "N" && isMajor(trump)) {
+      const theirs = ans.suit === "C" ? 0 : ans.suit === "D" ? 1 : ans.suit === "H" ? 2 : 3;
+      const total = aces(hand) + theirs;
+      if (total >= 4) return bid(6, trump) ?? pass;
+      return bid(5, trump) ?? pass;
+    }
+    return pass;
   }
 
   // ---------------- responder's second turn (partner has rebid)

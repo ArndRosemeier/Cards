@@ -70,3 +70,10 @@ test("weak two opening", () => {
   const m = atAuction([hand, [], [], []] as any, [], 0) as any;
   assert.deepEqual([m.t, m.level, m.suit], ["bid", 2, "S"]);
 });
+
+test("Blackwood: opener answers with the number of aces", () => {
+  const opener = ["SA", "SK", "S9", "S7", "S3", "HK", "H5", "D8", "D4", "D2", "C7", "C3", "C2"]; // one ace
+  const none = [[], [], [], []] as string[][];
+  const r = atAuction([opener, none[1]!, none[2]!, none[3]!] as any, [[0, "1S"], [1, "P"], [2, "4N"], [3, "P"]], 0) as any;
+  assert.deepEqual([r.t, r.level, r.suit], ["bid", 5, "D"]);
+});

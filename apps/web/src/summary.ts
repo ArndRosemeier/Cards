@@ -26,3 +26,8 @@ export function roundSummary(ui: HTMLElement, rows: SummaryRow[], title: string,
     setTimeout(close, fast ? 900 : 3800 + rows.length * 120);
   });
 }
+
+/** Bring the score box up to date while the summary is showing (rows are in score order). */
+export function patchBoard(board: HTMLElement, scores: number[]) {
+  board.querySelectorAll("b").forEach((b, i) => { if (scores[i] !== undefined) b.textContent = String(scores[i]); });
+}
