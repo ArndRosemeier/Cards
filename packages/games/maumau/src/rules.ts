@@ -154,6 +154,11 @@ export const MauMau: GameRules<MauMauConfig, MauMauState, Move, View, Ev> = {
     };
   },
 
+  redactEvent(ev, seat) {
+    if (ev.t === "drew" && ev.seat !== seat) return { ...ev, cards: ev.cards.map(() => "??" as Card) };
+    return ev;
+  },
+
   result(s) {
     if (s.winner === null) return null;
     return { winners: [s.winner], scores: s.hands.map((h, i) => (i === s.winner ? 0 : h.length)) };

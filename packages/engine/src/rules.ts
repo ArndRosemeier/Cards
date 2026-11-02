@@ -19,4 +19,11 @@ export interface GameRules<Config, State, Move, View, Ev> {
   apply(state: State, seat: Seat, move: Move, rng: Rng): { state: State; events: Ev[] };
   view(state: State, seat: Seat | "public"): View;
   result(state: State): GameResult | null;
+  /** Hide what `seat` may not see in an event (e.g. cards drawn by someone else). Default: unchanged. */
+  redactEvent?(event: Ev, seat: Seat): Ev;
+}
+
+/** A computer player. Sees only its own view plus the legal moves, never the hidden state. */
+export interface Bot<View, Move> {
+  choose(view: View, legal: Move[], rng: Rng): Move;
 }
