@@ -45,9 +45,15 @@ export class CardView extends Container {
   flip(toUp: boolean, duration = 0.28): Promise<void> {
     if (this.faceUp === toUp) return Promise.resolve();
     return new Promise((resolve) => {
-      gsap.to(this.inner.scale, { x: 0, duration: duration / 2, ease: "power2.in", onComplete: () => {
+      // a little perspective: the card rises, skews as it turns edge-on and settles back
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      gsap.to(this, { lift: Math.max(this._lift, 0.7), duration: duration / 2, ease: "power2.out" });
+      gsap.to(this.inner.skew, { y: 0.16 * dir, duration: duration / 2, ease: "power2.in" });
+      gsap.to(this.inner.scale, { x: 0, y: 1.04, duration: duration / 2, ease: "power2.in", onComplete: () => {
         this.setFace(toUp); sfx.flip();
-        gsap.to(this.inner.scale, { x: 1, duration: duration / 2, ease: "power2.out", onComplete: () => resolve() });
+        gsap.to(this.inner.skew, { y: 0, duration: duration / 2, ease: "power2.out" });
+        gsap.to(this, { lift: 0, duration: duration / 2, ease: "power2.in" });
+        gsap.to(this.inner.scale, { x: 1, y: 1, duration: duration / 2, ease: "power2.out", onComplete: () => resolve() });
       } });
     });
   }

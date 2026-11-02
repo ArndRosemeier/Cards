@@ -1,4 +1,5 @@
 import { Application } from "pixi.js";
+import { confetti } from "./fx.ts";
 import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
@@ -166,6 +167,7 @@ function showResult(winner: number, names: string[], session: Session | null, ag
   (r.querySelector("#again") as HTMLButtonElement | null)?.addEventListener("click", () => again!());
   (r.querySelector("#menu") as HTMLButtonElement).onclick = () => { session?.leave(); showMenu(); };
   ui.append(r);
+  if (winner === me) confetti(r);
 }
 
 // ---------------------------------------------------------------- local play
