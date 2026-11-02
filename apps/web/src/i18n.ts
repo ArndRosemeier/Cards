@@ -11,6 +11,8 @@ const de: Dict = {
   startGame: "Spiel starten", leave: "Verlassen", host: "Gastgeber", openRooms: "Offene Räume", noRooms: "Keine offenen Räume", copyLink: "Link kopieren",
   copied: "Kopiert!", roomFull: "Raum ist voll", connFail: "Verbindung fehlgeschlagen", away: "weg", seatOpenHuman: "Offen für Mitspieler", seatBot: "Computer",
   back: "Zurück", onlyHost: "Nur der Gastgeber kann starten", join: "Beitreten",
+  confirm: "Bestätigen", moon: "Schuss auf den Mond!", waitingOthers: "Warte auf die anderen …", passCards: "Wähle 3 Karten zum Weitergeben ({dir})",
+  passLeft: "nach links", passRight: "nach rechts", passAcross: "gegenüber", roundPoints: "Runde",
 };
 const en: Dict = {
   title: "Card Games", play: "Play", you: "You", players: "Players", name: "Your name",
@@ -24,6 +26,8 @@ const en: Dict = {
   startGame: "Start game", leave: "Leave", host: "Host", openRooms: "Open rooms", noRooms: "No open rooms", copyLink: "Copy link",
   copied: "Copied!", roomFull: "Room is full", connFail: "Connection failed", away: "away", seatOpenHuman: "Open for a player", seatBot: "Computer",
   back: "Back", onlyHost: "Only the host can start", join: "Join",
+  confirm: "Confirm", moon: "Shooting the moon!", waitingOthers: "Waiting for the others …", passCards: "Pick 3 cards to pass ({dir})",
+  passLeft: "left", passRight: "right", passAcross: "across", roundPoints: "Round",
 };
 let lang: "de" | "en" = (() => {
   try { const s = localStorage.getItem("lang"); if (s === "de" || s === "en") return s; } catch { /* ignore */ }

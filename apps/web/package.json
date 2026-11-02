@@ -1,4 +1,21 @@
-{ "name": "@cards/web", "version": "0.1.0", "private": true, "type": "module",
-  "scripts": { "dev": "vite", "build": "vite build" },
-  "dependencies": { "@cards/engine": "*", "@cards/net": "*", "@cards/maumau": "*", "pixi.js": "^8.9.0", "gsap": "^3.12.5" },
-  "devDependencies": { "vite": "^8.3.5" } }
+{
+  "name": "@cards/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@cards/engine": "*",
+    "@cards/net": "*",
+    "@cards/maumau": "*",
+    "pixi.js": "^8.9.0",
+    "gsap": "^3.12.5",
+    "@cards/hearts": "*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5"
+  }
+}

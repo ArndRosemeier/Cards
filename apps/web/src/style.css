@@ -39,3 +39,11 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
 .result .panel { text-align:center; }
 .result h1 { font-size:40px; }
 .result .btns { display:flex; gap:10px; justify-content:center; margin-top:18px; }
+.actions { position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom) + 250px); transform:translateX(-50%); display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:90vw; }
+.actions .btn { background:rgba(0,0,0,.55); backdrop-filter:blur(6px); }
+.actions .btn.primary { background:linear-gradient(#f2d37e,#d9ac3f); }
+.actions .btn:disabled { opacity:.45; cursor:default; }
+.board { position:absolute; right:12px; top:12px; min-width:130px; padding:8px 12px; border-radius:14px; background:rgba(0,0,0,.4); border:1px solid rgba(232,198,106,.3); font-size:14px; pointer-events:none; }
+.board div { display:flex; justify-content:space-between; gap:18px; padding:2px 0; opacity:.75; }
+.board div.on { opacity:1; color:#ffe08a; }
+.board .x { opacity:.8; font-size:12px; border-top:1px solid rgba(255,255,255,.12); margin-top:4px; padding-top:4px; }
