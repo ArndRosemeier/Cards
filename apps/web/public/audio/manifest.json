@@ -22,6 +22,9 @@
  "music": {
   "music_a": "30-second loopable instrumental background music for a relaxed card game night, warm felt piano, soft upright bass, brushed drums, gentle jazz lounge, mellow, no vocals, steady tempo, ends cleanly",
   "music_b": "30-second loopable instrumental ambient music for focused thinking at a card table, warm pads, soft marimba, subtle glass bells, slow, calm, no drums, no vocals",
-  "music_c": "30-second loopable instrumental cozy acoustic music, fingerstyle nylon guitar, light shaker, upbeat but relaxed, warm, no vocals"
+  "music_c": "30-second loopable instrumental cozy acoustic music, fingerstyle nylon guitar, light shaker, upbeat but relaxed, warm, no vocals",
+  "pro_a": "Lyria 3 Pro: Full instrumental piece, about 3 minutes: relaxed jazz-lounge for a card game night, felt piano, upright bass, brushed drums, vibraphone solo in the middle, warm and unhurried, gentle build then calm ending, no vocals",
+  "pro_b": "Lyria 3 Pro: Full instrumental piece, about 3 minutes: calm ambient for thoughtful play, warm analog pads, soft marimba and glass bells, slowly evolving harmony, no drums, no vocals, peaceful",
+  "pro_c": "Lyria 3 Pro: Full instrumental piece, about 3 minutes: cozy acoustic folk-chamber, fingerstyle nylon guitar, cello, light percussion, hopeful and warm, gentle dynamics, no vocals"
  }
 }

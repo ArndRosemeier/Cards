@@ -72,10 +72,10 @@ export const sfx = {
 };
 
 /** Background music: crossfaded playlist, streamed through media elements (never decoded whole). */
-const TRACKS = ["music_a", "music_b", "music_c"];
+const TRACKS = ["pro_a", "pro_b", "pro_c", "music_a", "music_b", "music_c"];
 const MUSIC_VOL = 0.35, FADE = 2.5;
 let musicOff = (() => { try { return localStorage.getItem("musicOff") === "1"; } catch { return false; } })();
-let playing = false, cur: HTMLAudioElement | null = null, idx = Math.floor(Math.random() * TRACKS.length), timer = 0;
+let playing = false, cur: HTMLAudioElement | null = null, idx = Math.floor(Math.random() * 3), timer = 0;
 function fade(a: HTMLAudioElement, to: number, secs: number, done?: () => void) {
   const from = a.volume, t0 = performance.now();
   const step = () => { const k = Math.min(1, (performance.now() - t0) / (secs * 1000)); a.volume = Math.max(0, Math.min(1, from + (to - from) * k)); if (k < 1) requestAnimationFrame(step); else done?.(); };
