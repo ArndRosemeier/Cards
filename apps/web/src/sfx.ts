@@ -20,16 +20,24 @@ function sample(k: string, delay = 0, rate = 1): boolean {
   const c = ac(); const list = bank[k]; if (!c || !list?.length) return false;
   let b = list[Math.floor(Math.random() * list.length)]; if (list.length > 1) b = list[(list.indexOf(b) + 1) % list.length];
   const src = c.createBufferSource(); src.buffer = b; src.playbackRate.value = rate * (0.96 + Math.random() * 0.08);
-  const g = c.createGain(); g.gain.value = (GAIN[k] ?? 0.6) * (0.88 + Math.random() * 0.12);
+  const g = c.createGain(); g.gain.value = (GAIN[k] ?? 0.6) * sfxVol * (0.88 + Math.random() * 0.12);
   src.connect(g).connect(c.destination); src.start(c.currentTime + delay); return true;
 }
 
 let ctx: AudioContext | null = null;
-let muted = (() => { try { return localStorage.getItem("muted") === "1"; } catch { return false; } })();
+/** volumes 0..1, saved between sessions; 0 is silent. The old on/off switches migrate to 0. */
+const readVol = (key: string, legacyOff: string): number => {
+  try {
+    const v = localStorage.getItem(key); if (v !== null && isFinite(Number(v))) return Math.max(0, Math.min(1, Number(v)));
+    return localStorage.getItem(legacyOff) === "1" ? 0 : 1;
+  } catch { return 1; }
+};
+const saveVol = (key: string, v: number) => { try { localStorage.setItem(key, String(v)); } catch { /* ignore */ } };
+let sfxVol = readVol("sfxVol", "muted");
 let noise: AudioBuffer | null = null;
 
 function ac(): AudioContext | null {
-  if (muted) return null;
+  if (sfxVol <= 0) return null;
   try {
     if (!ctx) ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     if (ctx.state === "suspended") void ctx.resume();
@@ -43,14 +51,14 @@ function burst(freq: number, q: number, dur: number, gain: number, type: BiquadF
   const t0 = c.currentTime + delay;
   const src = c.createBufferSource(); src.buffer = noise;
   const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
-  const g = c.createGain(); g.gain.setValueAtTime(gain, t0); g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+  const g = c.createGain(); g.gain.setValueAtTime(gain * sfxVol, t0); g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
   src.connect(f).connect(g).connect(c.destination); src.start(t0, Math.random() * 0.1, dur + 0.02);
 }
 function tone(freq: number, dur: number, gain: number, type: OscillatorType = "sine", delay = 0) {
   const c = ac(); if (!c) return;
   const t0 = c.currentTime + delay;
   const o = c.createOscillator(); o.type = type; o.frequency.value = freq;
-  const g = c.createGain(); g.gain.setValueAtTime(gain, t0); g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+  const g = c.createGain(); g.gain.setValueAtTime(gain * sfxVol, t0); g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
   o.connect(g).connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.02);
 }
 
@@ -91,8 +99,8 @@ export const sfx = {
   /** check / pass knock */
   knock() { if (sample("knock")) return; tone(220, 0.05, 0.12, "triangle"); tone(220, 0.05, 0.1, "triangle", 0.12); },
   tick() { tone(900, 0.04, 0.06, "square"); },
-  get muted() { return muted; },
-  toggle() { muted = !muted; try { localStorage.setItem("muted", muted ? "1" : "0"); } catch { /* ignore */ } music.sync(); return muted; },
+  get volume() { return sfxVol; },
+  setVolume(v: number) { sfxVol = Math.max(0, Math.min(1, v)); saveVol("sfxVol", sfxVol); },
 };
 
 /** Background music: crossfaded playlist, streamed through media elements (never decoded whole). */
@@ -101,7 +109,7 @@ const SHARED = ["pro_a", "pro_b", "pro_c", "music_a", "music_b", "music_c"];
 const THEME: Record<string, string> = { holdem: "th_casino", skat: "th_bavaria", schafkopf: "th_bavaria", doppelkopf: "th_bavaria", romme: "th_salon", canasta: "th_salon", bridge: "th_club", maumau: "th_play", hearts: "th_club" };
 let TRACKS = SHARED;
 const MUSIC_VOL = 0.35, FADE = 2.5;
-let musicOff = (() => { try { return localStorage.getItem("musicOff") === "1"; } catch { return false; } })();
+let musicVol = readVol("musicVol", "musicOff");
 let playing = false, cur: HTMLAudioElement | null = null, idx = 0, timer = 0;
 function fade(a: HTMLAudioElement, to: number, secs: number, done?: () => void) {
   const from = a.volume, t0 = performance.now();
@@ -109,11 +117,11 @@ function fade(a: HTMLAudioElement, to: number, secs: number, done?: () => void) 
   step();
 }
 function nextTrack() {
-  if (!playing || muted || musicOff) return;
+  if (!playing || musicVol <= 0) return;
   const a = new Audio(new URL(`audio/${TRACKS[idx++ % TRACKS.length]}.mp3`, document.baseURI).href);
   a.volume = 0; const old = cur; cur = a;
   a.play().then(() => {
-    fade(a, MUSIC_VOL, FADE);
+    fade(a, MUSIC_VOL * musicVol, FADE);
     if (old) fade(old, 0, FADE, () => { old.pause(); });
     const len = isFinite(a.duration) ? a.duration : 30;
     timer = window.setTimeout(nextTrack, Math.max(5, len - FADE) * 1000);
@@ -123,10 +131,14 @@ export const music = {
   start(gameId?: string) {
     const th = gameId ? THEME[gameId] : undefined, rest = [...SHARED].sort(() => Math.random() - 0.5);
     if (!playing || !cur) { TRACKS = th ? [th, ...rest] : rest; idx = 0; }
-    playing = true; if (!cur && !muted && !musicOff) nextTrack();
+    playing = true; if (!cur && musicVol > 0) nextTrack();
   },
   stop() { playing = false; clearTimeout(timer); if (cur) { const a = cur; cur = null; fade(a, 0, 0.8, () => a.pause()); } },
-  sync() { if (muted || musicOff) { clearTimeout(timer); if (cur) { const a = cur; cur = null; fade(a, 0, 0.5, () => a.pause()); } } else if (playing && !cur) nextTrack(); },
-  get off() { return musicOff; },
-  toggle() { musicOff = !musicOff; try { localStorage.setItem("musicOff", musicOff ? "1" : "0"); } catch { /* ignore */ } music.sync(); return musicOff; },
+  sync() { if (musicVol <= 0) { clearTimeout(timer); if (cur) { const a = cur; cur = null; fade(a, 0, 0.5, () => a.pause()); } } else if (playing && !cur) nextTrack(); },
+  get volume() { return musicVol; },
+  setVolume(v: number) {
+    musicVol = Math.max(0, Math.min(1, v)); saveVol("musicVol", musicVol);
+    if (cur && musicVol > 0) cur.volume = MUSIC_VOL * musicVol;
+    music.sync();
+  },
 };

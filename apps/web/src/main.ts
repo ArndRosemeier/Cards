@@ -80,6 +80,23 @@ function panel(html: string): HTMLElement {
   wrap.innerHTML = `<div class="panel">${html}</div>`; ui.append(wrap);
   return wrap;
 }
+/** Two volume sliders (effects, music), saved between sessions. */
+function volumeRows(): HTMLElement {
+  const box = document.createElement("div"); box.className = "volrows";
+  const mk = (icon: string, label: string, get: () => number, set: (v: number) => void, preview?: () => void) => {
+    const row = document.createElement("div"); row.className = "volrow"; row.title = label;
+    const ic = document.createElement("span"); ic.className = "volic";
+    const sl = document.createElement("input"); sl.type = "range"; sl.min = "0"; sl.max = "100"; sl.step = "1"; sl.value = String(Math.round(get() * 100)); sl.setAttribute("aria-label", label);
+    const lab = document.createElement("span"); lab.className = "volname"; lab.textContent = label;
+    const paint = () => { const v = Number(sl.value); ic.textContent = v === 0 ? "🔇" : icon; sl.style.setProperty("--p", `${v}%`); };
+    sl.oninput = () => { set(Number(sl.value) / 100); paint(); };
+    sl.onchange = () => preview?.();
+    ic.onclick = () => { if (Number(sl.value) > 0) { ic.dataset.prev = sl.value; sl.value = "0"; } else sl.value = ic.dataset.prev ?? "70"; set(Number(sl.value) / 100); paint(); preview?.(); };
+    paint(); row.append(ic, lab, sl); return row;
+  };
+  box.append(mk("🔊", t("volSfx"), () => sfx.volume, (v) => sfx.setVolume(v), () => sfx.place()), mk("♪", t("volMusic"), () => music.volume, (v) => music.setVolume(v)));
+  return box;
+}
 const langRow = () => `<div class="row"><label>${t("language")}</label><div class="seg" id="lg">${["de", "en"].map((l) => `<button class="${getLang() === l ? "sel" : ""}" data-l="${l}">${l.toUpperCase()}</button>`).join("")}</div></div>`;
 function bindLang(w: HTMLElement, rerender: () => void) {
   w.querySelectorAll<HTMLButtonElement>("#lg button").forEach((b) => (b.onclick = () => { setLang(b.dataset.l as "de" | "en"); rerender(); }));
@@ -96,6 +113,7 @@ function showMenu() {
       <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"></div>
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
       <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
+      <div id="volslot"></div>
       ${langRow()}
       <div class="row"><label>${t("fourColor")}</label><div class="seg" id="fc"><button class="${getFourColor() ? "" : "sel"}" data-v="0">${t("off")}</button><button class="${getFourColor() ? "sel" : ""}" data-v="1">${t("on")}</button></div></div>
       <div class="row"><label>${t("cardBack")}</label><div class="seg backs" id="bk">${BACKS.map((b) => `<button class="${getBack() === b ? "sel" : ""}" data-b="${b}"><img src="cards/${b}.webp" alt=""></button>`).join("")}</div></div>
@@ -109,6 +127,7 @@ function showMenu() {
     w.querySelectorAll<HTMLButtonElement>("#fc button").forEach((b) => (b.onclick = () => { setFourColor(b.dataset.v === "1"); w.querySelectorAll("#fc button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     w.querySelectorAll<HTMLButtonElement>("#bk button").forEach((b) => (b.onclick = () => { setBack(b.dataset.b!); w.querySelectorAll("#bk button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     bindLang(w, () => { nm(); render(); });
+    w.querySelector("#volslot")!.append(volumeRows());
     (w.querySelector("#go") as HTMLButtonElement).onclick = () => { nm(); name ||= t("you"); saveName(name); startLocal(name, players, Date.now()); };
     (w.querySelector("#online") as HTMLButtonElement).onclick = () => { nm(); if (name) saveName(name); showOnline(); };
   };
@@ -243,7 +262,7 @@ let chatSink: ((l: ChatLine) => void) | null = null;
 
 function addHud(onMenu: () => void, onEmote?: (id: string) => void, onChat?: (text: string) => void) {
   const hud = document.createElement("div"); hud.className = "hud";
-  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="emobtn" title="${t('emote')}">☺</button>${onChat ? `<button class="btn" id="chatbtn" title="${t('chat')}">💬<span class="badge" hidden></span></button>` : ""}<button class="btn" id="rulesbtn">?</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
+  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="emobtn" title="${t('emote')}">☺</button>${onChat ? `<button class="btn" id="chatbtn" title="${t('chat')}">💬<span class="badge" hidden></span></button>` : ""}<button class="btn" id="rulesbtn">?</button><button class="btn" id="volbtn" title="${t('volume')}">${sfx.volume === 0 && music.volume === 0 ? "🔇" : "🔊"}</button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
   (hud.querySelector("#hintbtn") as HTMLButtonElement).onclick = () => { sfx.hint(); hintNow(); };
   (hud.querySelector("#emobtn") as HTMLButtonElement).onclick = () => {
@@ -255,8 +274,13 @@ function addHud(onMenu: () => void, onEmote?: (id: string) => void, onChat?: (te
   };
   if (onChat) mountChat(hud, onChat);
   (hud.querySelector("#rulesbtn") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
-  (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
-  (hud.querySelector("#mus") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = music.toggle() ? "♪̸" : "♪"; };
+  (hud.querySelector("#volbtn") as HTMLButtonElement).onclick = (e) => {
+    const vb = e.currentTarget as HTMLElement;
+    const old = ui.querySelector(".volpop"); if (old) { old.remove(); return; }
+    const pop = document.createElement("div"); pop.className = "volpop"; pop.append(volumeRows());
+    pop.addEventListener("input", () => { vb.textContent = sfx.volume === 0 && music.volume === 0 ? "🔇" : "🔊"; });
+    ui.append(pop);
+  };
   ui.append(hud);
   music.start(gameId); sfx.shuffle();
   const rot = document.createElement("div"); rot.className = "rotate"; rot.innerHTML = `<div class="ico">⟳</div><div>${t("rotate")}</div>`; ui.append(rot);

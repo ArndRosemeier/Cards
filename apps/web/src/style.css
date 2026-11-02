@@ -152,3 +152,15 @@ body.portrait.dummytop .trumpchip { left:auto; right:8px; top:14px; }
 @keyframes chatpop { from { transform:translateY(-6px); opacity:0; } to { transform:none; opacity:1; } }
 body.portrait .chatpanel, body.portrait .chatpreview { left:8px; top:54px; }
 body.portrait .chatpanel { height:min(42vh, 300px); width:calc(100vw - 16px); }
+
+/* volume sliders */
+.volrows { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+.volrow { display:flex; align-items:center; gap:10px; }
+.volic { width:26px; text-align:center; cursor:pointer; font-size:17px; user-select:none; }
+.volname { width:74px; font-size:14px; opacity:.85; }
+.volrow input[type=range] { flex:1; min-width:90px; height:6px; -webkit-appearance:none; appearance:none; border-radius:4px; outline:none;
+  background:linear-gradient(90deg,#e8c66a var(--p,70%),rgba(255,255,255,.2) var(--p,70%)); }
+.volrow input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#f4efe4; border:2px solid #e8c66a; cursor:pointer; }
+.volrow input[type=range]::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#f4efe4; border:2px solid #e8c66a; cursor:pointer; }
+.volpop { position:absolute; top:58px; left:12px; width:min(300px, calc(100vw - 24px)); padding:10px 14px; background:rgba(8,28,20,.94); border:1px solid rgba(232,198,106,.6); border-radius:14px; backdrop-filter:blur(6px); z-index:22; pointer-events:auto; }
+body.portrait .volpop { top:54px; left:8px; }
