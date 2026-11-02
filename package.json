@@ -2,11 +2,22 @@
   "name": "cards",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "packages/games/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "packages/games/*",
+    "apps/*"
+  ],
   "scripts": {
     "test": "node --test \"packages/**/test/*.test.ts\"",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "npm run dev -w @cards/web",
+    "build": "npm run build -w @cards/web"
   },
-  "engines": { "node": ">=22.18" },
-  "devDependencies": { "@types/node": "^26.6.5", "typescript": "^7.0.2" }
+  "engines": {
+    "node": ">=22.18"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
 }
