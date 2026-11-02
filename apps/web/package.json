@@ -18,7 +18,8 @@
     "@cards/doppelkopf": "*",
     "@cards/schafkopf": "*",
     "@cards/holdem": "*",
-    "@cards/romme": "*"
+    "@cards/romme": "*",
+    "@cards/bridge": "*"
   },
   "devDependencies": {
     "vite": "^8.3.5"

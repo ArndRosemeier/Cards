@@ -9,6 +9,7 @@ import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTru
 import { Holdem, defaultConfig as holdemCfg, holdemBot } from "@cards/holdem";
 import { Romme, defaultConfig as rommeCfg, rommeBot } from "@cards/romme";
 import { RommeScene } from "./rommeScene.ts";
+import { Bridge, defaultConfig as bridgeCfg, bridgeBot, callText, type View as BView, type Move as BMove } from "@cards/bridge";
 import { MauScene } from "./mauScene.ts";
 import { HoldemScene } from "./holdemScene.ts";
 import { TrickScene, type GameScene, type SceneHooks, type TrickUi } from "./trickScene.ts";
@@ -100,6 +101,54 @@ const schafUi: TrickUi<SKMove, SKView> = {
   winner: (v) => v.scores.indexOf(Math.max(...v.scores)),
 };
 
+const SYM: Record<string, string> = { C: "♣", D: "♦", H: "♥", S: "♠", N: "NT" };
+const callHtml = (c: any): string => c.t === "bid" ? `${c.level}<span class="${c.suit === "H" || c.suit === "D" ? "red" : ""}">${SYM[c.suit]}</span>` : c.t === "pass" ? "–" : c.t === "double" ? "X" : "XX";
+const SEATN = ["N", "E", "S", "W"];
+const bridgeUi: TrickUi<BMove, BView> = {
+  cardOfMove: (m) => (m.t === "play" ? m.card : null),
+  cardsOfMove: () => null,
+  label: () => null,
+  order: (hand, v) => {
+    const trump = v?.contract?.suit && v.contract.suit !== "N" ? v.contract.suit : null;
+    const order = ["S", "H", "C", "D"];
+    return hand.slice().sort((a, b) => {
+      const sa = suitOf(a) === trump ? -1 : order.indexOf(suitOf(a)), sb = suitOf(b) === trump ? -1 : order.indexOf(suitOf(b));
+      return sa - sb || RANKS.indexOf(rankOf(b)) - RANKS.indexOf(rankOf(a));
+    });
+  },
+  status: (v, names, me) => {
+    if (v.over) return "";
+    if (v.phase === "auction") return v.turn === me ? t("br_yourCall") : t("br_calling", { n: names[v.turn ?? 0] ?? "" });
+    if (v.controller === me && v.turn !== me) return t("br_playDummy");
+    return v.turn === me ? t("yourTurn") : t("turnOf", { n: names[v.turn ?? 0] ?? "" });
+  },
+  extra: (v, names) => [`${t("roundNo", { a: v.board, b: v.boards })}`, `${t("br_vul")}: ${v.vul[0] && v.vul[1] ? t("br_both") : v.vul[0] ? "NS" : v.vul[1] ? "EW" : t("br_none")}`,
+    ...(v.contract ? [`${v.contract.level}${SYM[v.contract.suit]}${["", " X", " XX"][v.contract.doubled]} ${SEATN[v.contract.declarer]} · ${v.tricks[v.contract.declarer % 2]}/${v.tricks[0] + v.tricks[1]}`] : [])],
+  panel: (v, legal, ctx) => {
+    if (v.phase === "over") return null;
+    const box = document.createElement("div"); box.className = "bidbox";
+    if (v.phase === "auction") {
+      const hist = document.createElement("div"); hist.className = "auction";
+      hist.innerHTML = [0, 1, 2, 3].map((s) => `<b>${SEATN[s]}${s === v.dealer ? "*" : ""}</b>`).join("") + [...Array(v.dealer).fill(null), ...v.auction].map((a: any) => `<span>${a ? callHtml(a.call) : ""}</span>`).join("");
+      if (v.turn === ctx.me) {
+        const grid = document.createElement("div"); grid.className = "bidgrid";
+        for (let level = 1; level <= 7; level++) for (const su of ["C", "D", "H", "S", "N"]) {
+          const mv = legal.find((m) => m.t === "bid" && m.level === level && m.suit === su);
+          const b = document.createElement("button"); b.innerHTML = callHtml({ t: "bid", level, suit: su }); b.disabled = !mv; if (mv) b.onclick = () => ctx.send(mv); grid.append(b);
+        }
+        const row = document.createElement("div"); row.className = "bidrow";
+        for (const [k, label] of [["pass", t("pass2")], ["double", "X"], ["redouble", "XX"]] as const) {
+          const mv = legal.find((m) => m.t === k); const b = document.createElement("button"); b.textContent = label; b.disabled = !mv; if (mv) b.onclick = () => ctx.send(mv); row.append(b);
+        }
+        box.append(grid, row);
+      }
+      box.append(hist); return box;
+    }
+    return null;
+  },
+  winner: (v) => (v.scores[0]! >= v.scores[1]! ? 0 : 1),
+};
+
 export interface GameEntry {
   id: string;
   players: number[];            // selectable seat counts
@@ -159,6 +208,11 @@ export const GAME_ENTRIES: GameEntry[] = [
     id: "romme", players: [2, 3, 4],
     def: { id: "romme", rules: Romme, config: rommeCfg, makeBot: () => rommeBot },
     scene: (app, ui, hooks) => new RommeScene(app, ui, hooks),
+  },
+  {
+    id: "bridge", players: [4],
+    def: { id: "bridge", rules: Bridge, config: bridgeCfg, makeBot: () => bridgeBot },
+    scene: (app, ui, hooks) => new TrickScene(app, ui, bridgeUi, hooks),
   },
 ];
 export const entryOf = (id: string) => GAME_ENTRIES.find((g) => g.id === id)!;

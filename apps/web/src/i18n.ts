@@ -27,6 +27,8 @@ const de: Dict = {
   hh_highCard: "Höchste Karte", hh_pair: "Paar", hh_twoPair: "Zwei Paare", hh_trips: "Drilling", hh_straight: "Straße", hh_flush: "Flush", hh_fullHouse: "Full House", hh_quads: "Vierling", hh_straightFlush: "Straight Flush",
   rm_out: "Rommé!", rm_reshuffle: "Stapel neu gemischt", rm_openFirst: "Erst auslegen (Mindestwert)", rm_noFit: "Passt nicht", rm_addGroup: "Gruppe bilden", rm_open: "Auslegen", rm_unstage: "Zurücksetzen",
   rm_meld: "Legen", rm_discard: "Abwerfen", rm_drawPrompt: "Ziehe vom Stapel oder nimm die offene Karte", rm_playPrompt: "Auslegen, anlegen oder abwerfen", rm_minOpen: "Auslegen ab {n} Punkten",
+  pass2: "Passe", br_yourCall: "Du bist mit Reizen dran", br_calling: "{n} reizt …", br_playDummy: "Spiele vom Tisch (Dummy)", br_vul: "Gefahr", br_both: "Beide", br_none: "Keine",
+  br_call: "{call}", br_passedOut: "Alle passen", br_contract: "Kontrakt!", br_made: "Erfüllt! {n}", br_down: "Gefallen! −{n}",
 };
 const en: Dict = {
   title: "Card Games", play: "Play", you: "You", players: "Players", name: "Your name",
@@ -56,6 +58,8 @@ const en: Dict = {
   hh_highCard: "High card", hh_pair: "Pair", hh_twoPair: "Two pair", hh_trips: "Three of a kind", hh_straight: "Straight", hh_flush: "Flush", hh_fullHouse: "Full house", hh_quads: "Four of a kind", hh_straightFlush: "Straight flush",
   rm_out: "Rummy!", rm_reshuffle: "Stock reshuffled", rm_openFirst: "Open first (minimum value)", rm_noFit: "Does not fit", rm_addGroup: "Form group", rm_open: "Lay out", rm_unstage: "Reset",
   rm_meld: "Meld", rm_discard: "Discard", rm_drawPrompt: "Draw from the stock or take the open card", rm_playPrompt: "Meld, lay off or discard", rm_minOpen: "Opening needs {n} points",
+  pass2: "Pass", br_yourCall: "Your call", br_calling: "{n} is bidding …", br_playDummy: "Play from the dummy", br_vul: "Vulnerable", br_both: "Both", br_none: "None",
+  br_call: "{call}", br_passedOut: "Passed out", br_contract: "Contract!", br_made: "Made! {n}", br_down: "Down! −{n}",
 };
 let lang: "de" | "en" = (() => {
   try { const s = localStorage.getItem("lang"); if (s === "de" || s === "en") return s; } catch { /* ignore */ }

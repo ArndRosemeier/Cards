@@ -28,6 +28,8 @@ export interface TrickUi<M, V> {
   /** extra panel rows next to the scores, e.g. "bid 24" */
   extra?(v: V, names: string[]): string[];
   talonFaceUp?(v: V): boolean;
+  /** custom panel (e.g. the Bridge bidding box). Return null to hide. */
+  panel?(v: V, legal: M[], ctx: { send(m: M): void; names: string[]; me: number }): HTMLElement | null;
   winner(v: V): number;                        // who won the match (for the result screen)
 }
 
@@ -45,6 +47,9 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private mine = new Map<Card, CardView>();
   private opp: CardView[][] = [];
   private talon: CardView[] = [];
+  private dummy = new Map<Card, CardView>();
+  private dummySeat: number | null = null;
+  private panelEl = document.createElement("div");
   private trick = new Map<Seat, CardView>();
   private queue: Update<V, M, E>[] = [];
   private running = false;
@@ -76,7 +81,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.banner.className = "banner"; this.banner.style.display = "none";
     this.actions.className = "actions";
     this.board.className = "board";
-    ui.append(this.banner, this.actions, this.board);
+    this.panelEl.className = "panelbox"; this.panelEl.style.display = "none";
+    ui.append(this.banner, this.actions, this.board, this.panelEl);
     this.resize();
     window.addEventListener("resize", this.onResize);
   }
@@ -90,7 +96,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.destroyed = true;
     window.removeEventListener("resize", this.onResize);
     gsap.killTweensOf("*");
-    this.banner.remove(); this.actions.remove(); this.board.remove();
+    this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove();
     this.app.stage.removeChildren();
   }
 
@@ -148,16 +154,17 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private talonSlot(i: number) { return { x: CENTER.x - 55 + i * 110, y: 250, rot: 0, scale: 0.8 }; }
 
   private handOf(seat: number): CardView[] {
+    if (seat === this.dummySeat && seat !== this.me) return this.adapter.order([...this.dummy.keys()], this.view ?? undefined).map((c) => this.dummy.get(c)!);
     if (seat !== this.me) return this.opp[seat]!;
     const order = this.adapter.order([...this.mine.keys()], this.view ?? undefined);
     return order.map((c) => this.mine.get(c)!);
   }
   private fanSlot(seat: number, i: number, n: number) {
-    const a = this.anchor(seat), own = seat === this.me;
-    const step = own ? Math.min(78, 1100 / Math.max(n, 1)) : Math.min(28, 420 / Math.max(n, 1));
+    const a = this.anchor(seat), own = seat === this.me, dum = seat === this.dummySeat && !own;
+    const step = own ? Math.min(78, 1100 / Math.max(n, 1)) : dum ? Math.min(46, 620 / Math.max(n, 1)) : Math.min(28, 420 / Math.max(n, 1));
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.9 : 0.5);
     const cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.03 : 0.03), scale: own ? 1 : 0.56 };
+    return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.03 : 0.03), scale: own ? 1 : dum ? 0.72 : 0.56 };
   }
   private layout(seat: number, animate = true) {
     const hand = this.handOf(seat);
@@ -189,6 +196,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
 
   private takeFrom(seat: Seat | "talon", card: Card): CardView {
     if (seat === "talon") return this.talon.pop() ?? this.newView(card, false);
+    if (this.dummy.has(card)) { const cv = this.dummy.get(card)!; this.dummy.delete(card); return cv; }
     if (seat === this.me) return this.mine.get(card) ?? this.newView(card, true);
     const h = this.opp[seat]!;
     return h.splice(Math.floor(h.length / 2), 1)[0] ?? this.newView(null, false);
@@ -197,8 +205,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private async animate(ev: E, u: Update<V, M, E>) {
     switch (ev.t) {
       case "newRound": {
-        const all = [...this.mine.values(), ...this.opp.flat(), ...this.talon, ...this.trick.values()];
-        this.mine.clear(); this.opp = Array.from({ length: this.n }, () => []); this.talon = []; this.trick.clear();
+        const all = [...this.mine.values(), ...this.opp.flat(), ...this.talon, ...this.trick.values(), ...this.dummy.values()];
+        this.dummy.clear(); this.dummySeat = null; this.mine.clear(); this.opp = Array.from({ length: this.n }, () => []); this.talon = []; this.trick.clear();
         all.forEach((c) => { gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() }); });
         this.dealt = false; this.selection.clear();
         await sleep(this.ready && all.length ? 450 : 0);
@@ -239,6 +247,15 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         const views = [...this.trick.values()]; this.trick.clear();
         await Promise.all(views.map((cv, i) => tween(cv, { x: a.cx, y: a.cy, rotation: cv.rotation + 0.6, alpha: 0, duration: 0.55, delay: i * 0.05, ease: "power2.in" })));
         views.forEach((v) => v.destroy());
+        break;
+      }
+      case "reveal": {
+        if (ev.seat === this.me) break;
+        this.dummySeat = ev.seat;
+        const l = this.opp[ev.seat]!;
+        for (const c of ev.cards) { const cv = l.pop() ?? this.newView(null, false); cv.reveal(c); this.dummy.set(c, cv); }
+        this.layout(ev.seat);
+        await Promise.all([...this.dummy.values()].map((cv, i) => sleep(i * 40).then(() => cv.flip(true, 0.3)))); this.layout(ev.seat); await sleep(250);
         break;
       }
       case "say": this.toast(ev.seat, t(ev.key, ev.vars ?? {})); await sleep(700); break;
@@ -300,11 +317,22 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         for (const c of v.hand) { const cv = this.newView(c, true); this.handLayer.addChild(cv); this.mine.set(c, cv); }
       }
       for (let s = 0; s < this.n; s++) {
-        if (s === this.me) continue;
+        if (s === this.me || s === this.dummySeat) continue;
         const list = this.opp[s]!;
         while (list.length > v.handSizes[s]!) list.pop()!.destroy();
         while (list.length < v.handSizes[s]!) { const cv = this.newView(null, false); this.handLayer.addChild(cv); list.push(cv); }
       }
+      if (v.shown) {
+        const [seatStr, cards] = Object.entries(v.shown)[0]!; const ds = Number(seatStr);
+        if (ds !== this.me) {
+          const same = cards.length === this.dummy.size && cards.every((c) => this.dummy.has(c));
+          if (!same || this.dummySeat !== ds) {
+            for (const cv of this.dummy.values()) cv.destroy(); this.dummy.clear(); this.dummySeat = ds;
+            this.opp[ds]!.forEach((c) => c.destroy()); this.opp[ds] = [];
+            for (const c of cards) { const cv = this.newView(c, true); this.handLayer.addChild(cv); this.dummy.set(c, cv); }
+          }
+        }
+      } else if (this.dummy.size) { for (const cv of this.dummy.values()) cv.destroy(); this.dummy.clear(); this.dummySeat = null; }
       while (this.talon.length > v.talon) this.talon.pop()!.destroy();
       while (this.talon.length < v.talon) this.talon.push(this.newView(null, false));
       const tr = new Map(v.trick.map((p) => [p.seat, p.card]));
@@ -336,7 +364,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const v = this.view; if (!v) return;
     const play = this.busy ? new Set<Card>() : this.playable();
     const sel = this.busy ? { cards: new Set<Card>(), k: 0 } : this.selectable();
-    for (const [card, cv] of this.mine) {
+    for (const [card, cv] of [...this.mine, ...this.dummy]) {
       const canPlay = play.has(card), canSel = sel.cards.has(card), on = canPlay || canSel;
       cv.eventMode = on ? "static" : "none"; cv.cursor = on ? "pointer" : "default"; cv.removeAllListeners();
       const picked = this.selection.has(card);
@@ -376,6 +404,10 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.banner.style.display = this.busy || v.over || !this.banner.textContent ? "none" : "block";
     const rows = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.scores[i] ?? 0}</b></div>`);
     const extra = this.adapter.extra?.(v, this.names) ?? [];
+    if (this.adapter.panel) {
+      const el = this.busy ? null : this.adapter.panel(v, this.legal, { send: (m) => this.send(m), names: this.names, me: this.me });
+      this.panelEl.innerHTML = ""; if (el) { this.panelEl.append(el); this.panelEl.style.display = "block"; } else this.panelEl.style.display = "none";
+    }
     this.board.innerHTML = rows.join("") + extra.map((e) => `<div class="x">${e}</div>`).join("");
   }
 }

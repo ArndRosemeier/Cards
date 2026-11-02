@@ -11,6 +11,7 @@ export type TrickEv =
   | { t: "transfer"; from: Seat | "talon"; to: Seat | "talon"; cards: Card[] } // "??" cards are hidden from the viewer
   | { t: "played"; seat: Seat; card: Card }
   | { t: "trickDone"; winner: Seat }
+  | { t: "reveal"; seat: Seat; cards: Card[] }
   | { t: "say"; seat: Seat | null; key: string; vars?: Record<string, string | number> };
 
 export interface TrickViewBase {
@@ -22,6 +23,8 @@ export interface TrickViewBase {
   turn: Seat | null;
   scores: number[];                    // match scores per seat
   over: boolean;
+  /** hands that are face-up for everybody (Bridge dummy): seat -> cards */
+  shown?: Record<number, Card[]>;
 }
 
 export const HIDDEN = "??" as Card;
