@@ -7,6 +7,7 @@ import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { addAvatar } from "./avatar.ts";
 import { popEmote } from "./emote.ts";
+import { roundSummary } from "./summary.ts";
 import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -153,6 +154,10 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private async animate(ev: Ev, u: Update<View, Move, Ev>) {
     switch (ev.t) {
       case "newRound": {
+        if (this.view && u.view.scores.some((x, i) => x !== this.view!.scores[i])) {
+          const rows = this.names.map((nm, i) => ({ name: i === this.me ? t("you") : nm, from: this.view!.scores[i] ?? 0, to: u.view.scores[i] ?? 0, me: i === this.me }));
+          await roundSummary(this.ui, rows, t("roundDone"), true);   // Rommé: fewer penalty points is better
+        }
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.melds.flatMap((m) => m.cards), ...(this.discardView ? [this.discardView] : [])];
         this.melds.forEach((m) => m.frame.destroy()); this.melds = []; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();
         all.forEach((c) => gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() })); this.dealt = false; await sleep(this.ready && all.length ? 450 : 0); break;

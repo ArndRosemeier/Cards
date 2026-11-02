@@ -5,6 +5,7 @@ import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { addAvatar } from "./avatar.ts";
 import { popEmote } from "./emote.ts";
+import { roundSummary } from "./summary.ts";
 import { CardView, HandOrder, type DragCtl, addCountIcon, spreadHand, sleep, tween } from "./cardview.ts";
 import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -23,6 +24,8 @@ export interface TrickUi<M, V> {
   /** extra panel rows next to the scores, e.g. "bid 24" */
   extra?(v: V, names: string[]): string[];
   talonFaceUp?(v: V): boolean;
+  /** partnership game: scores come in pairs of seats (Bridge), so the summary shows one row per side */
+  teams?: boolean;
   /** custom panel (e.g. the Bridge bidding box). Return null to hide. */
   panel?(v: V, legal: M[], ctx: { send(m: M): void; names: string[]; me: number }): HTMLElement | null;
   winner(v: V): number;                        // who won the match (for the result screen)
@@ -239,6 +242,12 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private async animate(ev: E, u: Update<V, M, E>) {
     switch (ev.t) {
       case "newRound": {
+        if (this.view && u.view.scores.some((x, i) => x !== this.view!.scores[i])) {
+          const nm = (i: number) => (i === this.me ? t("you") : this.names[i] ?? "");
+          const rows = this.adapter.teams ? [0, 1].map((sd) => ({ name: `${nm(sd)} + ${nm(sd + 2)}`, from: this.view!.scores[sd] ?? 0, to: u.view.scores[sd] ?? 0, me: sd === this.me % 2 }))
+            : this.names.map((_, i) => ({ name: nm(i), from: this.view!.scores[i] ?? 0, to: u.view.scores[i] ?? 0, me: i === this.me }));
+          await roundSummary(this.ui, rows, t("roundDone"));
+        }
         this.tricksWon = []; this.showWon();
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.talon, ...this.trick.values(), ...this.dummy.values()];
         this.dummy.clear(); this.dummySeat = null; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.talon = []; this.trick.clear();

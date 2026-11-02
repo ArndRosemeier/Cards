@@ -124,6 +124,7 @@ const callHtml = (c: any): string => c.t === "bid" ? `${c.level}<span class="${c
 /** compass letters as seen from the own seat: you are South, the next seat clockwise is West */
 const compass = (seat: number, me: number) => ["S", "W", "N", "E"][(seat - me + 4) % 4]!;
 const bridgeUi: TrickUi<BMove, BView> = {
+  teams: true,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: () => null,
   label: () => null,

@@ -121,3 +121,13 @@ body.portrait .emopick { top:54px; left:8px; }
 @media (max-height:820px) { .menu .panel { padding:18px 20px; } .menu h1 { font-size:28px; } .menu .sub { margin-bottom:12px; } .menu .games { margin-bottom:12px; gap:8px; } .menu .game { padding:10px 12px; } .menu .row { margin-bottom:8px; } }
 @media (max-width:480px) { .menu .games { grid-template-columns:repeat(3,1fr); gap:6px; } .menu .game { padding:8px 8px; font-size:13px; border-radius:11px; } .menu .logo { width:52px; height:52px; margin:-6px auto 2px; } .menu .panel { padding:14px 16px; } }
 .menu .panel { padding-bottom:56px; }
+.roundsum { position:absolute; inset:0; display:grid; place-items:center; background:rgba(4,14,9,.45); z-index:15; cursor:pointer; }
+.rs-box { min-width:min(86vw,340px); padding:18px 22px 14px; border-radius:18px; background:rgba(8,28,20,.94); border:1px solid rgba(232,198,106,.55); box-shadow:0 20px 60px rgba(0,0,0,.55); }
+.rs-title { font-weight:700; color:var(--gold); font-size:18px; letter-spacing:.03em; margin-bottom:10px; text-align:center; }
+.rs-row { display:grid; grid-template-columns:1fr auto 64px; gap:12px; align-items:baseline; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+.rs-row.me span { color:var(--gold); font-weight:600; }
+.rs-row.best span::after { content:" ★"; color:var(--gold); }
+.rs-d { font-size:20px; font-variant-numeric:tabular-nums; min-width:56px; text-align:right; }
+.rs-d.pos { color:#8be28b; } .rs-d.neg { color:#f08a8a; }
+.rs-t { font-style:normal; opacity:.75; text-align:right; font-variant-numeric:tabular-nums; }
+.rs-hint { margin-top:8px; font-size:12px; opacity:.5; text-align:center; }
