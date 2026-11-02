@@ -8,7 +8,7 @@ import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
 import { EMOTES } from "./emote.ts";
-import { setTableTheme, preloadBackgrounds, preloadCardArt, BACKS, getBack, setBack } from "./cardart.ts";
+import { setTableTheme, preloadBackgrounds, preloadCardArt, BACKS, getBack, setBack, getFourColor, setFourColor } from "./cardart.ts";
 import { getLang, setLang, t } from "./i18n.ts";
 import { Rng } from "@cards/engine";
 import { cardsInMove, hintText } from "./hint.ts";
@@ -97,6 +97,7 @@ function showMenu() {
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
       <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
       ${langRow()}
+      <div class="row"><label>${t("fourColor")}</label><div class="seg" id="fc"><button class="${getFourColor() ? "" : "sel"}" data-v="0">${t("off")}</button><button class="${getFourColor() ? "sel" : ""}" data-v="1">${t("on")}</button></div></div>
       <div class="row"><label>${t("cardBack")}</label><div class="seg backs" id="bk">${BACKS.map((b) => `<button class="${getBack() === b ? "sel" : ""}" data-b="${b}"><img src="cards/${b}.webp" alt=""></button>`).join("")}</div></div>
       <div class="row" style="justify-content:flex-end"><button class="btn" id="stats">${t("stats")}</button><button class="btn" id="rules">${t("rules")}</button><button class="btn" id="online">${t("online")}</button><button class="btn primary" id="go">${t("play")}</button></div>`);
     (w.querySelector("#stats") as HTMLButtonElement).onclick = showStats;
@@ -105,6 +106,7 @@ function showMenu() {
     const nm = () => (name = (w.querySelector("#nm") as HTMLInputElement).value.trim());
     w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); players = Number(b.dataset.n); render(); }));
     w.querySelectorAll<HTMLButtonElement>("[data-g]:not([disabled])").forEach((b) => (b.onclick = () => { nm(); gameId = b.dataset.g!; if (!entry().players.includes(players)) players = entry().players[entry().players.length - 1]!; render(); }));
+    w.querySelectorAll<HTMLButtonElement>("#fc button").forEach((b) => (b.onclick = () => { setFourColor(b.dataset.v === "1"); w.querySelectorAll("#fc button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     w.querySelectorAll<HTMLButtonElement>("#bk button").forEach((b) => (b.onclick = () => { setBack(b.dataset.b!); w.querySelectorAll("#bk button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     bindLang(w, () => { nm(); render(); });
     (w.querySelector("#go") as HTMLButtonElement).onclick = () => { nm(); name ||= t("you"); saveName(name); startLocal(name, players, Date.now()); };

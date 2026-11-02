@@ -3,8 +3,12 @@ import type { Card, Suit } from "@cards/engine";
 
 export const CARD_W = 140, CARD_H = 200;
 export const S = 2; // texture supersampling; sprites are scaled by 1/S
-const RED = "#c62828", BLACK = "#1b1b22";
-export const suitColor = (s: Suit) => (s === "H" || s === "D" ? RED : BLACK);
+const RED = "#c62828", BLACK = "#1b1b22", BLUE = "#1d5fc4", GREEN = "#1f7a36";
+let fourColor = (() => { try { return localStorage.getItem("fourColor") === "1"; } catch { return false; } })();
+export const getFourColor = () => fourColor;
+/** Colour-blind friendly deck: diamonds blue, clubs green. */
+export function setFourColor(on: boolean) { fourColor = on; try { localStorage.setItem("fourColor", on ? "1" : "0"); } catch { /* ignore */ } refreshTextures(); }
+export const suitColor = (s: Suit) => (s === "H" ? RED : s === "D" ? (fourColor ? BLUE : RED) : s === "C" ? (fourColor ? GREEN : BLACK) : BLACK);
 
 function canvas(w: number, h: number) {
   const c = document.createElement("canvas");
