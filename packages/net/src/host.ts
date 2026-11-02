@@ -20,7 +20,11 @@ export interface HostOptions {
   /** Delay before a bot acts, ms. Gives animations time to play. */
   botDelay?: (rng: Rng) => number;
   setTimeout?: (fn: () => void, ms: number) => unknown;
+  /** Called after every state change (used to keep a shadow copy on the host's successor). */
+  onChange?: () => void;
 }
+
+export interface TableSnapshot<State> { state: State; seq: number; rng: number; seats: SeatSpec[] }
 
 /**
  * The authoritative table. Runs the rules, owns the seat map, drives bots, and fans out per-seat updates.
@@ -86,6 +90,18 @@ export class TableHost<Config, State, Move, View, Ev> {
     this.pump();
   }
 
+  snapshot(): TableSnapshot<State> {
+    return { state: structuredClone(this.state), seq: this.seq, rng: this.rng.state, seats: structuredClone(this.seats) };
+  }
+  /** Resume from a snapshot (host migration). Call attach() for the seats afterwards, then resume(). */
+  restore(snap: TableSnapshot<State>): void {
+    this.state = structuredClone(snap.state); this.seq = snap.seq; this.rng.state = snap.rng;
+    this.seats = structuredClone(snap.seats);
+    this.bots.clear();
+    this.seats.forEach((s, i) => { if (s.kind === "bot") this.bots.set(i, this.makeBot(s)); });
+  }
+  resume(): void { this.broadcast([]); this.pump(); }
+
   pause(on: boolean): void { this.paused = on; if (!on) this.pump(); }
   dispose(): void { this.paused = true; this.links.clear(); }
 
@@ -105,6 +121,7 @@ export class TableHost<Config, State, Move, View, Ev> {
     this.seq++;
     this.lastEvents = events;
     for (const [seat, link] of this.links) link(this.updateFor(seat, events));
+    this.opts.onChange?.();
   }
 
   private pump(): void {

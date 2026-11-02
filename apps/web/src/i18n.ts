@@ -7,6 +7,10 @@ const de: Dict = {
   vsBots: "Gegen Computer", language: "Sprache", bot: "Computer", turnOf: "{n} ist dran",
   skat: "Skat", doppelkopf: "Doppelkopf", holdem: "Texas Hold'em", bridge: "Bridge", romme: "Rommé",
   schafkopf: "Schafkopf", hearts: "Hearts", canasta: "Canasta",
+  online: "Online", createRoom: "Raum erstellen", joinRoom: "Beitreten", code: "Raumcode", open: "Offen", waiting: "Warte auf Spieler …",
+  startGame: "Spiel starten", leave: "Verlassen", host: "Gastgeber", openRooms: "Offene Räume", noRooms: "Keine offenen Räume", copyLink: "Link kopieren",
+  copied: "Kopiert!", roomFull: "Raum ist voll", connFail: "Verbindung fehlgeschlagen", away: "weg", seatOpenHuman: "Offen für Mitspieler", seatBot: "Computer",
+  back: "Zurück", onlyHost: "Nur der Gastgeber kann starten", join: "Beitreten",
 };
 const en: Dict = {
   title: "Card Games", play: "Play", you: "You", players: "Players", name: "Your name",
@@ -16,6 +20,10 @@ const en: Dict = {
   vsBots: "Versus computer", language: "Language", bot: "Bot", turnOf: "{n}'s turn",
   skat: "Skat", doppelkopf: "Doppelkopf", holdem: "Texas Hold'em", bridge: "Bridge", romme: "Rommé",
   schafkopf: "Schafkopf", hearts: "Hearts", canasta: "Canasta",
+  online: "Online", createRoom: "Create room", joinRoom: "Join", code: "Room code", open: "Open", waiting: "Waiting for players …",
+  startGame: "Start game", leave: "Leave", host: "Host", openRooms: "Open rooms", noRooms: "No open rooms", copyLink: "Copy link",
+  copied: "Copied!", roomFull: "Room is full", connFail: "Connection failed", away: "away", seatOpenHuman: "Open for a player", seatBot: "Computer",
+  back: "Back", onlyHost: "Only the host can start", join: "Join",
 };
 let lang: "de" | "en" = (() => {
   try { const s = localStorage.getItem("lang"); if (s === "de" || s === "en") return s; } catch { /* ignore */ }

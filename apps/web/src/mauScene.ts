@@ -16,10 +16,10 @@ const sortKey = (c: Card) => SUIT_ORDER.indexOf(suitOf(c)) * 10 + RANK_ORDER.ind
 
 type Anchor = { cx: number; cy: number; rot: number };
 const LAYOUTS: Record<number, Anchor[]> = {
-  2: [{ cx: 800, cy: 770, rot: 0 }, { cx: 800, cy: 105, rot: Math.PI }],
+  2: [{ cx: 800, cy: 770, rot: 0 }, { cx: 800, cy: 125, rot: Math.PI }],
   3: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 450, rot: Math.PI / 2 }, { cx: 1470, cy: 450, rot: -Math.PI / 2 }],
-  4: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 450, rot: Math.PI / 2 }, { cx: 800, cy: 105, rot: Math.PI }, { cx: 1470, cy: 450, rot: -Math.PI / 2 }],
-  5: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 500, rot: Math.PI / 2 }, { cx: 520, cy: 105, rot: Math.PI }, { cx: 1080, cy: 105, rot: Math.PI }, { cx: 1470, cy: 500, rot: -Math.PI / 2 }],
+  4: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 450, rot: Math.PI / 2 }, { cx: 800, cy: 125, rot: Math.PI }, { cx: 1470, cy: 450, rot: -Math.PI / 2 }],
+  5: [{ cx: 800, cy: 770, rot: 0 }, { cx: 130, cy: 500, rot: Math.PI / 2 }, { cx: 520, cy: 125, rot: Math.PI }, { cx: 1080, cy: 125, rot: Math.PI }, { cx: 1470, cy: 500, rot: -Math.PI / 2 }],
 };
 
 export interface SceneHooks { submit(move: Move): void; onFinished(winner: number, names: string[], me: number): void; }
@@ -41,6 +41,7 @@ export class MauScene {
   private queue: Update<View, Move, Ev>[] = [];
   private running = false;
   private dealt = false;
+  private ready = false;
   private legal: Move[] = [];
   private lastView: View | null = null;
   private me = 0;
@@ -96,7 +97,7 @@ export class MauScene {
       const u = this.queue.shift()!;
       this.busy = true; this.legal = []; this.refreshInteractive();
       try {
-        if (!this.dealt && u.view.hand.length >= 0 && u.events.some((e) => e.t === "dealt")) this.setup(u);
+        if (!this.ready) { this.ready = true; this.setup(u); this.dealt = !u.events.some((e) => e.t === "dealt"); }
         for (const ev of u.events) await this.animate(ev, u);
       } catch (e) { console.error("animation error", e); }
       this.sync(u);
