@@ -110,7 +110,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2);
     cover(this.bg, w, h);
     document.body.classList.toggle("portrait", g.portrait);
-    document.documentElement.style.setProperty("--dummy-top", `${Math.round((h - g.H * s) / 2 + (g.portrait ? 285 : 300) * s)}px`);
+    document.documentElement.style.setProperty("--dummy-top", `${Math.round((h - g.H * s) / 2 + (g.portrait ? 295 : 320) * s)}px`);
     setActionsBottom(g, w, h, this.n || 4);
     if (changed && this.ready) this.applyGeo();
   }
@@ -177,7 +177,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     for (let s = 0; s < this.n; s++) {
       const rel = (s - this.me + this.n) % this.n, an = this.geo.layouts[this.n]![rel]!, p = this.geo.plate(an, rel);
       const topDummy = s === this.dummySeat && s !== this.me && an.dy === -1;                     // the plate steps aside for the dummy's rows
-      this.plates[s]!.box.position.set(topDummy ? an.cx - (this.geo.portrait ? 215 : 245) : p.x, topDummy ? an.cy + 8 : p.y);
+      this.plates[s]!.box.position.set(topDummy ? an.cx - (this.geo.portrait ? 225 : 310) : p.x, topDummy ? an.cy + 8 : p.y);
     }
   }
 
@@ -212,8 +212,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         const trump = (this.view as unknown as { contract?: { suit: string } | null })?.contract?.suit;
         const suits = [...new Set(ids.map((c) => suitOf(c)))].sort((x, y) => (x === trump ? -1 : y === trump ? 1 : 0));
         const row = suits.indexOf(suitOf(card)), inRow = ids.filter((c) => suitOf(c) === suitOf(card)).sort((x, y) => RANKS.indexOf(rankOf(y)) - RANKS.indexOf(rankOf(x)));
-        const col = inRow.indexOf(card), sc = g.portrait ? 0.46 : 0.58, rowStep = g.portrait ? 30 : 38, colStep = Math.min(g.portrait ? 34 : 38, (g.dummyWidth - CardView.W * sc) / 6);
-        return { x: a.cx + (col - (inRow.length - 1) / 2) * colStep, y: a.cy + (g.portrait ? -4 : 38) + (row - (suits.length - 1) / 2) * rowStep, rot: 0, scale: sc };
+        const col = inRow.indexOf(card), sc = g.portrait ? 0.5 : 0.64, rowStep = g.portrait ? 34 : 46, colStep = Math.min(g.portrait ? 38 : 54, (g.dummyWidth - CardView.W * sc) / 6);
+        return { x: a.cx + (col - (inRow.length - 1) / 2) * colStep, y: a.cy + (g.portrait ? -4 : 36) + (row - (suits.length - 1) / 2) * rowStep, rot: 0, scale: sc };
       }
     }
     const cos = Math.cos(a.rot), sin = Math.sin(a.rot);

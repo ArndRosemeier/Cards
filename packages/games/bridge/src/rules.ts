@@ -19,7 +19,7 @@ export interface View {
   you: Seat | "public"; hand: Card[]; handSizes: number[]; talon: number; trick: { seat: Seat; card: Card }[]; turn: Seat | null; scores: number[]; over: boolean;
   shown?: Record<number, Card[]>;
   phase: BridgeState["phase"]; dealer: Seat; board: number; boards: number; auction: { seat: Seat; call: Call }[]; contract: Contract | null; dummy: Seat | null;
-  tricks: [number, number]; vul: [boolean, boolean]; controller: Seat | null;
+  tricks: [number, number]; vul: [boolean, boolean]; controller: Seat | null; /** whose card is due (the dummy, when the declarer plays it) */ playTurn: Seat | null;
 }
 
 const N = 4;
@@ -153,7 +153,7 @@ export const Bridge: GameRules<BridgeConfig, BridgeState, Move, View, Ev> = {
       turn: s.phase === "over" ? null : Bridge.activeSeats(s)[0] ?? null, scores: s.scores.slice(), over: s.phase === "over",
       ...(s.revealed && dummy !== null ? { shown: { [dummy]: s.hands[dummy]!.slice() } } : {}),
       phase: s.phase, dealer: s.dealer, board: s.board, boards: s.boards, auction: s.auction.slice(), contract: s.contract ? { ...s.contract } : null, dummy,
-      tricks: [...s.tricks] as [number, number], vul: [...s.vul] as [boolean, boolean], controller: s.phase === "play" ? Bridge.activeSeats(s)[0] ?? null : null,
+      tricks: [...s.tricks] as [number, number], vul: [...s.vul] as [boolean, boolean], controller: s.phase === "play" ? Bridge.activeSeats(s)[0] ?? null : null, playTurn: s.phase === "play" ? s.turn : null,
     };
   },
   result(s) {

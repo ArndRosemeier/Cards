@@ -140,7 +140,7 @@ const bridgeUi: TrickUi<BMove, BView> = {
   status: (v, names, me) => {
     if (v.over) return "";
     if (v.phase === "auction") return v.turn === me ? t("br_yourCall") : t("br_calling", { n: names[v.turn ?? 0] ?? "" });
-    if (v.controller === me && v.turn !== me) return t("br_playDummy");
+    if (v.controller === me && v.playTurn !== null && v.playTurn !== me) return t("br_playDummy");
     return v.turn === me ? t("yourTurn") : t("turnOf", { n: names[v.turn ?? 0] ?? "" });
   },
   extra: (v, names) => [`${t("roundNo", { a: v.board, b: v.boards })}`, `${t("br_vul")}: ${v.vul[0] && v.vul[1] ? t("br_both") : v.vul[(v.you as number) % 2] ? "NS" : v.vul[((v.you as number) + 1) % 2] ? "EW" : t("br_none")}`,
