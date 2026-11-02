@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { Rng, type Card } from "@cards/engine";
 import { score5, bestScore, categoryOf, HAND_NAMES } from "../src/eval.ts";
 import { Holdem, defaultConfig } from "../src/rules.ts";
-import { holdemBot } from "../src/bot.ts";
+import { holdemBot, createHoldemBot, equityVsRanges } from "../src/bot.ts";
 
 const H = (s: string) => s.split(" ") as Card[];
 const cat = (s: string) => HAND_NAMES[categoryOf(score5(H(s)))];
@@ -67,4 +67,24 @@ test("a decided hand waits for seat 0 to press next", () => {
   assert.equal(r.state.handNo, before + 1);
   assert.ok(r.events.some((e) => e.t === "newHand"));
   assert.notEqual(r.state.phase, "between");
+});
+
+test("equity against a tight range is lower than against random hands", () => {
+  const rng = Rng.fromSeed(5);
+  const hole = H("SJ HJ");
+  const vsRandom = equityVsRanges(hole, [], [1], rng, 600), vsTight = equityVsRanges(hole, [], [8], rng, 600);
+  assert.ok(vsRandom > vsTight + 0.08, `${vsRandom} vs ${vsTight}`);
+});
+
+test("the bot shoves aces with a short stack and folds trash to a big raise", () => {
+  const rng = Rng.fromSeed(9);
+  const base = Holdem.setup(defaultConfig, 3, rng).state;
+  const mk = (hole: Card[], stack: number) => {
+    const s = structuredClone(base); const seat = s.turn;
+    s.hole[seat] = hole; s.stacks[seat] = stack; return { s, seat };
+  };
+  const a = mk(H("SA HA"), 150);
+  const mv = createHoldemBot().choose(Holdem.view(a.s, a.seat), Holdem.legalMoves(a.s, a.seat), rng);
+  assert.equal(mv.t, "raise");
+  assert.equal((mv as { to: number }).to, Holdem.view(a.s, a.seat).maxRaiseTo, "all-in");
 });

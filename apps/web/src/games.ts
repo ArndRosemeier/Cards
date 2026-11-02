@@ -6,7 +6,7 @@ import { RANKS, suitOf, rankOf, type Card } from "@cards/engine";
 import { Skat, defaultConfig as skatCfg, skatBot, BIDS, type View as SView, type Move as SMove } from "@cards/skat";
 import { Doppelkopf, defaultConfig as dokoCfg, dokoBot, isTrump as dokoTrump, strength as dokoStrength, type View as DView, type Move as DMove, type Mode as DMode } from "@cards/doppelkopf";
 import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTrump, strength as schafStrength, type View as SKView, type Move as SKMove, type Mode as SKMode } from "@cards/schafkopf";
-import { Holdem, defaultConfig as holdemCfg, holdemBot } from "@cards/holdem";
+import { Holdem, defaultConfig as holdemCfg, createHoldemBot } from "@cards/holdem";
 import { Romme, defaultConfig as rommeCfg, rommeBot } from "@cards/romme";
 import { RommeScene } from "./rommeScene.ts";
 import { Canasta, defaultConfig as canastaCfg, canastaBot } from "@cards/canasta";
@@ -239,7 +239,7 @@ export const GAME_ENTRIES: GameEntry[] = [
   },
   {
     id: "holdem", players: [2, 3, 4, 5, 6],
-    def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: (spec) => withLevel(holdemBot, spec.level) },
+    def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: (spec) => withLevel(createHoldemBot(), spec.level) },
     scene: (app, ui, hooks) => new HoldemScene(app, ui, hooks),
   },
   {
