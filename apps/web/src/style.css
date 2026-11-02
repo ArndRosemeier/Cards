@@ -131,3 +131,8 @@ body.portrait .emopick { top:54px; left:8px; }
 .rs-d.pos { color:#8be28b; } .rs-d.neg { color:#f08a8a; }
 .rs-t { font-style:normal; opacity:.75; text-align:right; font-variant-numeric:tabular-nums; }
 .rs-hint { margin-top:8px; font-size:12px; opacity:.5; text-align:center; }
+
+body.dummytop .banner { left:calc(50% + 150px); transform:none; max-width:240px; text-align:center; }
+body.dummytop .trumpchip { left:calc(50% + 150px); transform:none; top:calc(env(safe-area-inset-top) + 58px); }
+body.portrait.dummytop .banner { left:50%; transform:translateX(-50%); top:var(--dummy-top); max-width:92vw; }
+body.portrait.dummytop .trumpchip { left:auto; right:8px; top:14px; }

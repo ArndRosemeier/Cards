@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import gsap from "gsap";
-import type { Card, TrickEv, TrickViewBase, Seat } from "@cards/engine";
+import { RANKS, rankOf, suitOf, type Card, type TrickEv, type TrickViewBase, type Seat } from "@cards/engine";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { addAvatar } from "./avatar.ts";
@@ -110,6 +110,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2);
     cover(this.bg, w, h);
     document.body.classList.toggle("portrait", g.portrait);
+    document.documentElement.style.setProperty("--dummy-top", `${Math.round((h - g.H * s) / 2 + (g.portrait ? 285 : 300) * s)}px`);
     setActionsBottom(g, w, h, this.n || 4);
     if (changed && this.ready) this.applyGeo();
   }
@@ -122,7 +123,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   emote(seat: number, id: string) { const p = this.plates[seat]; if (p) popEmote(this.fxLayer, p.box.position.x + (seat === this.me ? 130 : 0), p.box.position.y, id); }
   hint(cards: Card[]) { for (const c of cards) (this.mine.get(c) ?? this.dummy.get(c))?.glowFor(7); }
   destroy() {
-    this.destroyed = true; document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
+    this.destroyed = true; document.body.classList.remove("portrait", "dummytop"); document.documentElement.style.removeProperty("--actions-bottom");
     window.removeEventListener("resize", this.onResize);
     gsap.killTweensOf("*");
     this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove(); this.lastBtn.remove(); this.chip.remove();
@@ -173,7 +174,11 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   }
   private showWon() { this.plates.forEach((p, s) => { const n = this.tricksWon[s] ?? 0; p.won.text = n ? t("tricksWon", { n }) : ""; }); }
   private placePlates() {
-    for (let s = 0; s < this.n; s++) { const rel = (s - this.me + this.n) % this.n, p = this.geo.plate(this.geo.layouts[this.n]![rel]!, rel); this.plates[s]!.box.position.set(p.x, p.y); }
+    for (let s = 0; s < this.n; s++) {
+      const rel = (s - this.me + this.n) % this.n, an = this.geo.layouts[this.n]![rel]!, p = this.geo.plate(an, rel);
+      const topDummy = s === this.dummySeat && s !== this.me && an.dy === -1;                     // the plate steps aside for the dummy's rows
+      this.plates[s]!.box.position.set(topDummy ? an.cx - (this.geo.portrait ? 215 : 245) : p.x, topDummy ? an.cy + 8 : p.y);
+    }
   }
 
   private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
@@ -200,10 +205,27 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
       const sc = g.dummyScale * 1.2, vs = Math.min(44, 600 / Math.max(n, 1));
       return { x: Math.max(a.cx, 56) + (a.dx === 1 ? -14 : 14), y: a.cy + (i - (n - 1) / 2) * vs, rot: 0, scale: sc };
     }
+    if (dum && a.dy === -1) {
+      // a dummy across the table: upright, one overlapping row per suit (trump first), high cards left, so every index is readable
+      const ids = this.handOf(seat).map((cv) => cv.id).filter((c): c is Card => !!c), card = ids[i];
+      if (card) {
+        const trump = (this.view as unknown as { contract?: { suit: string } | null })?.contract?.suit;
+        const suits = [...new Set(ids.map((c) => suitOf(c)))].sort((x, y) => (x === trump ? -1 : y === trump ? 1 : 0));
+        const row = suits.indexOf(suitOf(card)), inRow = ids.filter((c) => suitOf(c) === suitOf(card)).sort((x, y) => RANKS.indexOf(rankOf(y)) - RANKS.indexOf(rankOf(x)));
+        const col = inRow.indexOf(card), sc = g.portrait ? 0.46 : 0.58, rowStep = g.portrait ? 30 : 38, colStep = Math.min(g.portrait ? 34 : 38, (g.dummyWidth - CardView.W * sc) / 6);
+        return { x: a.cx + (col - (inRow.length - 1) / 2) * colStep, y: a.cy + (g.portrait ? -4 : 38) + (row - (suits.length - 1) / 2) * rowStep, rot: 0, scale: sc };
+      }
+    }
     const cos = Math.cos(a.rot), sin = Math.sin(a.rot);
     return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.03 : 0.03), scale: own ? g.ownScale : dum ? g.dummyScale : 0.56 };
   }
+  /** A dummy across the table sits in the top area, so the banner and trump chip move below it. */
+  private dummyClass() {
+    const on = this.dummySeat !== null && this.dummySeat !== this.me && this.anchor(this.dummySeat).dy === -1;
+    if (document.body.classList.contains("dummytop") !== on) { document.body.classList.toggle("dummytop", on); this.placePlates(); }
+  }
   private layout(seat: number, animate = true) {
+    this.dummyClass();
     const hand = this.handOf(seat);
     hand.forEach((cv, i) => {
       cv.slot = this.fanSlot(seat, i, hand.length);
