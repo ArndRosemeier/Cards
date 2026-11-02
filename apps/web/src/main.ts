@@ -146,6 +146,7 @@ function addHud(onMenu: () => void) {
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
   (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
   ui.append(hud);
+  const rot = document.createElement("div"); rot.className = "rotate"; rot.innerHTML = `<div class="ico">⟳</div><div>${t("rotate")}</div>`; ui.append(rot);
 }
 
 function showResult(winner: number, names: string[], session: Session | null, again?: () => void) {
