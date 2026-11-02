@@ -19,6 +19,7 @@
     "@cards/schafkopf": "*",
     "@cards/holdem": "*",
     "@cards/romme": "*",
+    "@cards/canasta": "*",
     "@cards/bridge": "*"
   },
   "devDependencies": {

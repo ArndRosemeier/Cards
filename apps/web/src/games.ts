@@ -9,6 +9,8 @@ import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTru
 import { Holdem, defaultConfig as holdemCfg, holdemBot } from "@cards/holdem";
 import { Romme, defaultConfig as rommeCfg, rommeBot } from "@cards/romme";
 import { RommeScene } from "./rommeScene.ts";
+import { Canasta, defaultConfig as canastaCfg, canastaBot } from "@cards/canasta";
+import { CanastaScene } from "./canastaScene.ts";
 import { Bridge, defaultConfig as bridgeCfg, bridgeBot, callText, type View as BView, type Move as BMove } from "@cards/bridge";
 import { MauScene } from "./mauScene.ts";
 import { HoldemScene } from "./holdemScene.ts";
@@ -208,6 +210,11 @@ export const GAME_ENTRIES: GameEntry[] = [
     id: "romme", players: [2, 3, 4],
     def: { id: "romme", rules: Romme, config: rommeCfg, makeBot: () => rommeBot },
     scene: (app, ui, hooks) => new RommeScene(app, ui, hooks),
+  },
+  {
+    id: "canasta", players: [2, 3, 4],
+    def: { id: "canasta", rules: Canasta, config: canastaCfg, makeBot: () => canastaBot },
+    scene: (app, ui, hooks) => new CanastaScene(app, ui, hooks),
   },
   {
     id: "bridge", players: [4],

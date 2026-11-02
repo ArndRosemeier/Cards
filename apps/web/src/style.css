@@ -64,3 +64,4 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
 .auction { margin-top:8px; font-size:13px; display:grid; grid-template-columns:repeat(4,1fr); gap:2px 8px; text-align:center; }
 .auction b { color:var(--gold); }
 .red { color:#ff7b7b; }
+.banner.err { background:#7a1f1f; color:#fff; }
