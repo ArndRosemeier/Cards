@@ -96,10 +96,13 @@ export const sfx = {
 };
 
 /** Background music: crossfaded playlist, streamed through media elements (never decoded whole). */
-const TRACKS = ["pro_a", "pro_b", "pro_c", "music_a", "music_b", "music_c"];
+const SHARED = ["pro_a", "pro_b", "pro_c", "music_a", "music_b", "music_c"];
+/** each game opens with its own theme piece, then the shared pool */
+const THEME: Record<string, string> = { holdem: "th_casino", skat: "th_bavaria", schafkopf: "th_bavaria", doppelkopf: "th_bavaria", romme: "th_salon", canasta: "th_salon", bridge: "th_club", maumau: "th_play", hearts: "th_club" };
+let TRACKS = SHARED;
 const MUSIC_VOL = 0.35, FADE = 2.5;
 let musicOff = (() => { try { return localStorage.getItem("musicOff") === "1"; } catch { return false; } })();
-let playing = false, cur: HTMLAudioElement | null = null, idx = Math.floor(Math.random() * 3), timer = 0;
+let playing = false, cur: HTMLAudioElement | null = null, idx = 0, timer = 0;
 function fade(a: HTMLAudioElement, to: number, secs: number, done?: () => void) {
   const from = a.volume, t0 = performance.now();
   const step = () => { const k = Math.min(1, (performance.now() - t0) / (secs * 1000)); a.volume = Math.max(0, Math.min(1, from + (to - from) * k)); if (k < 1) requestAnimationFrame(step); else done?.(); };
@@ -117,7 +120,11 @@ function nextTrack() {
   }).catch(() => { cur = old; /* autoplay blocked: retried on the next gesture */ });
 }
 export const music = {
-  start() { playing = true; if (!cur && !muted && !musicOff) nextTrack(); },
+  start(gameId?: string) {
+    const th = gameId ? THEME[gameId] : undefined, rest = [...SHARED].sort(() => Math.random() - 0.5);
+    if (!playing || !cur) { TRACKS = th ? [th, ...rest] : rest; idx = 0; }
+    playing = true; if (!cur && !muted && !musicOff) nextTrack();
+  },
   stop() { playing = false; clearTimeout(timer); if (cur) { const a = cur; cur = null; fade(a, 0, 0.8, () => a.pause()); } },
   sync() { if (muted || musicOff) { clearTimeout(timer); if (cur) { const a = cur; cur = null; fade(a, 0, 0.5, () => a.pause()); } } else if (playing && !cur) nextTrack(); },
   get off() { return musicOff; },

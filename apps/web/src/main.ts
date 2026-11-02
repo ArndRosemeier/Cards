@@ -201,7 +201,7 @@ function addHud(onMenu: () => void) {
   (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
   (hud.querySelector("#mus") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = music.toggle() ? "♪̸" : "♪"; };
   ui.append(hud);
-  music.start(); sfx.shuffle();
+  music.start(gameId); sfx.shuffle();
   const rot = document.createElement("div"); rot.className = "rotate"; rot.innerHTML = `<div class="ico">⟳</div><div>${t("rotate")}</div>`; ui.append(rot);
 }
 
