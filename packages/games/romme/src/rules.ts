@@ -67,7 +67,12 @@ export const Romme: GameRules<RommeConfig, RommeState, Move, View, Ev> = {
 
   legalMoves(s, seat) {
     if (s.phase === "over" || seat !== s.turn) return [];
-    if (s.phase === "draw") return [{ t: "draw", from: "stock" }, { t: "draw", from: "discard" }];
+    if (s.phase === "draw") {
+      const out: Move[] = [];
+      if (s.stock.length > 0 || s.discard.length > 1) out.push({ t: "draw", from: "stock" }); // nothing left to reshuffle otherwise
+      if (s.discard.length > 0) out.push({ t: "draw", from: "discard" });
+      return out;
+    }
     return [...new Set(s.hands[seat]!)].filter((c) => c !== s.taken || s.hands[seat]!.length === 1).map((card): Move => ({ t: "discard", card }));
   },
 

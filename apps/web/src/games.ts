@@ -106,7 +106,11 @@ const schafUi: TrickUi<SKMove, SKView> = {
   status: (v, names, me) => {
     if (v.over) return "";
     const who = v.turn === me ? "" : names[v.turn ?? 0] ?? "";
-    if (v.phase === "choose") return v.turn === me ? t("sk_choose") : t("sk_choosing", { n: who });
+    if (v.phase === "choose") {
+      let bi = -1; v.offers.forEach((o, i) => { if (o && o !== "pass") bi = i; }); // every later bid outranks the earlier ones
+      const hi = bi >= 0 ? ` · ${t("sk_declared", { n: bi === me ? t("youName") : names[bi] ?? "", g: t("sk_" + v.offers[bi]) })}` : "";
+      return (v.turn === me ? t("sk_choose") : t("sk_choosing", { n: who })) + hi;
+    }
     return v.turn === me ? t("yourTurn") : t("turnOf", { n: who });
   },
   extra: (v, names) => [t("roundNo", { a: v.round + 1, b: v.rounds }), ...(v.mode && v.mode !== "ramsch" && v.declarer !== null ? [`${names[v.declarer]}: ${t("sk_" + v.mode)}`] : v.mode === "ramsch" ? [t("sk_ramsch")] : []),

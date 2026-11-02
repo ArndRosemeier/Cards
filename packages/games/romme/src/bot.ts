@@ -101,7 +101,7 @@ export const rommeBot: Bot<View, Move> = {
         if (used && after.value > before && canOpenNow && (v.opened[v.you as number] || before < v.minOpen)) return { t: "draw", from: "discard" };
         if (used && v.opened[v.you as number] && after.value > before) return { t: "draw", from: "discard" };
       }
-      return { t: "draw", from: "stock" };
+      return legal.find((m) => m.t === "draw" && m.from === "stock") ?? { t: "draw", from: "discard" };
     }
     const me = v.you as number;
     if (v.opened[me]) {                                   // trade a natural card for a joker lying in a table meld
