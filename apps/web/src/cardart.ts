@@ -221,7 +221,9 @@ const tex = (key: string, make: () => HTMLCanvasElement) => {
   return e.t;
 };
 /** Redraw every cached texture in place (new art arrived / card back changed), so cards that already exist update too. */
+let artVer = 0; export const artVersion = () => artVer;
 function refreshTextures() {
+  artVer++;
   for (const [k, e] of cache) {
     if (k === "shadow") continue; // never changes; redrawing it in place produced opaque boxes
     const n = e.make(), ctx = e.c.getContext("2d");

@@ -229,7 +229,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
       this.tokens = tokens.slice();
       this.lobby = lobby;
       // everyone except me is unreachable until they answer rehello: bots hold their seats meanwhile
-      const seats: SeatSpec[] = snap.seats.map((s, i) => (i !== me && s.kind === "human" ? { kind: "bot", name: s.name } : s));
+      const seats: SeatSpec[] = snap.seats.map((s, i) => (i !== me && s.kind === "human" ? { kind: "bot", name: `${s.name} (Bot)` } : s));
       this.lobby.seats = this.lobby.seats.map((s, i) => (i === me ? { ...s, kind: "host" } : s.kind === "human" || s.kind === "host" ? { kind: "bot", name: s.name, away: true } : s));
       this.buildTable(seats);
       this.table!.restore({ ...snap, seats });

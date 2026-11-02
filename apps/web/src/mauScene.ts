@@ -92,7 +92,7 @@ export class MauScene {
   private placePlates() {
     for (let s = 0; s < this.n; s++) { const rel = (s - this.me + this.n) % this.n, p = this.geo.plate(this.geo.layouts[this.n]![rel]!, rel); this.plates[s]!.holder.position.set(p.x, p.y); }
   }
-  emote(seat: number, id: string) { const p = this.plates[seat]; if (p) popEmote(this.fxLayer, p.holder.position.x, p.holder.position.y, id); }
+  emote(seat: number, id: string) { const p = this.plates[seat]; if (p) popEmote(this.fxLayer, p.holder.position.x + (seat === this.me ? 130 : 0), p.holder.position.y, id); }
   hint(cards: Card[]) { for (const c of cards) this.mine.get(c)?.glowFor(7); }
   destroy() {
     document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");

@@ -6,7 +6,7 @@ html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); overf
 #stage canvas { display:block; }
 #ui { position:fixed; inset:0; pointer-events:none; }
 #ui > * { pointer-events:auto; }
-.menu { position:absolute; inset:0; display:grid; place-items:center; background:radial-gradient(ellipse at 50% 40%, rgba(7,20,14,.1) 0%, rgba(7,20,14,.55) 100%); }
+.menu { position:absolute; inset:0; display:grid; place-items:safe center; overflow-y:auto; overscroll-behavior:contain; background:radial-gradient(ellipse at 50% 40%, rgba(7,20,14,.1) 0%, rgba(7,20,14,.55) 100%); }
 .panel { width:min(92vw,560px); padding:32px 28px; border-radius:22px; background:rgba(255,255,255,.05);
   border:1px solid rgba(232,198,106,.3); backdrop-filter:blur(14px); box-shadow:0 30px 80px rgba(0,0,0,.55); }
 h1 { margin:0 0 6px; font-size:34px; letter-spacing:.04em; color:var(--gold); font-weight:700; }
@@ -115,3 +115,7 @@ body.portrait .trumpchip { top:14px; left:auto; right:8px; transform:none; font-
 .emopick button:hover { background:rgba(232,198,106,.25); }
 .emopick img { width:100%; height:100%; object-fit:contain; }
 body.portrait .emopick { top:54px; left:8px; }
+
+.menu .panel { margin:auto; }
+.menu .panel > .row:last-child { position:sticky; bottom:-2px; padding:12px 0 2px; margin-top:6px; background:linear-gradient(rgba(8,26,18,0), rgba(8,26,18,.92) 38%); z-index:2; }
+@media (max-height:820px) { .menu .panel { padding:18px 20px; } .menu h1 { font-size:28px; } .menu .sub { margin-bottom:12px; } .menu .games { margin-bottom:12px; gap:8px; } .menu .game { padding:10px 12px; } .menu .row { margin-bottom:8px; } }

@@ -57,7 +57,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
   }
   private onResize = () => this.resize();
   private resize() { const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H); this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); document.body.classList.toggle("portrait", g.portrait); setActionsBottom(g, w, h, this.n || 4); cover(this.bg, w, h); }
-  emote(seat: number, id: string) { const pc = this.plates[seat]?.ring.parent; if (pc) popEmote(this.fxLayer, pc.position.x, pc.position.y, id); }
+  emote(seat: number, id: string) { const pc = this.plates[seat]?.ring.parent; if (pc) popEmote(this.fxLayer, pc.position.x + (seat === this.me ? 130 : 0), pc.position.y, id); }
   hint(cards: Card[]) { for (const c of cards) this.mine.get(c)?.glowFor(7); }
   destroy() { document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
 

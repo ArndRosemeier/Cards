@@ -2,7 +2,7 @@ import { Container, Graphics, PerspectiveMesh, Rectangle, Sprite, Texture } from
 import gsap from "gsap";
 import type { Card } from "@cards/engine";
 import { sfx } from "./sfx.ts";
-import { backTexture, faceTexture, shadowTexture, CARD_H, CARD_W, S } from "./cardart.ts";
+import { artVersion, backTexture, faceTexture, shadowTexture, CARD_H, CARD_W, S } from "./cardart.ts";
 
 const D = 1150;                     // camera distance for the perspective projection, in card pixels
 const HW = CARD_W / 2, HH = CARD_H / 2;
@@ -172,8 +172,10 @@ export class CardView extends Container {
     g.alpha = Math.min(1, left / 400) * (reducedMotion ? 1 : 0.65 + 0.35 * Math.sin(performance.now() / 160));
   }
 
+  private ver = -1;
   private tick = () => {
     this.tickGlow();
+    if (this.ver !== artVersion()) { this.ver = artVersion(); this.back.texture = backTexture(); if (this.faceUp && this.id) this.face.texture = faceTexture(this.id); }
     // lean into the direction of travel (the card is a loose sheet on the table)
     const dx = Number.isNaN(this.lastX) ? 0 : clamp(this.x - this.lastX, -60, 60), dy = Number.isNaN(this.lastY) ? 0 : clamp(this.y - this.lastY, -60, 60);
     this.lastX = this.x; this.lastY = this.y;

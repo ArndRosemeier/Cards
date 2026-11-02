@@ -114,7 +114,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     for (const cv of this.trick.keys()) { const sl = this.trickSlot(cv); const v = this.trick.get(cv)!; gsap.killTweensOf(v); v.position.set(sl.x, sl.y); }
     this.layoutAll(false); this.layoutTalon();
   }
-  emote(seat: number, id: string) { const p = this.plates[seat]; if (p) popEmote(this.fxLayer, p.box.position.x, p.box.position.y, id); }
+  emote(seat: number, id: string) { const p = this.plates[seat]; if (p) popEmote(this.fxLayer, p.box.position.x + (seat === this.me ? 130 : 0), p.box.position.y, id); }
   hint(cards: Card[]) { for (const c of cards) (this.mine.get(c) ?? this.dummy.get(c))?.glowFor(7); }
   destroy() {
     this.destroyed = true; document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");

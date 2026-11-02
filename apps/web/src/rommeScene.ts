@@ -57,7 +57,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     if (g.portrait || w < 760) { st.left = ""; st.transform = ""; st.maxWidth = ""; st.justifyContent = ""; }
     else { const left = (w - g.W * s) / 2 + (DISC.x + 110) * s; st.left = `${left}px`; st.transform = "none"; st.maxWidth = `${Math.max(240, w - left - 16)}px`; st.justifyContent = "flex-start"; }
   }
-  emote(seat: number, id: string) { const pc = this.plates[seat]?.ring.parent; if (pc) popEmote(this.fxLayer, pc.position.x, pc.position.y, id); }
+  emote(seat: number, id: string) { const pc = this.plates[seat]?.ring.parent; if (pc) popEmote(this.fxLayer, pc.position.x + (seat === this.me ? 130 : 0), pc.position.y, id); }
   hint(cards: Card[]) { for (const c of cards) this.mine.get(c)?.glowFor(7); }
   destroy() { this.sortBtn.remove(); document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
 
