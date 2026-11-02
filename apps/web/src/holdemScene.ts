@@ -3,6 +3,7 @@ import gsap from "gsap";
 import type { Card } from "@cards/engine";
 import type { Ev, Move, View } from "@cards/holdem";
 import type { Update } from "@cards/net";
+import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { drawFelt } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -136,10 +137,11 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     gsap.to(cv, { lift: 1, duration: d * 0.45 }); gsap.to(cv, { lift: 0, duration: d * 0.45, delay: d * 0.55 });
     gsap.to(cv, { rotation: to.rot, duration: d, ease: "power2.inOut" }); gsap.to(cv.scale, { x: to.scale, y: to.scale, duration: d, ease: "power2.inOut" });
     await tween(cv, { x: to.x, y: to.y, duration: d, ease: "power3.inOut" });
+    sfx.place();
   }
   private flyChips(from: { x: number; y: number }, to: { x: number; y: number }, amount: number): Promise<void> {
     const c = chipStack(Math.max(1, Math.min(amount, 300))); c.position.set(from.x, from.y); c.alpha = 0.95; this.layerFx.addChild(c);
-    return tween(c, { x: to.x, y: to.y, duration: 0.5, ease: "power2.inOut" }).then(() => { c.destroy(); });
+    return tween(c, { x: to.x, y: to.y, duration: 0.5, ease: "power2.inOut" }).then(() => { c.destroy(); sfx.chip(); });
   }
   private setBet(seat: number, amount: number) {
     const sp = this.seats[seat]!; sp.betNode.removeChildren().forEach((c) => c.destroy());

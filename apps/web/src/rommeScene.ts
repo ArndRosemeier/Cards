@@ -4,6 +4,7 @@ import { isJoker, rankOf, suitOf, RANKS, type Card } from "@cards/engine";
 import type { Ev, Move, View } from "@cards/romme";
 import { parseMeld } from "@cards/romme";
 import type { Update } from "@cards/net";
+import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { drawFelt } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -129,6 +130,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     gsap.to(cv, { lift: 1, duration: d * 0.45 }); gsap.to(cv, { lift: 0, duration: d * 0.45, delay: d * 0.55 });
     gsap.to(cv, { rotation: to.rot, duration: d, ease: "power2.inOut" }); gsap.to(cv.scale, { x: to.scale, y: to.scale, duration: d, ease: "power2.inOut" });
     await tween(cv, { x: to.x, y: to.y, duration: d, ease: "power3.inOut" });
+    sfx.place();
   }
   private takeFrom(seat: number, card: Card): CardView {
     if (seat === this.me) { const cv = this.mine.get(card) ?? this.mk(card, true); this.mine.delete(card); return cv; }

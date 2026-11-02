@@ -2,6 +2,7 @@ import { Application } from "pixi.js";
 import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
+import { sfx } from "./sfx.ts";
 import { getLang, setLang, t } from "./i18n.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
@@ -141,8 +142,9 @@ function enterRoom(session: Session) {
 
 function addHud(onMenu: () => void) {
   const hud = document.createElement("div"); hud.className = "hud";
-  hud.innerHTML = `<button class="btn">${t("menu")}</button>`;
+  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
+  (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
   ui.append(hud);
 }
 
@@ -176,4 +178,5 @@ function startLocal(name: string, players: number, seed: number) {
   host.start();
 }
 
+if (import.meta.env.PROD && "serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 void boot();

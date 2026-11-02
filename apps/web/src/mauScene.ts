@@ -4,6 +4,7 @@ import type { Card, Suit } from "@cards/engine";
 import { rankOf, suitOf } from "@cards/engine";
 import type { Ev, Move, View } from "@cards/maumau";
 import type { Update } from "@cards/net";
+import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { CARD_H, CARD_W, drawFelt, suitTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -187,6 +188,7 @@ export class MauScene {
     gsap.to(cv, { rotation: to.rot, duration, ease: "power2.inOut" });
     gsap.to(cv, { x: mid.x, duration: duration / 2, ease: "sine.in" }); // slight S-curve
     await tween(cv, { x: to.x, y: to.y, duration, ease: "power3.inOut" });
+    sfx.place();
   }
 
   private async animate(ev: Ev, u: Update<View, Move, Ev>) {
@@ -283,6 +285,7 @@ export class MauScene {
   }
 
   private async celebrate(winner: number) {
+    sfx.win();
     this.toast(winner === this.me ? t("youWin") : t("wins", { n: this.names[winner]! }));
     const colors = [0xffd166, 0xef476f, 0x06d6a0, 0x118ab2, 0xffffff];
     for (let i = 0; i < 140; i++) {

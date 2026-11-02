@@ -1,6 +1,7 @@
 import { Container, Sprite } from "pixi.js";
 import gsap from "gsap";
 import type { Card } from "@cards/engine";
+import { sfx } from "./sfx.ts";
 import { backTexture, faceTexture, shadowTexture, CARD_H, CARD_W, S } from "./cardart.ts";
 
 /** One card on the table: face, back, soft shadow that grows with `lift` for a floating, 3D feel. */
@@ -45,7 +46,7 @@ export class CardView extends Container {
     if (this.faceUp === toUp) return Promise.resolve();
     return new Promise((resolve) => {
       gsap.to(this.inner.scale, { x: 0, duration: duration / 2, ease: "power2.in", onComplete: () => {
-        this.setFace(toUp);
+        this.setFace(toUp); sfx.flip();
         gsap.to(this.inner.scale, { x: 1, duration: duration / 2, ease: "power2.out", onComplete: () => resolve() });
       } });
     });

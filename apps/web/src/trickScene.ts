@@ -2,6 +2,7 @@ import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js
 import gsap from "gsap";
 import type { Card, TrickEv, TrickViewBase, Seat } from "@cards/engine";
 import type { Update } from "@cards/net";
+import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { CARD_H, drawFelt } from "./cardart.ts";
 import { t } from "./i18n.ts";
@@ -192,6 +193,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     gsap.to(cv.scale, { x: to.scale, y: to.scale, duration: duration * 0.5, delay: duration * 0.5, ease: "bounce.out" });
     gsap.to(cv, { rotation: to.rot, duration, ease: "power2.inOut" });
     await tween(cv, { x: to.x, y: to.y, duration, ease: "power3.inOut" });
+    sfx.place();
   }
 
   private takeFrom(seat: Seat | "talon", card: Card): CardView {
@@ -280,7 +282,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         if (who === "talon") { const cv = this.newView(null, false); this.talon.push(cv); this.layoutTalon(); }
         else if (who === this.me) { const id = mineCards[have]!; const cv = this.newView(id, false); this.mine.set(id, cv); this.layout(who); }
         else { const cv = this.newView(null, false); this.opp[who]!.push(cv); this.layout(who); }
-        await sleep(75);
+        sfx.deal(); await sleep(75);
       }
     }
     await sleep(450);
