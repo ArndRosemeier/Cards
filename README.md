@@ -17,6 +17,10 @@ UI in German and English. Procedural card art, animated table (PixiJS + GSAP), s
 
 Known simplifications: Skat has no Ouvert games, Bridge bots bid with a basic point count (no conventions), Canasta uses fixed going-out rules (needs one canasta).
 
+## Play aids
+
+The menu has an Easy/Normal computer level (Easy makes a random legal move now and then), the 💡 button suggests a move by highlighting the cards, and the Statistics screen keeps a win/loss record per game in this browser.
+
 ## Run
 
 ```bash
