@@ -118,7 +118,7 @@ body.portrait .emopick { top:54px; left:8px; }
 
 .menu .panel { margin:auto; }
 .menu .panel > .row:last-child { position:sticky; bottom:-2px; padding:12px 0 2px; margin-top:6px; background:linear-gradient(rgba(8,26,18,0), rgba(8,26,18,.6) 38%); z-index:2; }
-@media (max-height:820px) { .menu .panel { padding:18px 20px; } .menu h1 { font-size:28px; } .menu .sub { margin-bottom:12px; } .menu .games { margin-bottom:12px; gap:8px; } .menu .game { padding:10px 12px; } .menu .row { margin-bottom:8px; } }
+@media (max-height:960px) { .menu .panel { padding:18px 20px; } .menu h1 { font-size:28px; } .menu .sub { margin-bottom:12px; } .menu .games { margin-bottom:12px; gap:8px; } .menu .game { padding:10px 12px; } .menu .row { margin-bottom:8px; } }
 @media (max-width:480px) { .menu .games { grid-template-columns:repeat(3,1fr); gap:6px; } .menu .game { padding:8px 8px; font-size:13px; border-radius:11px; } .menu .logo { width:52px; height:52px; margin:-6px auto 2px; } .menu .panel { padding:14px 16px; } }
 .menu .panel { padding-bottom:56px; }
 .roundsum { position:absolute; inset:0; display:grid; place-items:center; background:rgba(4,14,9,.45); z-index:15; cursor:pointer; }
@@ -170,4 +170,11 @@ body.portrait .volpop { top:54px; left:8px; }
 .cuedbadge img, .cuedav { width:26px; height:26px; border-radius:50%; object-fit:cover; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
 .cuedbadge b { color:#e8c66a; }
 .cuedbadge.warn { color:#ffb36b; }
-input[readonly] { opacity:.8; cursor:default; }
+input[readonly] { opacity:.55; cursor:not-allowed; border-style:dashed; }
+.hud .btn small { font-size:9px; margin-left:3px; opacity:.7; }
+.volinline { flex:1; min-width:0; }
+.volinline .volrows { flex-direction:row; margin:0; gap:16px; }
+.volinline .volrow { flex:1; min-width:0; gap:6px; }
+.volinline .volname { display:none; }
+.volinline input[type=range] { min-width:0; }
+@media (max-width:480px) { .volinline .volrows { gap:10px; } }

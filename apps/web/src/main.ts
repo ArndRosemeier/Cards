@@ -127,7 +127,7 @@ function showMenu() {
       <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"${cuedName ? " readonly" : ""}></div>
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
       <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
-      <div id="volslot"></div>
+      <div class="row"><label>${t("volume")}</label><div id="volslot" class="volinline"></div></div>
       ${langRow()}
       <div class="row"><label>${t("fourColor")}</label><div class="seg" id="fc"><button class="${getFourColor() ? "" : "sel"}" data-v="0">${t("off")}</button><button class="${getFourColor() ? "sel" : ""}" data-v="1">${t("on")}</button></div></div>
       <div class="row"><label>${t("cardBack")}</label><div class="seg backs" id="bk">${BACKS.map((b) => `<button class="${getBack() === b ? "sel" : ""}" data-b="${b}"><img src="cards/${b}.webp" alt=""></button>`).join("")}</div></div>
@@ -276,7 +276,7 @@ let chatSink: ((l: ChatLine) => void) | null = null;
 
 function addHud(onMenu: () => void, onEmote?: (id: string) => void, onChat?: (text: string) => void) {
   const hud = document.createElement("div"); hud.className = "hud";
-  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="emobtn" title="${t('emote')}">☺</button>${onChat ? `<button class="btn" id="chatbtn" title="${t('chat')}">💬<span class="badge" hidden></span></button>` : ""}<button class="btn" id="rulesbtn">?</button><button class="btn" id="volbtn" title="${t('volume')}">${sfx.volume === 0 && music.volume === 0 ? "🔇" : "🔊"}</button>`;
+  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="hintbtn" title="${t('hint')}">💡</button><button class="btn" id="emobtn" title="${t('emote')}">☺</button>${onChat ? `<button class="btn" id="chatbtn" title="${t('chat')}">💬<span class="badge" hidden></span></button>` : ""}<button class="btn" id="rulesbtn">?</button><button class="btn" id="volbtn" title="${t('volume')}">${sfx.volume === 0 && music.volume === 0 ? "🔇" : "🔊"}<small>▾</small></button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
   (hud.querySelector("#hintbtn") as HTMLButtonElement).onclick = () => { sfx.hint(); hintNow(); };
   (hud.querySelector("#emobtn") as HTMLButtonElement).onclick = () => {
@@ -292,7 +292,7 @@ function addHud(onMenu: () => void, onEmote?: (id: string) => void, onChat?: (te
     const vb = e.currentTarget as HTMLElement;
     const old = ui.querySelector(".volpop"); if (old) { old.remove(); return; }
     const pop = document.createElement("div"); pop.className = "volpop"; pop.append(volumeRows());
-    pop.addEventListener("input", () => { vb.textContent = sfx.volume === 0 && music.volume === 0 ? "🔇" : "🔊"; });
+    pop.addEventListener("input", () => { vb.innerHTML = `${sfx.volume === 0 && music.volume === 0 ? "🔇" : "🔊"}<small>▾</small>`; });
     ui.append(pop);
   };
   ui.append(hud);
