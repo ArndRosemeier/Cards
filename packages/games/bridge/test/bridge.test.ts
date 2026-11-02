@@ -34,3 +34,39 @@ test("full games with bots finish", () => {
     assert.equal(state.scores[0]! + state.scores[1]!, 0);
   }
 });
+
+function atAuction(hands: string[][], auction: [number, string][], seat: number) {
+  const rng = Rng.fromSeed(1);
+  let { state } = Bridge.setup({ boards: 1 }, 4, rng);
+  state.hands = hands as any;
+  state.dealer = 0;
+  state.auction = auction.map(([s, c]) => ({ seat: s, call: c === "P" ? { t: "pass" } : { t: "bid", level: Number(c[0]), suit: c[1] } as any }));
+  state.turn = seat;
+  const legal = Bridge.legalMoves(state, seat);
+  return bridgeBot.choose(Bridge.view(state, seat), legal, rng);
+}
+const filler = (n: number) => ["CA", "CK", "CQ", "CJ", "CT", "C9", "C8", "C7", "D2"].slice(0, n);
+test("conventions: 1NT opening, Stayman, Jacoby transfer", () => {
+  const empty = [[], [], [], []] as string[][];
+  // 16 balanced points opens 1NT
+  const open = ["SA", "SK", "S5", "HK", "HQ", "H4", "H2", "DK", "D7", "D3", "C9", "C5", "C2"];
+  const o = atAuction([open, [], [], []].map((h, i) => (i ? [] : h)) as any, [], 0) as any;
+  assert.deepEqual([o.t, o.level, o.suit], ["bid", 1, "N"]);
+  // responder: 9 hcp with four hearts bids Stayman 2C
+  const stay = ["SK", "S5", "S2", "HA", "HJ", "H8", "H4", "DQ", "D5", "D3", "C8", "C3", "C2"];
+  const r = atAuction([empty[0]!, empty[1]!, stay, empty[3]!] as any, [[0, "1N"], [1, "P"]], 2) as any;
+  assert.deepEqual([r.t, r.level, r.suit], ["bid", 2, "C"]);
+  // five spades and a weak hand: Jacoby transfer 2H
+  const tr = ["SQ", "SJ", "S9", "S5", "S2", "H8", "H4", "H3", "D5", "D2", "C8", "C3", "C2"];
+  const t = atAuction([empty[0]!, empty[1]!, tr, empty[3]!] as any, [[0, "1N"], [1, "P"]], 2) as any;
+  assert.deepEqual([t.t, t.level, t.suit], ["bid", 2, "H"]);
+  // opener completes the transfer
+  const done = atAuction([open, empty[1]!, empty[2]!, empty[3]!] as any, [[0, "1N"], [1, "P"], [2, "2H"], [3, "P"]], 0) as any;
+  assert.deepEqual([done.t, done.level, done.suit], ["bid", 2, "S"]);
+  void filler;
+});
+test("weak two opening", () => {
+  const hand = ["SA", "SQ", "S9", "S7", "S6", "S3", "H5", "H2", "D8", "D4", "C7", "C3", "C2"];
+  const m = atAuction([hand, [], [], []] as any, [], 0) as any;
+  assert.deepEqual([m.t, m.level, m.suit], ["bid", 2, "S"]);
+});
