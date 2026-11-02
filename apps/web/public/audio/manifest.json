@@ -1,0 +1,27 @@
+{
+ "note": "Generated via OpenRouter, trimmed, mono, peak-normalised, MP3 80k. SFX: bytedance-seed/seed-audio-1-0 (prompt prefixed 'The sound of'). Music: google/lyria-3-clip-preview 30 s clips, loudnorm -24 LUFS, crossfaded playlist.",
+ "sfx": {
+  "place2": "a playing card tapped onto a wooden card table, short light snap, dry, no reverb",
+  "place3": "a playing card dropped flat onto green felt, soft thwap",
+  "place4": "a playing card slapped down on a wooden table, firm confident snap",
+  "flip1": "a playing card being flipped over on a table, quick paper flick",
+  "flip2": "a single playing card turned face up, short crisp paper snap",
+  "flip3": "a playing card turned over, soft paper flap",
+  "deal1": "a playing card sliding fast across a felt table when dealt, short swish",
+  "deal2": "a playing card sliding across a smooth table, quick dealer flick",
+  "chip1": "a single poker chip clicked down onto a stack of chips, short clay click",
+  "chip2": "a few casino poker chips clinking together as they are pushed forward",
+  "chip3": "poker chips dropped into a pile, soft clay clatter",
+  "shuffle": "a deck of playing cards being riffle shuffled, crisp cascading flutter",
+  "sweep": "a hand sweeping a pile of playing cards across a felt table, soft long swoosh with paper rustle",
+  "win": "a short bright magical success chime, rising sparkling bells, about one second",
+  "lose": "a short gentle descending sad two-note wooden mallet tone, about one second",
+  "turn": "a soft single wooden tick notification, subtle, short",
+  "click": "a tiny crisp button click"
+ },
+ "music": {
+  "music_a": "30-second loopable instrumental background music for a relaxed card game night, warm felt piano, soft upright bass, brushed drums, gentle jazz lounge, mellow, no vocals, steady tempo, ends cleanly",
+  "music_b": "30-second loopable instrumental ambient music for focused thinking at a card table, warm pads, soft marimba, subtle glass bells, slow, calm, no drums, no vocals",
+  "music_c": "30-second loopable instrumental cozy acoustic music, fingerstyle nylon guitar, light shaker, upbeat but relaxed, warm, no vocals"
+ }
+}

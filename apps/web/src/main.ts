@@ -2,7 +2,7 @@ import { Application } from "pixi.js";
 import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
-import { sfx } from "./sfx.ts";
+import { sfx, music } from "./sfx.ts";
 import { getLang, setLang, t } from "./i18n.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
@@ -18,6 +18,7 @@ const defOf = () => { const d = entry().def; return fast ? { ...d, botDelay: () 
 
 let app: Application;
 let scene: GameScene<any> | null = null;
+document.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest?.(".btn")) sfx.click(); });
 let teardown: (() => void) | null = null;
 
 const token = (() => {
@@ -51,6 +52,7 @@ function bindLang(w: HTMLElement, rerender: () => void) {
 }
 
 function showMenu() {
+  music.stop();
   let players = entry().players.includes(3) ? 3 : entry().players[0]!; let name = savedName();
   const render = () => {
     const w = panel(`<h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div>
@@ -142,16 +144,19 @@ function enterRoom(session: Session) {
 
 function addHud(onMenu: () => void) {
   const hud = document.createElement("div"); hud.className = "hud";
-  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button>`;
+  hud.innerHTML = `<button class="btn">${t("menu")}</button><button class="btn" id="mute">${sfx.muted ? "🔇" : "🔊"}</button><button class="btn" id="mus">${music.off ? "♪̸" : "♪"}</button>`;
   (hud.firstElementChild as HTMLButtonElement).onclick = onMenu;
   (hud.querySelector("#mute") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = sfx.toggle() ? "🔇" : "🔊"; };
+  (hud.querySelector("#mus") as HTMLButtonElement).onclick = (e) => { (e.target as HTMLElement).textContent = music.toggle() ? "♪̸" : "♪"; };
   ui.append(hud);
+  music.start(); sfx.shuffle();
   const rot = document.createElement("div"); rot.className = "rotate"; rot.innerHTML = `<div class="ico">⟳</div><div>${t("rotate")}</div>`; ui.append(rot);
 }
 
 function showResult(winner: number, names: string[], session: Session | null, again?: () => void) {
   if (ui.querySelector(".result")) return;
   const me = session ? session.mySeat : 0;
+  if (winner === me) sfx.win(); else sfx.lose();
   const r = document.createElement("div"); r.className = "result";
   r.innerHTML = `<div class="panel"><h1>${winner === me ? t("youWin") : t("wins", { n: esc(names[winner] ?? "") })}</h1>
     <div class="btns">${again ? `<button class="btn primary" id="again">${t("again")}</button>` : ""}<button class="btn" id="menu">${t("menu")}</button></div></div>`;
