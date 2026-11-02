@@ -182,6 +182,7 @@ const SUIT_ORDER = ["C", "H", "S", "D"];
 const stdOrder = (hand: Card[]) => hand.slice().sort((a, b) => SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)));
 
 const heartsUi: TrickUi<HMove, HView> = {
+  lowBetter: true,
   points: heartsPoints,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: (m) => (m.t === "cards" ? m.cards : null),

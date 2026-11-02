@@ -26,6 +26,8 @@ export interface TrickUi<M, V> {
   talonFaceUp?(v: V): boolean;
   /** partnership game: scores come in pairs of seats (Bridge), so the summary shows one row per side */
   teams?: boolean;
+  /** lower scores are better (Hearts), which flips the summary colours and the star */
+  lowBetter?: boolean;
   /** custom panel (e.g. the Bridge bidding box). Return null to hide. */
   panel?(v: V, legal: M[], ctx: { send(m: M): void; names: string[]; me: number }): HTMLElement | null;
   winner(v: V): number;                        // who won the match (for the result screen)
@@ -246,7 +248,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
           const nm = (i: number) => (i === this.me ? t("you") : this.names[i] ?? "");
           const rows = this.adapter.teams ? [0, 1].map((sd) => ({ name: `${nm(sd)} + ${nm(sd + 2)}`, from: this.view!.scores[sd] ?? 0, to: u.view.scores[sd] ?? 0, me: sd === this.me % 2 }))
             : this.names.map((_, i) => ({ name: nm(i), from: this.view!.scores[i] ?? 0, to: u.view.scores[i] ?? 0, me: i === this.me }));
-          await roundSummary(this.ui, rows, t("roundDone"));
+          this.board.innerHTML = this.boardHtml(u.view);
+          await roundSummary(this.ui, rows, t("roundDone"), !!this.adapter.lowBetter);
         }
         this.tricksWon = []; this.showWon();
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.talon, ...this.trick.values(), ...this.dummy.values()];
@@ -480,12 +483,16 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.banner.textContent = this.adapter.status(v, this.names, this.me);
     { const c = this.adapter.trump?.(v) ?? null; this.chip.textContent = c ?? ""; this.chip.style.display = c ? "block" : "none"; }
     this.banner.style.display = this.busy || v.over || !this.banner.textContent ? "none" : "block";
-    const rows = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.scores[i] ?? 0}</b></div>`);
-    const extra = this.adapter.extra?.(v, this.names) ?? [];
     if (this.adapter.panel) {
       const el = this.busy ? null : this.adapter.panel(v, this.legal, { send: (m) => this.send(m), names: this.names, me: this.me });
       this.panelEl.innerHTML = ""; if (el) { this.panelEl.append(el); this.panelEl.style.display = "block"; } else this.panelEl.style.display = "none";
     }
-    this.board.innerHTML = rows.join("") + extra.map((e) => `<div class="x">${e}</div>`).join("");
+    this.board.innerHTML = this.boardHtml(v);
+  }
+  private boardHtml(v: V): string {
+    const nm = this.names.map((n, i) => (i === this.me ? t("you") : n));
+    const rows = nm.map((n, i) => `<div class="${v.turn === i ? "on" : ""}"><span>${n}</span><b>${v.scores[i] ?? 0}</b></div>`);
+    const extra = this.adapter.extra?.(v, nm) ?? [];
+    return rows.join("") + extra.map((e) => `<div class="x">${e}</div>`).join("");
   }
 }
