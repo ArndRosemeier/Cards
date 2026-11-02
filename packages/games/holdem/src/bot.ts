@@ -159,13 +159,20 @@ export function createHoldemBot(): Bot<View, Move> {
           const open = 0.5 - 0.17 * pos - 0.02 * Math.max(0, 5 - live.length);
           if (hs >= open + 0.02 * (n - 1) && raises.length) return sized(1.4 + rng.next() * 0.6) ?? safe();
           if (hs >= open - 0.1 && callMove && toCall <= bb && toCall > 0 && pos > 0.4 && rng.next() < 0.6) return callMove;
-          return checkMove ?? (callMove && toCall <= bb && hs >= open - 0.14 ? callMove : foldMove ?? callMove!);
+          if (checkMove) return checkMove;
+          // a cheap price is always worth it: compare a rough equity against the pot odds, and never throw a pair away for under a big blind
+          const eqPre = Math.pow(hs, 1 + 0.15 * (n - 1)) * 0.9 + 0.08;
+          const pair = rv(v.hand[0]!) === rv(v.hand[1]!);
+          if (callMove && ((eqPre > odds * 1.3 && toCall <= bb * 0.6) || (pair && toCall <= bb))) return callMove;
+          return foldMove ?? callMove!;
         }
         // facing a raise: equity against the raiser's range
         const eq = eqVs();
         const need = odds * 1.08 + 0.03 - 0.04 * pos;
         if (eq > 0.62 + 0.03 * (n - 1) && raises.length && rng.next() < 0.7) return sized(0.9 + rng.next() * 0.5) ?? callMove ?? safe();
         if (eq > need && callMove) return callMove;
+        // set mining: a pair is worth a small raise when the stacks are deep
+        if (callMove && rv(v.hand[0]!) === rv(v.hand[1]!) && toCall * 12 <= myStack && toCall <= 6 * bb) return callMove;
         return foldMove ?? safe();
       }
 
