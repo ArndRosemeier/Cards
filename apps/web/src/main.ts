@@ -1,5 +1,6 @@
 import { Application } from "pixi.js";
 import { confetti } from "./fx.ts";
+import { createMenuScene } from "./menuScene.ts";
 import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene } from "./trickScene.ts";
@@ -54,8 +55,10 @@ function bindLang(w: HTMLElement, rerender: () => void) {
   w.querySelectorAll<HTMLButtonElement>("#lg button").forEach((b) => (b.onclick = () => { setLang(b.dataset.l as "de" | "en"); rerender(); }));
 }
 
+let menuFx: { destroy(): void } | null = null;
+const killMenuFx = () => { menuFx?.destroy(); menuFx = null; };
 function showMenu() {
-  music.stop();
+  music.stop(); if (!menuFx) menuFx = createMenuScene(app);
   let players = entry().players.includes(3) ? 3 : entry().players[0]!; let name = savedName();
   const render = () => {
     const w = panel(`<h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div>
@@ -138,7 +141,7 @@ function enterRoom(session: Session) {
   session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); } else if (c === "room_full") { showMenu(); } });
   const showGame = () => {
     gameShown = started = true;
-    teardown?.(); scene?.destroy(); ui.innerHTML = "";
+    killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
     setTableTheme(gameId);
     scene = entry().scene(app, ui, { submit: (m) => session.submit(m), onFinished: (w, names) => setTimeout(() => showResult(w, names, session), 1500) });
     addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); });
@@ -172,7 +175,7 @@ function showResult(winner: number, names: string[], session: Session | null, ag
 
 // ---------------------------------------------------------------- local play
 function startLocal(name: string, players: number, seed: number) {
-  teardown?.(); scene?.destroy(); ui.innerHTML = "";
+  killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
   const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: BOT_NAMES[i]! }))];
   const d = defOf();
   const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, ...(fast ? { botDelay: () => 100 } : {}) });
