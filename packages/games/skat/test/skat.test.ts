@@ -55,3 +55,19 @@ test("a whole 32-card deck carries 120 points", () => {
   const all = [...state.hands.flat(), ...state.talon];
   assert.equal(all.reduce((a, c) => a + cardPoints(c), 0), 120);
 });
+
+test("announced Schneider and Schwarz raise the game value and must be made", () => {
+  const cards = ["CJ", "SJ", "HA", "HT", "HK", "H7", "H8", "H9", "D7", "D8"] as Card[]; // two jacks with: multiplier 3 as hearts
+  const plain = gameValue("H", cards, true, true, false, "none"), ann = gameValue("H", cards, true, true, false, "schneider"), sw = gameValue("H", cards, true, true, true, "schwarz");
+  assert.equal(ann - plain, 10);                      // hearts are worth 10 per multiplier step
+  assert.equal(sw, 10 * (jackMultiplier(cards) + 1 + 1 + 1 + 1 + 1));  // jacks and game + hand + schneider + schwarz + both announcements
+});
+test("hand game leads to an announce phase for suit and grand, not for null", () => {
+  const rng = Rng.fromSeed(11);
+  let { state } = Skat.setup({ rounds: 1, ramsch: false }, 3, rng);
+  const st = structuredClone(state); st.phase = "declare"; st.declarer = 0; st.handGame = true; st.turn = 0;
+  assert.equal(Skat.apply(st, 0, { t: "game", game: "G" }, rng).state.phase, "announce");
+  assert.equal(Skat.apply(st, 0, { t: "game", game: "N" }, rng).state.phase, "play");
+  const a = Skat.apply(Skat.apply(st, 0, { t: "game", game: "G" }, rng).state, 0, { t: "announce", level: "schneider" }, rng).state;
+  assert.equal(a.phase, "play"); assert.equal(a.announce, "schneider");
+});

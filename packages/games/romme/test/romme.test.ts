@@ -46,3 +46,18 @@ test("bot games finish and keep 110 cards", () => {
     assert.ok(Romme.result(state), `seed ${seed} did not finish`);
   }
 });
+
+test("joker swap takes the joker out of a table meld", () => {
+  const rng = Rng.fromSeed(5);
+  const { state } = Romme.setup({ ...defaultConfig, rounds: 1 }, 2, rng);
+  const st = structuredClone(state);
+  st.phase = "play"; st.turn = 0; st.opened = [true, false]; st.taken = null;
+  st.melds = [{ owner: 0, kind: "run", cards: C("H5 X1 H7") }];
+  st.hands[0] = C("H6 SK DK");
+  assert.throws(() => Romme.apply(st, 0, { t: "swap", meld: 0, card: "SK" as Card }, rng));       // does not fit
+  const r = Romme.apply(st, 0, { t: "swap", meld: 0, card: "H6" as Card }, rng).state;
+  assert.deepEqual(r.melds[0]!.cards, C("H5 H6 H7"));
+  assert.ok(r.hands[0]!.includes("X1" as Card));
+  st.opened = [false, false];
+  assert.throws(() => Romme.apply(st, 0, { t: "swap", meld: 0, card: "H6" as Card }, rng));       // must have opened
+});

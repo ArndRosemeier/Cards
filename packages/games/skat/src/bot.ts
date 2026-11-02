@@ -55,6 +55,7 @@ export const skatBot: Bot<View, Move> = {
       const pick = ranked.slice(0, 2);
       return legal.find((m) => m.t === "cards" && pick.every((c) => m.cards.includes(c))) ?? legal[0]!;
     }
+    if (v.phase === "announce") return legal.find((m) => m.t === "announce" && m.level === "none")!;
     if (v.phase === "declare") {
       const { game } = bestGame(hand);
       return legal.find((m) => m.t === "game" && m.game === game) ?? legal[0]!;

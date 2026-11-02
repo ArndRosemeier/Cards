@@ -35,6 +35,7 @@ const skatUi: TrickUi<SMove, SView> = {
       case "pickup": return t("pickup");
       case "handgame": return t("handGame");
       case "game": return t("game" + m.game);
+      case "announce": return t("ann_" + m.level);
       default: return null;
     }
   },
@@ -48,10 +49,11 @@ const skatUi: TrickUi<SMove, SView> = {
       case "skat": return v.turn === me ? t("pickOrHand") : t("declChoosing", { n: who });
       case "discard": return v.turn === me ? t("discard2") : t("declChoosing", { n: who });
       case "declare": return v.turn === me ? t("chooseGame") : t("declChoosing", { n: who });
+      case "announce": return v.turn === me ? t("annChoose") : t("declChoosing", { n: who });
       default: return v.turn === me ? t("yourTurn") : t("turnOf", { n: who });
     }
   },
-  extra: (v, names) => [`${t("roundNo", { a: v.round + 1, b: v.rounds })}`, ...(v.declarer !== null && v.game ? [`${names[v.declarer]}: ${t("game" + v.game)}${v.handGame ? " Hand" : ""} (${v.contract})`] : v.game === "R" ? [t("gameR")] : [])],
+  extra: (v, names) => [`${t("roundNo", { a: v.round + 1, b: v.rounds })}`, ...(v.declarer !== null && v.game ? [`${names[v.declarer]}: ${t("game" + v.game)}${v.handGame ? " Hand" : ""}${v.announce === "schneider" ? " · " + t("announce_schneider") : v.announce === "schwarz" ? " · " + t("announce_schwarz") : ""} (${v.contract})`] : v.game === "R" ? [t("gameR")] : [])],
   winner: (v) => v.scores.indexOf(Math.max(...v.scores)),
 };
 

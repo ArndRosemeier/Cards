@@ -4,23 +4,24 @@ export type Game = "C" | "S" | "H" | "D" | "G" | "N" | "R"; // suits, Grand, Nul
 export interface SkatConfig { rounds: number; ramsch: boolean }
 export const defaultConfig: SkatConfig = { rounds: 12, ramsch: true };
 
-export type Phase = "bid" | "skat" | "discard" | "declare" | "play" | "over";
+export type Phase = "bid" | "skat" | "discard" | "declare" | "announce" | "play" | "over";
+export type Announce = "none" | "schneider" | "schwarz";
 interface Bid { stage: 1 | 2; caller: Seat; listener: Seat; level: number; waiting: "caller" | "listener" | "final"; }
 
 export interface SkatState {
   hands: Card[][]; talon: Card[]; phase: Phase;
   dealer: Seat; round: number; rounds: number; ramschOk: boolean; scores: number[];
-  bid: Bid; declarer: Seat | null; game: Game | null; handGame: boolean; contract: number; declarerCards: Card[];
+  bid: Bid; declarer: Seat | null; game: Game | null; handGame: boolean; announce: Announce; contract: number; declarerCards: Card[];
   trick: { seat: Seat; card: Card }[]; turn: Seat; taken: Card[][]; tricksWon: number[];
 }
 export type Move =
   | { t: "bid"; value: number } | { t: "pass" } | { t: "hold" } | { t: "pickup" } | { t: "handgame" }
-  | { t: "cards"; cards: Card[] } | { t: "game"; game: Game } | { t: "play"; card: Card };
+  | { t: "cards"; cards: Card[] } | { t: "game"; game: Game } | { t: "announce"; level: Announce } | { t: "play"; card: Card };
 export type Ev = TrickEv;
 export interface View {
   you: Seat | "public"; hand: Card[]; handSizes: number[]; talon: number; trick: { seat: Seat; card: Card }[];
   turn: Seat | null; scores: number[]; over: boolean;
-  phase: Phase; dealer: Seat; forehand: Seat; declarer: Seat | null; game: Game | null; handGame: boolean; contract: number;
+  phase: Phase; dealer: Seat; forehand: Seat; declarer: Seat | null; game: Game | null; handGame: boolean; announce: Announce; contract: number;
   bidLevel: number; caller: Seat | null; listener: Seat | null; round: number; rounds: number;
 }
 
@@ -84,7 +85,7 @@ function deal(s: SkatState, rng: Rng, events: Ev[]) {
   s.hands = [deck.slice(0, 10), deck.slice(10, 20), deck.slice(20, 30)];
   s.talon = deck.slice(30, 32);
   s.taken = [[], [], []]; s.tricksWon = [0, 0, 0]; s.trick = [];
-  s.declarer = null; s.game = null; s.handGame = false; s.contract = 0; s.declarerCards = [];
+  s.declarer = null; s.game = null; s.handGame = false; s.announce = "none"; s.contract = 0; s.declarerCards = [];
   s.phase = "bid";
   const F = forehand(s.dealer), M = (s.dealer + 2) % N;
   s.bid = { stage: 1, caller: M, listener: F, level: -1, waiting: "caller" };
@@ -101,7 +102,7 @@ export const Skat: GameRules<SkatConfig, SkatState, Move, View, Ev> = {
 
   setup(config, _seats, rng) {
     const s = { hands: [], talon: [], phase: "bid", dealer: 0, round: 0, rounds: config.rounds, ramschOk: config.ramsch, scores: [0, 0, 0],
-      bid: { stage: 1, caller: 0, listener: 0, level: -1, waiting: "caller" }, declarer: null, game: null, handGame: false, contract: 0, declarerCards: [],
+      bid: { stage: 1, caller: 0, listener: 0, level: -1, waiting: "caller" }, declarer: null, game: null, handGame: false, announce: "none", contract: 0, declarerCards: [],
       trick: [], turn: 0, taken: [], tricksWon: [] } as SkatState;
     const events: Ev[] = [];
     deal(s, rng, events);
@@ -131,7 +132,8 @@ export const Skat: GameRules<SkatConfig, SkatState, Move, View, Ev> = {
       for (let a = 0; a < h.length; a++) for (let b = a + 1; b < h.length; b++) out.push({ t: "cards", cards: [h[a]!, h[b]!] });
     } else if (s.phase === "declare") {
       for (const g of ["C", "S", "H", "D", "G", "N"] as Game[]) out.push({ t: "game", game: g });
-    } else for (const card of legalPlays(s, seat)) out.push({ t: "play", card });
+    } else if (s.phase === "announce") out.push({ t: "announce", level: "none" }, { t: "announce", level: "schneider" }, { t: "announce", level: "schwarz" });
+    else for (const card of legalPlays(s, seat)) out.push({ t: "play", card });
     return out;
   },
 
@@ -182,7 +184,13 @@ export const Skat: GameRules<SkatConfig, SkatState, Move, View, Ev> = {
         s.phase = "declare";
         break;
       }
-      case "game": s.game = move.game; events.push({ t: "say", seat, key: "game" + move.game }); startPlay(); break;
+      case "game":
+        s.game = move.game; events.push({ t: "say", seat, key: "game" + move.game });
+        if (s.handGame && move.game !== "N") s.phase = "announce"; else startPlay();   // hand games may announce Schneider or Schwarz
+        break;
+      case "announce":
+        s.announce = move.level; if (move.level !== "none") events.push({ t: "say", seat, key: "announce_" + move.level });
+        startPlay(); break;
       case "play": {
         const hand = s.hands[seat]!; hand.splice(hand.indexOf(move.card), 1);
         s.trick.push({ seat, card: move.card });
@@ -208,7 +216,7 @@ export const Skat: GameRules<SkatConfig, SkatState, Move, View, Ev> = {
     return {
       you: seat, hand: seat === "public" ? [] : s.hands[seat]!.slice(), handSizes: s.hands.map((h) => h.length), talon: s.talon.length,
       trick: s.trick.slice(), turn: s.phase === "over" ? null : Skat.activeSeats(s)[0] ?? null, scores: s.scores.slice(), over: s.phase === "over",
-      phase: s.phase, dealer: s.dealer, forehand: forehand(s.dealer), declarer: s.declarer, game: s.game, handGame: s.handGame, contract: s.contract,
+      phase: s.phase, dealer: s.dealer, forehand: forehand(s.dealer), declarer: s.declarer, game: s.game, handGame: s.handGame, announce: s.announce, contract: s.contract,
       bidLevel: s.bid.level, caller: s.phase === "bid" ? s.bid.caller : null, listener: s.phase === "bid" ? s.bid.listener : null, round: s.round, rounds: s.rounds,
     };
   },
@@ -226,9 +234,9 @@ export const Skat: GameRules<SkatConfig, SkatState, Move, View, Ev> = {
 };
 
 /** Game value (before bid check) for a won/lost declarer result. Exposed for tests and bots. */
-export function gameValue(game: Game, declarerCards: Card[], hand: boolean, schneider: boolean, schwarz: boolean): number {
+export function gameValue(game: Game, declarerCards: Card[], hand: boolean, schneider: boolean, schwarz: boolean, announce: Announce = "none"): number {
   if (game === "N") return hand ? 35 : 23;
-  const mult = jackMultiplier(declarerCards) + (hand ? 1 : 0) + (schneider ? 1 : 0) + (schwarz ? 1 : 0);
+  const mult = jackMultiplier(declarerCards) + (hand ? 1 : 0) + (schneider ? 1 : 0) + (schwarz ? 1 : 0) + (announce !== "none" ? 1 : 0) + (announce === "schwarz" ? 1 : 0);
   return BASE[game]! * mult;
 }
 
@@ -254,7 +262,9 @@ function scoreRound(s: SkatState, lastWinner: Seat, events: Ev[]) {
     won = decl >= 61;
     const schneider = won ? decl >= 90 : decl <= 30;
     const schwarz = won ? oppTricks === 0 : s.tricksWon[d] === 0;
-    value = gameValue(g, s.declarerCards, s.handGame, schneider, schwarz);
+    value = gameValue(g, s.declarerCards, s.handGame, schneider, schwarz, s.announce);
+    if (s.announce === "schneider" && !(won && decl >= 90)) won = false;          // an announced Schneider/Schwarz must be made
+    if (s.announce === "schwarz" && !(won && oppTricks === 0)) won = false;
     if (s.contract > value) {  // overbid: loses, and is charged the next multiple of the base value that covers the bid
       won = false;
       value = Math.ceil(s.contract / BASE[g]!) * BASE[g]!;

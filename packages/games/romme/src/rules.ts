@@ -15,6 +15,7 @@ export type Move =
   | { t: "draw"; from: "stock" | "discard" }
   | { t: "meld"; groups: Card[][] }
   | { t: "layoff"; cards: Card[]; meld: number }
+  | { t: "swap"; meld: number; card: Card }          // take the joker out of a table meld by putting the natural card in its place
   | { t: "discard"; card: Card };
 export type Ev =
   | { t: "newRound" }
@@ -22,6 +23,7 @@ export type Ev =
   | { t: "draw"; seat: Seat; from: "stock" | "discard"; card: Card }
   | { t: "meld"; seat: Seat; first: number; groups: Card[][] }
   | { t: "layoff"; seat: Seat; meld: number; cards: Card[]; result: Card[] }
+  | { t: "swap"; seat: Seat; meld: number; card: Card; joker: Card; result: Card[] }
   | { t: "discard"; seat: Seat; card: Card }
   | { t: "reshuffle" }
   | { t: "say"; seat: Seat | null; key: string; vars?: Record<string, string | number> };
@@ -107,6 +109,18 @@ export const Romme: GameRules<RommeConfig, RommeState, Move, View, Ev> = {
       m.cards = merged.cards; m.kind = merged.kind;
       if (s.taken && move.cards.includes(s.taken)) s.taken = null;
       events.push({ t: "layoff", seat, meld: move.meld, cards: move.cards.slice(), result: merged.cards.slice() });
+      if (hand.length === 0) return { state: finishRound(s, seat, rng, events), events };
+      return { state: s, events };
+    }
+    if (move.t === "swap") {
+      if (!s.opened[seat]) throw new Error("open first");
+      const m = s.melds[move.meld]; if (!m) throw new Error("no such meld");
+      const joker = m.cards.find(isJoker); if (!joker) throw new Error("no joker in that meld");
+      if (!hand.includes(move.card) || isJoker(move.card)) throw new Error("card not in hand");
+      const merged = parseMeld(m.cards.map((c) => (c === joker ? move.card : c))); if (!merged || merged.cards.some(isJoker)) throw new Error("card does not fit");
+      remove(hand, [move.card]); hand.push(joker); m.cards = merged.cards; m.kind = merged.kind;
+      if (s.taken && move.card === s.taken) s.taken = null;
+      events.push({ t: "swap", seat, meld: move.meld, card: move.card, joker, result: merged.cards.slice() });
       if (hand.length === 0) return { state: finishRound(s, seat, rng, events), events };
       return { state: s, events };
     }

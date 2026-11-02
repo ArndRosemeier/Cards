@@ -171,6 +171,15 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
         mv.cards = ev.result.map((id) => mv.cards.find((x) => x.id === id)!).filter(Boolean);
         this.layoutMelds(); this.layout(ev.seat); await sleep(350); break;
       }
+      case "swap": {
+        const mv = this.melds[ev.meld]; if (!mv) break; const own = ev.seat === this.me;
+        const jv = mv.cards.find((c) => c.id === ev.joker); if (jv) mv.cards = mv.cards.filter((c) => c !== jv);
+        const cv = this.takeFrom(ev.seat, ev.card); cv.reveal(ev.card); if (!own) void cv.flip(true, 0.3);
+        mv.cards.push(cv); mv.cards = ev.result.map((id) => mv.cards.find((x) => x.id === id)!).filter(Boolean);
+        this.layoutMelds();
+        if (jv) { if (own) this.mine.set(ev.joker, jv); else { this.opp[ev.seat]!.push(jv); void jv.flip(false, 0.3); } }
+        this.layout(ev.seat); sfx.chip(); await sleep(450); break;
+      }
       case "discard": {
         const mine = ev.seat === this.me; const cv = this.takeFrom(ev.seat, ev.card); cv.reveal(ev.card); if (!mine) void cv.flip(true, 0.3);
         this.layout(ev.seat); const old = this.discardView; this.discardView = cv;
@@ -226,7 +235,9 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     if (!this.myTurn() || this.view?.phase !== "play" || !this.selection.size) return;
     const m = this.view.melds[meld]; if (!m) return;
     if (!this.view.opened[this.me]) { this.toast(t("rm_openFirst")); return; }
-    if (parseMeld([...m.cards, ...this.selection])) this.send({ t: "layoff", cards: [...this.selection], meld });
+    if (parseMeld([...m.cards, ...this.selection])) { this.send({ t: "layoff", cards: [...this.selection], meld }); return; }
+    const jk = m.cards.find(isJoker), only = this.selection.size === 1 ? [...this.selection][0]! : null;       // a natural card in place of the joker takes the joker back
+    if (jk && only && !isJoker(only) && parseMeld(m.cards.map((c) => (c === jk ? only : c)))) this.send({ t: "swap", meld, card: only });
     else this.toast(t("rm_noFit"));
   }
   private toggle(card: Card) {

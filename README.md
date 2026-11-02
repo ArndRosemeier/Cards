@@ -15,7 +15,7 @@ UI in German and English. Procedural card art, animated table (PixiJS + GSAP), s
 | Bridge | 4 | auction, dummy play, duplicate scoring |
 | Canasta | 2–4 | partners with 4 players, frozen pile, red threes, canastas |
 
-Known simplifications: Skat has no Schneider/Schwarz announcements, Rommé has no joker swap, Bridge bots bid with a basic point count (no conventions), Canasta uses fixed going-out rules (needs one canasta).
+Known simplifications: Skat has no Ouvert games, Bridge bots bid with a basic point count (no conventions), Canasta uses fixed going-out rules (needs one canasta).
 
 ## Run
 
