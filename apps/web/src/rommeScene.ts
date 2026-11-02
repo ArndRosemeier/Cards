@@ -5,7 +5,7 @@ import type { Ev, Move, View } from "@cards/romme";
 import { parseMeld } from "@cards/romme";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
-import { CardView, sleep, tween } from "./cardview.ts";
+import { CardView, HandOrder, type DragCtl, addCountIcon, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
@@ -37,7 +37,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
     this.app = app; this.ui = ui; this.hooks = hooks; setPiles(this.geo);
     app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
-    this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer); this.handLayer.sortableChildren = true;
+    this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer);
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 92);
     this.tableLayer.addChild(this.stockStack, this.stockText);
@@ -75,7 +75,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       const rel = (s - this.me + this.n) % this.n, a = anchors[rel]!;
       const box = new Graphics(), ring = new Graphics();
       const name = new Text({ text: s === this.me ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 22, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } }); name.anchor.set(0.5); name.position.set(-18, 0);
-      const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 20, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } }); count.anchor.set(0.5); count.position.set(78, 0);
+      const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 20, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } }); count.anchor.set(0.5); count.position.set(78, 0); addCountIcon(count);
       box.roundRect(-100, -26, 200, 52, 26).fill({ color: 0, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-104, -30, 208, 60, 30).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count);
@@ -85,21 +85,23 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     for (let i = 0; i < 3; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }
   }
   private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
+  private order = new HandOrder(); private dragCtl: DragCtl | null = null;
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
     const order = this.sortMode === "suit" ? sortSuit([...this.mine.keys()]) : sortRank([...this.mine.keys()]);
-    return order.map((c) => this.mine.get(c)!);
+    return this.order.apply(order).map((c) => this.mine.get(c)!);
   }
   private fan(seat: number, i: number, n: number) {
     const a = this.anchor(seat), own = seat === this.me;
-    const g = this.geo, step = own ? Math.min(62, (g.portrait ? 540 : 1050) / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
+    const g = this.geo, step = own ? Math.min(g.portrait ? 62 : 100, (g.portrait ? 540 : 1300) / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.5 : 0.3), cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin + (own ? 0 : 0), y: a.cy + (own ? 20 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
+    return { x: a.cx + lx * cos - ly * sin + (own ? 0 : 0), y: a.cy + (own ? 0 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
   }
   private layout(seat: number, animate = true) {
     const hand = this.handOf(seat);
     hand.forEach((cv, i) => {
-      cv.slot = this.fan(seat, i, hand.length); if (cv.parent !== this.handLayer) this.handLayer.addChild(cv); cv.zIndex = i;
+      cv.slot = this.fan(seat, i, hand.length); if (seat === this.me) cv.drag = this.ctl(); if (cv.dragging) return; this.handLayer.addChild(cv);
       const d = animate ? 0.4 : 0; const staged = this.staged.some((g) => g.includes(cv.id!));
       gsap.to(cv, { x: cv.slot.x, y: cv.slot.y - (this.selection.has(cv.id!) ? 40 : staged ? 70 : 0), rotation: cv.slot.rot, duration: d, ease: "power3.out", overwrite: "auto" });
       gsap.to(cv.scale, { x: cv.slot.scale, y: cv.slot.scale, duration: d });
@@ -115,17 +117,15 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       const step = pt ? 22 : 34, wdt = (m.cards.length - 1) * step + 70;
       if (x + wdt > maxX) { x = x0; y += rowH; }
       m.cards.forEach((cv, i) => {
-        if (cv.parent !== this.meldLayer) this.meldLayer.addChild(cv);
+        this.meldLayer.addChild(cv);
         const sl = { x: x + 35 + i * step, y: y + 50, rot: 0, scale: 0.5 }; cv.slot = sl;
         gsap.to(cv, { x: sl.x, y: sl.y, rotation: 0, duration: animate ? 0.4 : 0, ease: "power3.out", overwrite: "auto" }); gsap.to(cv.scale, { x: 0.5, y: 0.5, duration: animate ? 0.4 : 0 });
-        cv.zIndex = i;
       });
       m.frame.clear().roundRect(x - 6, y - 8, wdt + 12, 116, 14).stroke({ width: 2, color: m.owner === this.me ? 0xffe08a : 0xffffff, alpha: 0.35 }).fill({ color: 0x000000, alpha: 0.12 });
       m.frame.eventMode = "static"; m.frame.cursor = "pointer"; m.frame.removeAllListeners();
       const idx = this.melds.indexOf(m); m.frame.on("pointertap", () => this.tryLayoff(idx));
       x += wdt + 22;
     }
-    this.meldLayer.sortableChildren = true;
   }
 
   private mk(id: Card | null, up: boolean, at = STOCK) { const cv = new CardView(id, up); cv.position.set(at.x, at.y); cv.scale.set(0.8); this.flyLayer.addChild(cv); return cv; }
@@ -145,7 +145,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     switch (ev.t) {
       case "newRound": {
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.melds.flatMap((m) => m.cards), ...(this.discardView ? [this.discardView] : [])];
-        this.melds.forEach((m) => m.frame.destroy()); this.melds = []; this.mine.clear(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();
+        this.melds.forEach((m) => m.frame.destroy()); this.melds = []; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();
         all.forEach((c) => gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() })); this.dealt = false; await sleep(this.ready && all.length ? 450 : 0); break;
       }
       case "dealt": if (!this.dealt) await this.dealAll(u); break;
@@ -215,7 +215,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     this.view = v;
     if (this.dealt) {
       const want = new Set(v.hand); const same = want.size === this.mine.size && [...want].every((c) => this.mine.has(c));
-      if (!same) { for (const cv of this.mine.values()) cv.destroy(); this.mine.clear(); for (const c of v.hand) { const cv = this.mk(c, true); this.handLayer.addChild(cv); this.mine.set(c, cv); } }
+      if (!same) { for (const cv of this.mine.values()) cv.destroy(); this.mine.clear(); this.order.reset(); for (const c of v.hand) { const cv = this.mk(c, true); this.handLayer.addChild(cv); this.mine.set(c, cv); } }
       for (let s = 0; s < this.n; s++) { if (s === this.me) continue; const l = this.opp[s]!; while (l.length > v.handSizes[s]!) l.pop()!.destroy(); while (l.length < v.handSizes[s]!) { const cv = this.mk(null, false); this.handLayer.addChild(cv); l.push(cv); } }
       const sig = (ms: { cards: Card[] }[]) => ms.map((m) => m.cards.join(",")).join("|");
       if (sig(this.melds.map((m) => ({ cards: m.cards.map((c) => c.id!) }))) !== sig(v.melds)) {
@@ -251,7 +251,8 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     const v = this.view; if (!v) return;
     const turn = this.myTurn();
     for (const [card, cv] of this.mine) {
-      cv.eventMode = turn && v.phase === "play" ? "static" : "none"; cv.cursor = "pointer"; cv.removeAllListeners();
+      if (cv.dragging) continue;
+      cv.eventMode = (turn && v.phase === "play") || cv.drag ? "static" : "none"; cv.cursor = "pointer"; cv.removeAllListeners();
       if (turn && v.phase === "play") cv.on("pointertap", () => this.toggle(card));
     }
     this.stockStack.eventMode = turn && v.phase === "draw" ? "static" : "none";
@@ -270,7 +271,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       } else btn(`${t("rm_meld")}${meld ? ` (${meld.value})` : ""}`, "primary", () => this.send({ t: "meld", groups: [sel] }), !meld);
       btn(t("rm_discard"), opened || !this.staged.length ? "primary" : "", () => this.send({ t: "discard", card: sel[0]! }), sel.length !== 1 || (v.taken === sel[0] && v.handSizes[this.me]! > 1));
     }
-    if (this.dealt) btn(this.sortMode === "suit" ? "123" : "♣♥", "small", () => { this.sortMode = this.sortMode === "suit" ? "rank" : "suit"; this.layout(this.me); });
+    if (this.dealt) btn(this.sortMode === "suit" ? "123" : "♣♥", "small", () => { this.sortMode = this.sortMode === "suit" ? "rank" : "suit"; this.order.reset(); this.layout(this.me); });
     for (let s = 0; s < this.n; s++) gsap.to(this.plates[s]!.ring, { alpha: !v.over && v.turn === s ? 1 : 0, duration: 0.25 });
     let msg = ""; if (!v.over) msg = v.turn === this.me ? (v.phase === "draw" ? t("rm_drawPrompt") : t("rm_playPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
     this.banner.textContent = msg; this.banner.style.display = this.busy || !msg ? "none" : "block";

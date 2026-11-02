@@ -3,11 +3,11 @@ import gsap from "gsap";
 import type { Card, TrickEv, TrickViewBase, Seat } from "@cards/engine";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
-import { CardView, sleep, tween } from "./cardview.ts";
+import { CardView, HandOrder, type DragCtl, addCountIcon, sleep, tween } from "./cardview.ts";
 import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
-import { LAND, pickGeo, cover, type Anchor, type Geo } from "./geo.ts";
+import { LAND, pickGeo, cover, setActionsBottom, type Anchor, type Geo } from "./geo.ts";
 export const W = LAND.W, H = LAND.H, LAYOUTS = LAND.layouts;
 export type { Anchor };
 
@@ -76,7 +76,6 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.app = app; this.ui = ui; this.adapter = adapter; this.hooks = hooks;
     app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
     this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
-    this.handLayer.sortableChildren = true;
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.banner.className = "banner"; this.banner.style.display = "none";
     this.actions.className = "actions";
@@ -95,7 +94,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2);
     cover(this.bg, w, h);
     document.body.classList.toggle("portrait", g.portrait);
-    if (g.portrait) document.documentElement.style.setProperty("--actions-bottom", `${Math.round(h - ((h - g.H * s) / 2 + (g.layouts[this.n || 4]![0]!.cy - 150 * g.ownScale) * s) + 8)}px`); else document.documentElement.style.removeProperty("--actions-bottom");
+    setActionsBottom(g, w, h, this.n || 4);
     if (changed && this.ready) this.applyGeo();
   }
   /** The screen turned between landscape and portrait: move everything to its new place. */
@@ -143,7 +142,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
       const box = new Graphics(), ring = new Graphics();
       const label = new Text({ text: s === this.me ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 24, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } });
       const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 22, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
-      label.anchor.set(0.5); count.anchor.set(0.5);
+      label.anchor.set(0.5); count.anchor.set(0.5); addCountIcon(count);
       const w = 200, h = 54;
       box.roundRect(-w / 2, -h / 2, w, h, 27).fill({ color: 0x000000, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
       ring.roundRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 31).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
@@ -165,10 +164,12 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   }
   private talonSlot(i: number) { return { x: this.geo.center.x - 55 + i * 110, y: this.geo.talonY, rot: 0, scale: 0.8 }; }
 
+  private order = new HandOrder(); private dragCtl: DragCtl | null = null;
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
   private handOf(seat: number): CardView[] {
     if (seat === this.dummySeat && seat !== this.me) return this.adapter.order([...this.dummy.keys()], this.view ?? undefined).map((c) => this.dummy.get(c)!);
     if (seat !== this.me) return this.opp[seat]!;
-    const order = this.adapter.order([...this.mine.keys()], this.view ?? undefined);
+    const order = this.order.apply(this.adapter.order([...this.mine.keys()], this.view ?? undefined));
     return order.map((c) => this.mine.get(c)!);
   }
   private fanSlot(seat: number, i: number, n: number) {
@@ -182,8 +183,9 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const hand = this.handOf(seat);
     hand.forEach((cv, i) => {
       cv.slot = this.fanSlot(seat, i, hand.length);
-      if (cv.parent !== this.handLayer) this.handLayer.addChild(cv);
-      cv.zIndex = i;
+      if (seat === this.me) cv.drag = this.ctl();
+      if (cv.dragging) return;
+      this.handLayer.addChild(cv);
       const d = animate ? 0.45 : 0;
       gsap.to(cv, { x: cv.slot.x, y: cv.slot.y, rotation: cv.slot.rot, duration: d, ease: "power3.out", overwrite: "auto" });
       gsap.to(cv.scale, { x: cv.slot.scale, y: cv.slot.scale, duration: d, ease: "power3.out" });
@@ -219,7 +221,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     switch (ev.t) {
       case "newRound": {
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.talon, ...this.trick.values(), ...this.dummy.values()];
-        this.dummy.clear(); this.dummySeat = null; this.mine.clear(); this.opp = Array.from({ length: this.n }, () => []); this.talon = []; this.trick.clear();
+        this.dummy.clear(); this.dummySeat = null; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.talon = []; this.trick.clear();
         all.forEach((c) => { gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() }); });
         this.dealt = false; this.selection.clear(); this.lastTrick = []; this.lastBtn.style.display = "none";
         await sleep(this.ready && all.length ? 450 : 0);
@@ -343,7 +345,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
       const same = want.size === this.mine.size && [...want].every((c) => this.mine.has(c));
       if (!same) {
         for (const cv of this.mine.values()) cv.destroy();
-        this.mine.clear();
+        this.mine.clear(); this.order.reset();
         for (const c of v.hand) { const cv = this.newView(c, true); this.handLayer.addChild(cv); this.mine.set(c, cv); }
       }
       for (let s = 0; s < this.n; s++) {
@@ -395,8 +397,9 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const play = this.busy ? new Set<Card>() : this.playable();
     const sel = this.busy ? { cards: new Set<Card>(), k: 0 } : this.selectable();
     for (const [card, cv] of [...this.mine, ...this.dummy]) {
+      if (cv.dragging) continue;
       const canPlay = play.has(card), canSel = sel.cards.has(card), on = canPlay || canSel;
-      cv.eventMode = on ? "static" : "none"; cv.cursor = on ? "pointer" : "default"; cv.removeAllListeners();
+      cv.eventMode = on || cv.drag ? "static" : "none"; cv.cursor = on ? "pointer" : "default"; cv.removeAllListeners();
       const picked = this.selection.has(card);
       const baseY = cv.slot.y - (picked ? 46 : on && (canSel || this.legal.length) ? 12 : 0);
       gsap.to(cv, { y: baseY, duration: 0.2, overwrite: "auto" });

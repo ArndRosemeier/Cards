@@ -4,7 +4,7 @@ import { isJoker, rankOf, suitOf, RANKS, type Card } from "@cards/engine";
 import { checkMelds, checkPile, isCanasta, isWild, points, seatsOf, sideOf, type Ev, type Move, type View } from "@cards/canasta";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
-import { CardView, sleep, tween } from "./cardview.ts";
+import { CardView, HandOrder, type DragCtl, addCountIcon, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
@@ -40,7 +40,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
     this.app = app; this.ui = ui; this.hooks = hooks; setPiles(this.geo);
     app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
-    this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer); this.handLayer.sortableChildren = true;
+    this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer);
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 112);
     this.pileDepth.position.set(DISC.x, DISC.y); this.pileText.anchor.set(0.5); this.pileText.position.set(DISC.x, DISC.y + 112);
@@ -81,7 +81,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
       const rel = (s - this.me + this.n) % this.n, a = anchors[rel]!;
       const box = new Graphics(), ring = new Graphics();
       const name = new Text({ text: s === this.me ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 22, fontWeight: "600", fontFamily: FONT } }); name.anchor.set(0.5); name.position.set(-18, 0);
-      const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 20, fontWeight: "700", fontFamily: FONT } }); count.anchor.set(0.5); count.position.set(78, 0);
+      const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 20, fontWeight: "700", fontFamily: FONT } }); count.anchor.set(0.5); count.position.set(78, 0); addCountIcon(count);
       const mate = u.view.teams && sideOf(this.n, s) === sideOf(this.n, this.me);
       const compact = this.geo.portrait && rel !== 0 && a.dy === 0; // narrow stacked plate for the side seats on a phone
       if (compact) { name.position.set(0, -13); name.style.fontSize = 18; count.position.set(0, 14); box.roundRect(-52, -32, 104, 64, 20); ring.roundRect(-56, -36, 112, 72, 24); }
@@ -95,20 +95,22 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     for (let i = 0; i < 4; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }
   }
   private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
+  private order = new HandOrder(); private dragCtl: DragCtl | null = null;
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
-    return sortHand([...this.mine.keys()]).map((c) => this.mine.get(c)!);
+    return this.order.apply(sortHand([...this.mine.keys()])).map((c) => this.mine.get(c)!);
   }
   private fan(seat: number, i: number, n: number) {
     const a = this.anchor(seat), own = seat === this.me;
-    const g = this.geo, step = own ? Math.min(62, (g.portrait ? 540 : 1050) / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
+    const g = this.geo, step = own ? Math.min(g.portrait ? 62 : 100, (g.portrait ? 540 : 1300) / Math.max(n, 1)) : Math.min(22, 330 / Math.max(n, 1));
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.5 : 0.3), cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin, y: a.cy + (own ? 20 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
+    return { x: a.cx + lx * cos - ly * sin, y: a.cy + (own ? 0 : 0) + lx * sin + ly * cos, rot: a.rot + tt * 0.02, scale: own ? (g.portrait ? 1.05 : 0.95) : 0.5 };
   }
   private layout(seat: number, animate = true) {
     const hand = this.handOf(seat);
     hand.forEach((cv, i) => {
-      cv.slot = this.fan(seat, i, hand.length); if (cv.parent !== this.handLayer) this.handLayer.addChild(cv); cv.zIndex = i;
+      cv.slot = this.fan(seat, i, hand.length); if (seat === this.me) cv.drag = this.ctl(); if (cv.dragging) return; this.handLayer.addChild(cv);
       const d = animate ? 0.4 : 0; const staged = this.staged.some((g) => g.includes(cv.id!));
       gsap.to(cv, { x: cv.slot.x, y: cv.slot.y - (this.selection.has(cv.id!) ? 40 : staged ? 70 : 0), rotation: cv.slot.rot, duration: d, ease: "power3.out", overwrite: "auto" });
       gsap.to(cv.scale, { x: cv.slot.scale, y: cv.slot.scale, duration: d });
@@ -138,9 +140,9 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
         if (x + w > maxX) { x = r.x0; row++; }
         const y = r.y0 + row * (CH + 14);
         g.cards.forEach((cv, i) => {
-          if (cv.parent !== this.meldLayer) this.meldLayer.addChild(cv);
+          this.meldLayer.addChild(cv);
           const wild = !!cv.id && g.kind === "meld" && isWild(cv.id);
-          const sl = { x: x + CW / 2 + i * step, y: y + CH / 2 + (wild ? 8 : 0), rot: wild ? 0.14 : 0, scale: g.kind === "reds" ? MS * 0.8 : MS }; cv.slot = sl; cv.zIndex = i + 1;
+          const sl = { x: x + CW / 2 + i * step, y: y + CH / 2 + (wild ? 8 : 0), rot: wild ? 0.14 : 0, scale: g.kind === "reds" ? MS * 0.8 : MS }; cv.slot = sl;
           gsap.to(cv, { x: sl.x, y: sl.y, rotation: sl.rot, duration: animate ? 0.4 : 0, ease: "power3.out", overwrite: "auto" }); gsap.to(cv.scale, { x: sl.scale, y: sl.scale, duration: animate ? 0.4 : 0 });
         });
         const can = g.kind === "meld" && g.cards.length >= 7, natural = can && !g.cards.some((c) => !!c.id && isWild(c.id));
@@ -154,7 +156,6 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
         x += w + gap;
       }
     }
-    this.meldLayer.sortableChildren = true;
   }
 
   // ---------------------------------------------------------------- flights
@@ -180,7 +181,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     switch (ev.t) {
       case "newRound": {
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.groups.flatMap((g) => g.cards), ...(this.discardView ? [this.discardView] : [])];
-        this.groups.forEach((g) => { g.frame.destroy(); g.label.destroy(); }); this.groups = []; this.mine.clear(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();
+        this.groups.forEach((g) => { g.frame.destroy(); g.label.destroy(); }); this.groups = []; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();
         all.forEach((c) => gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() })); this.dealt = false; await sleep(this.ready && all.length ? 450 : 0); break;
       }
       case "dealt": if (!this.dealt) await this.dealAll(u); break;
@@ -250,7 +251,7 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     this.view = v;
     if (this.dealt) {
       const want = new Set(v.hand); const same = want.size === this.mine.size && [...want].every((c) => this.mine.has(c));
-      if (!same) { for (const cv of this.mine.values()) cv.destroy(); this.mine.clear(); for (const c of v.hand) { const cv = this.mk(c, true, this.fan(this.me, 0, 1)); this.handLayer.addChild(cv); this.mine.set(c, cv); } }
+      if (!same) { for (const cv of this.mine.values()) cv.destroy(); this.mine.clear(); this.order.reset(); for (const c of v.hand) { const cv = this.mk(c, true, this.fan(this.me, 0, 1)); this.handLayer.addChild(cv); this.mine.set(c, cv); } }
       for (let s = 0; s < this.n; s++) { if (s === this.me) continue; const l = this.opp[s]!; while (l.length > v.handSizes[s]!) l.pop()!.destroy(); while (l.length < v.handSizes[s]!) { const cv = this.mk(null, false, this.fan(s, 0, 1)); this.handLayer.addChild(cv); l.push(cv); } }
       const sig = (gs: { side: number; kind: string; idx: number; cards: string[] }[]) => gs.slice().sort((a, b) => a.side - b.side || a.kind.localeCompare(b.kind) || a.idx - b.idx).map((g) => `${g.side}${g.kind}${g.idx}:${g.cards.join(",")}`).join("|");
       const have = this.groups.filter((g) => g.cards.length).map((g) => ({ side: g.side, kind: g.kind, idx: g.idx, cards: g.cards.map((c) => c.id!) }));
@@ -302,7 +303,8 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     const v = this.view; if (!v) return;
     const turn = this.myTurn(), opened = (v.melds[v.mySide]?.length ?? 0) > 0;
     for (const [card, cv] of this.mine) {
-      cv.eventMode = turn ? "static" : "none"; cv.cursor = "pointer"; cv.removeAllListeners();
+      if (cv.dragging) continue;
+      cv.eventMode = turn || cv.drag ? "static" : "none"; cv.cursor = "pointer"; cv.removeAllListeners();
       if (turn) cv.on("pointertap", () => this.toggle(card));
     }
     this.stockStack.eventMode = turn && v.phase === "draw" ? "static" : "none";

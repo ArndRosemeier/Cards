@@ -95,3 +95,4 @@ table.stats td { text-align:right; padding:6px 8px; border-top:1px solid rgba(25
 table.stats th:first-child, table.stats td:first-child { text-align:left; }
 .rules .btns { gap:8px; }
 body.portrait .hint-toast { top:112px; }
+#stage canvas { touch-action:none; }

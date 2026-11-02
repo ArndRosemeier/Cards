@@ -5,13 +5,13 @@ import { rankOf, suitOf } from "@cards/engine";
 import type { Ev, Move, View } from "@cards/maumau";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
-import { CardView, sleep, tween } from "./cardview.ts";
+import { CardView, HandOrder, type DragCtl, addCountIcon, sleep, tween } from "./cardview.ts";
 import { CARD_H, CARD_W, tableTexture, suitTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
 import { cover } from "./geo.ts";
 
-import { LAND, PORT, pickGeo, type Geo } from "./geo.ts";
+import { LAND, PORT, pickGeo, setActionsBottom, type Geo } from "./geo.ts";
 const DECK = { x: 690, y: 450 }, DISCARD = { x: 910, y: 450 };
 const setPiles = (g: Geo) => { const c = g.center; DECK.x = c.x - (g.portrait ? 80 : 110); DISCARD.x = c.x + (g.portrait ? 80 : 110); DECK.y = DISCARD.y = c.y + (g.portrait ? 0 : 10); };
 const SUIT_ORDER: Suit[] = ["C", "H", "S", "D"];
@@ -25,6 +25,7 @@ export class MauScene {
   private bg = new Sprite();
   private tableLayer = new Container();
   private handLayer = new Container();
+  private pileLayer = new Container();
   private flyLayer = new Container();
   private fxLayer = new Container();
   private geo: Geo = LAND;
@@ -54,7 +55,7 @@ export class MauScene {
   constructor(private app: Application, ui: HTMLElement, hooks: SceneHooks) {
     this.hooks = hooks; this.ui = ui; this.geo = pickGeo(app.screen.width, app.screen.height); setPiles(this.geo);
     app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
-    this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
+    this.world.addChild(this.tableLayer, this.handLayer, this.pileLayer, this.flyLayer, this.fxLayer); 
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.deckStack.position.set(DECK.x, DECK.y);
     this.deckCount.anchor.set(0.5); this.deckCount.position.set(DECK.x, DECK.y + CARD_H / 2 + 28);
@@ -77,7 +78,7 @@ export class MauScene {
     this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2);
     cover(this.bg, w, h);
     document.body.classList.toggle("portrait", g.portrait);
-    if (g.portrait) document.documentElement.style.setProperty("--actions-bottom", `${Math.round(h - ((h - g.H * s) / 2 + (g.layouts[this.n || 4]![0]!.cy - 150 * g.ownScale) * s) + 8)}px`); else document.documentElement.style.removeProperty("--actions-bottom");
+    setActionsBottom(g, w, h, this.n || 4);
     if (changed && this.ready) this.applyGeo();
   }
   private applyGeo() {
@@ -130,7 +131,7 @@ export class MauScene {
       const box = new Graphics(); const ring = new Graphics();
       const label = new Text({ text: s === this.me ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 24, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } });
       const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 22, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
-      label.anchor.set(0.5); count.anchor.set(0.5);
+      label.anchor.set(0.5); count.anchor.set(0.5); addCountIcon(count);
       const plate = new Container();
       const w = 200, h = 54;
       box.roundRect(-w / 2, -h / 2, w, h, 27).fill({ color: 0x000000, alpha: 0.45 }).stroke({ width: 1.5, color: 0xe8c66a, alpha: 0.5 });
@@ -144,9 +145,11 @@ export class MauScene {
   }
 
   private seatAnchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
+  private order = new HandOrder(); private dragCtl: DragCtl | null = null;
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
-    return [...this.mine.values()].sort((a, b) => sortKey(a.id!) - sortKey(b.id!));
+    return this.order.apply([...this.mine.values()].sort((a, b) => sortKey(a.id!) - sortKey(b.id!)).map((v) => v.id!)).map((c) => this.mine.get(c)!);
   }
 
   /** Target slot for card i of n in a fan, in world coordinates. */
@@ -163,16 +166,19 @@ export class MauScene {
     const hand = this.handOf(seat);
     hand.forEach((cv, i) => {
       cv.slot = this.fanSlot(seat, i, hand.length);
-      if (cv.parent !== this.handLayer) this.handLayer.addChild(cv);
-      cv.zIndex = i;
+      if (seat === this.me) cv.drag = this.ctl();
+      if (cv.dragging) return;
+      this.handLayer.addChild(cv);
       if (animate) gsap.to(cv, { x: cv.slot.x, y: cv.slot.y, rotation: cv.slot.rot, duration: 0.45, delay: i * stagger, ease: "power3.out" });
       else cv.position.set(cv.slot.x, cv.slot.y), cv.rotation = cv.slot.rot;
       gsap.to(cv.scale, { x: cv.slot.scale, y: cv.slot.scale, duration: animate ? 0.45 : 0, ease: "power3.out" });
     });
-    this.handLayer.sortableChildren = true;
     const p = this.plates[seat]; if (p) p.count.text = String(hand.length);
   }
   private layoutAll(animate = true) { for (let s = 0; s < this.n; s++) this.layout(s, animate); }
+
+  /** a card that has landed on the discard pile: later plays always end up above it */
+  private toPile(cv: CardView) { this.pileLayer.addChild(cv); }
 
   private makeAtDeck(id: Card | null, faceUp: boolean) {
     const cv = new CardView(id, faceUp); cv.position.set(DECK.x, DECK.y); cv.scale.set(1); this.flyLayer.addChild(cv); return cv;
@@ -197,19 +203,20 @@ export class MauScene {
       case "started": {
         const cv = this.makeAtDeck(ev.top, false);
         await this.fly(cv, { x: DISCARD.x, y: DISCARD.y, rot: 0.05, scale: 1 }, 0.5);
-        await cv.flip(true); this.discardViews.push(cv); break;
+        await cv.flip(true); this.toPile(cv); this.discardViews.push(cv); break;
       }
       case "played": {
         let cv: CardView;
         if (ev.seat === this.me) cv = this.mine.get(ev.card)!;
         else { const h = this.opp[ev.seat]!; cv = h.splice(Math.floor(h.length / 2), 1)[0]!; cv.reveal(ev.card); }
         if (ev.seat === this.me) this.mine.delete(ev.card);
+        (cv as CardView & { played?: boolean }).played = true;
         this.layout(ev.seat);
         this.flyLayer.addChild(cv);
         const rot = (Math.random() - 0.5) * 0.5;
         const reveal = ev.seat === this.me ? Promise.resolve() : cv.flip(true, 0.35);
         await Promise.all([this.fly(cv, { x: DISCARD.x + (Math.random() - 0.5) * 14, y: DISCARD.y + (Math.random() - 0.5) * 14, rot, scale: 1 }, 0.5), reveal]);
-        this.discardViews.push(cv);
+        this.toPile(cv); this.discardViews.push(cv);
         this.impact(DISCARD.x, DISCARD.y);
         if (ev.wish) this.setWish(ev.wish); else if (rankOf(ev.card) !== "J") this.setWish(null);
         if (this.discardViews.length > 6) { const old = this.discardViews.shift()!; gsap.to(old, { alpha: 0, duration: 0.4, onComplete: () => old.destroy() }); }
@@ -238,7 +245,7 @@ export class MauScene {
   }
   private landed(cv: CardView) {
     // after layout() has started tweening, wait for its arrival
-    return new Promise<void>((res) => setTimeout(res, 460)).then(() => { this.handLayer.addChild(cv); });
+    return new Promise<void>((res) => setTimeout(res, 460)).then(() => { if (!(cv as CardView & { played?: boolean }).played && !cv.destroyed) this.handLayer.addChild(cv); });
   }
 
   private async dealAll(u: Update<View, Move, Ev>) {
@@ -307,7 +314,7 @@ export class MauScene {
     const same = want.size === this.mine.size && [...want].every((c) => this.mine.has(c));
     if (this.dealt && !same) {
       for (const cv of this.mine.values()) cv.destroy();
-      this.mine.clear();
+      this.mine.clear(); this.order.reset();
       for (const c of v.hand) { const cv = new CardView(c, true); cv.position.set(DECK.x, DECK.y); this.handLayer.addChild(cv); this.mine.set(c, cv); }
     }
     for (let s = 0; s < this.n; s++) {
@@ -320,7 +327,7 @@ export class MauScene {
     const top = this.discardViews[this.discardViews.length - 1];
     if (this.dealt && (!top || top.id !== v.top)) {
       for (const d of this.discardViews) d.destroy();
-      const cv = new CardView(v.top, true); cv.position.set(DISCARD.x, DISCARD.y); this.tableLayer.addChild(cv); this.discardViews = [cv];
+      const cv = new CardView(v.top, true); cv.position.set(DISCARD.x, DISCARD.y); this.pileLayer.addChild(cv); this.discardViews = [cv];
     }
     this.setWishInstant(v.wish);
     this.deckCount.text = String(v.drawCount);
@@ -340,8 +347,9 @@ export class MauScene {
     const v = this.lastView; if (!v) return;
     const playable = this.busy ? new Set<Card>() : this.playableCards();
     for (const [card, cv] of this.mine) {
+      if (cv.dragging) continue;
       const ok = playable.has(card);
-      cv.eventMode = ok ? "static" : "none"; cv.cursor = ok ? "pointer" : "default";
+      cv.eventMode = ok || cv.drag ? "static" : "none"; cv.cursor = ok ? "pointer" : "default";
       cv.removeAllListeners();
       if (ok) {
         cv.on("pointerover", () => gsap.to(cv, { y: cv.slot.y - 36, duration: 0.18, ease: "power2.out" }));

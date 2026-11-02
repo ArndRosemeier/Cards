@@ -22,8 +22,8 @@ export const LAND: Geo = {
     4: [A(800, 770, 0, 0, 1), A(130, 450, P / 2, -1, 0), A(800, 125, P, 0, -1), A(1470, 450, -P / 2, 1, 0)],
     5: [A(800, 770, 0, 0, 1), A(130, 500, P / 2, -1, 0), A(520, 125, P, -0.6, -1), A(1080, 125, P, 0.6, -1), A(1470, 500, -P / 2, 1, 0)],
   },
-  ownPlate: { x: 330, y: 835 }, talonY: 250, toast: { dx: 330, dy: 200 }, ownStep: 78, ownWidth: 1100, ownScale: 1, dummyWidth: 620, dummyStep: 46, dummyScale: 0.72,
-  plate: (a, rel) => (rel === 0 ? { x: 330, y: 835 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy }),
+  ownPlate: { x: 170, y: 668 }, talonY: 250, toast: { dx: 330, dy: 200 }, ownStep: 118, ownWidth: 1300, ownScale: 1, dummyWidth: 620, dummyStep: 46, dummyScale: 0.72,
+  plate: (a, rel) => (rel === 0 ? { x: 170, y: 668 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy }),
 };
 
 export const PORT: Geo = {
@@ -48,10 +48,9 @@ export function cover(bg: Sprite, w: number, h: number) {
   (bg as unknown as { base: { x: number; y: number } }).base = { x: bg.position.x, y: bg.position.y };
 }
 
-/** Keep the action buttons just above the own hand: portrait publishes a CSS variable, landscape keeps the stylesheet default. */
+/** Keep the action buttons just above the own hand at every window size by publishing a CSS variable. */
 export function setActionsBottom(g: Geo, w: number, h: number, seats: number) {
   const root = document.documentElement.style;
-  if (!g.portrait) { root.removeProperty("--actions-bottom"); return; }
   const s = Math.min(w / g.W, h / g.H), top = (h - g.H * s) / 2 + (g.layouts[seats]![0]!.cy - 150 * g.ownScale) * s;
   root.setProperty("--actions-bottom", `${Math.round(h - top + 8)}px`);
 }

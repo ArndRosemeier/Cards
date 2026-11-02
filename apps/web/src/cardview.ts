@@ -24,6 +24,29 @@ function glareTexture(): Texture {
  * perspective-projected mesh: it leans into its motion, tilts towards the pointer, turns over in real 3D and catches a
  * moving sheen. The soft shadow grows with `lift`.
  */
+/** What a scene hands to its own cards so the player can drag them into a new order. */
+export interface DragCtl {
+  canvas: HTMLCanvasElement;
+  /** the own hand in its current order */
+  order(): CardView[];
+  /** put the card at this position of the hand and lay the hand out again */
+  move(card: Card, index: number): void;
+}
+
+/** A player's own ordering of the hand, on top of the scene's default sort. */
+export class HandOrder {
+  custom: Card[] | null = null;
+  apply(def: Card[]): Card[] {
+    if (!this.custom) return def;
+    const have = new Set(def), kept = this.custom.filter((c) => have.has(c)), seen = new Set(kept);
+    return [...kept, ...def.filter((c) => !seen.has(c))];
+  }
+  move(cur: Card[], card: Card, index: number) {
+    const o = cur.filter((c) => c !== card); o.splice(clamp(index, 0, o.length), 0, card); this.custom = o;
+  }
+  reset() { this.custom = null; }
+}
+
 export class CardView extends Container {
   id: Card | null;
   faceUp: boolean;
@@ -48,6 +71,10 @@ export class CardView extends Container {
   private overP: { x: number; y: number } | null = null;
   private sh = { w: 1, h: 1, x: 0, y: 0 };                // the shadow follows the projected outline
   private glowG: Graphics | null = null; private glowUntil = 0;
+  /** set by the scene on own-hand cards: lets the player drag the card to re-sort the hand */
+  drag: DragCtl | null = null;
+  dragging = false;
+  private noTap = false;
 
   constructor(id: Card | null, faceUp: boolean) {
     super();
@@ -68,6 +95,38 @@ export class CardView extends Container {
     this.on("pointerover", (e) => { this.overP = e.getLocalPosition(this); });
     this.on("pointermove", (e) => { this.overP = e.getLocalPosition(this); });
     this.on("pointerout", () => { this.overP = null; });
+    this.on("pointerdown", (e) => this.startDrag(e.client.x, e.client.y));
+  }
+  override emit(event: string | symbol, ...args: unknown[]): boolean {
+    if (this.noTap && (event === "pointertap" || event === "click" || event === "tap")) return false;
+    return super.emit(event as never, ...(args as never[]));
+  }
+  private startDrag(sx: number, sy: number) {
+    const ctl = this.drag; if (!ctl || !this.parent || !this.id) return;
+    const toLocal = (cx: number, cy: number) => { const r = ctl.canvas.getBoundingClientRect(); return this.parent!.toLocal({ x: cx - r.left, y: cy - r.top }); };
+    let grab = { x: 0, y: 0 }, last = -1;
+    const move = (ev: PointerEvent) => {
+      if (!this.dragging) {
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 10) return;
+        this.dragging = true; gsap.killTweensOf(this); gsap.killTweensOf(this.scale);
+        const p0 = toLocal(sx, sy); grab = { x: this.x - p0.x, y: this.y - p0.y };
+        this.scale.set(this.slot.scale * 1.06); this.parent?.addChild(this);
+        this.overP = null; sfx.click();
+      }
+      const p = toLocal(ev.clientX, ev.clientY);
+      this.position.set(p.x + grab.x, p.y + grab.y);
+      this.rotation += (this.slot.rot * 0.4 - this.rotation) * 0.3;
+      const xs = ctl.order().map((c) => c.slot.x).sort((a, b) => a - b);
+      let idx = 0; for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i]! - this.x) < Math.abs(xs[idx]! - this.x)) idx = i;
+      if (idx !== last) { last = idx; ctl.move(this.id!, idx); this.parent?.addChild(this); }
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
+      if (!this.dragging) return;
+      this.dragging = false; this.noTap = true; setTimeout(() => { this.noTap = false; }, 120);
+      ctl.move(this.id!, Math.max(last, 0));
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
   }
   override removeAllListeners(event?: string | symbol): this { super.removeAllListeners(event as never); this.bindHover(); return this; }
   override destroy(options?: Parameters<Container["destroy"]>[0]): void { gsap.ticker.remove(this.tick); super.destroy(options); }
@@ -184,3 +243,11 @@ export function tween(target: object, vars: gsap.TweenVars): Promise<void> {
   return new Promise((resolve) => { gsap.to(target, { ...vars, onComplete: () => resolve() }); });
 }
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** A tiny card-back icon to the left of a hand-size number, so "10" reads as "10 cards". */
+export function addCountIcon(count: Container) {
+  const g = new Graphics();
+  g.roundRect(-30, -10, 13, 19, 3).fill({ color: 0x1c2a5c }).stroke({ width: 1.5, color: 0xe8c66a });
+  g.roundRect(-26.5, -6, 6, 11, 2).stroke({ width: 1, color: 0xe8c66a, alpha: 0.7 });
+  count.addChild(g);
+}
