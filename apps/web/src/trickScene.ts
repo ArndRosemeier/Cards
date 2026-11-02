@@ -26,6 +26,8 @@ export interface TrickUi<M, V> {
   winner(v: V): number;                        // who won the match (for the result screen)
   /** short "trumps: ♣" style chip shown at the top of the table */
   trump?(v: V): string | null;
+  /** card points of a finished trick, for the "+n" popup (omit when the game has no card points) */
+  points?(cards: Card[]): number;
 }
 
 export interface SceneHooks<M> { submit(m: M): void; onFinished(winner: number, names: string[], me: number, scores?: number[]): void }
@@ -274,6 +276,13 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
         await sleep(650);
         const a = this.anchor(ev.winner);
         this.lastTrick = [...this.trick].map(([seat, cv]) => ({ seat, card: cv.id! })).filter((p) => p.card); this.lastBtn.style.display = this.lastTrick.length ? "block" : "none";
+        { const pts = this.adapter.points?.(this.lastTrick.map((p) => p.card)) ?? 0, pl = this.plates[ev.winner];
+          if (pts > 0 && pl) {
+            const tx = new Text({ text: `+${pts}`, style: { fill: "#ffe08a", fontSize: 34, fontWeight: "800", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 5 } } });
+            tx.anchor.set(0.5); const bp = pl.box.position; tx.position.set(bp.x, bp.y - 30); tx.alpha = 0; tx.scale.set(0.6); this.fxLayer.addChild(tx);
+            gsap.to(tx, { alpha: 1, duration: 0.2 }); gsap.to(tx.scale, { x: 1, y: 1, duration: 0.35, ease: "back.out(2)" });
+            gsap.to(tx, { y: bp.y - 80, duration: 1.3, ease: "power2.out" }); gsap.to(tx, { alpha: 0, delay: 0.9, duration: 0.4, onComplete: () => tx.destroy() });
+          } }
         const views = [...this.trick.values()]; this.trick.clear();
         await Promise.all(views.map((cv, i) => tween(cv, { x: a.cx, y: a.cy, rotation: cv.rotation + 0.6, alpha: 0, duration: 0.55, delay: i * 0.05, ease: "power2.in" })));
         views.forEach((v) => v.destroy());

@@ -19,6 +19,9 @@ import { t } from "./i18n.ts";
 import { withLevel } from "./levels.ts";
 
 const skatSuit = ["C", "S", "H", "D"];
+const CLASSIC: Record<string, number> = { A: 11, T: 10, K: 4, Q: 3, J: 2 };
+const classicPoints = (cards: Card[]) => cards.reduce((n, c) => n + (CLASSIC[rankOf(c)] ?? 0), 0);
+const heartsPoints = (cards: Card[]) => cards.reduce((n, c) => n + (suitOf(c) === "H" ? 1 : c.startsWith("SQ") ? 13 : 0), 0);
 const skatRank = ["A", "T", "K", "Q", "9", "8", "7"];
 const skatOrder = (hand: Card[]) => hand.slice().sort((a, b) => {
   const ka = rankOf(a) === "J" ? -10 + skatSuit.indexOf(suitOf(a)) : skatSuit.indexOf(suitOf(a)) * 10 + skatRank.indexOf(rankOf(a));
@@ -26,6 +29,7 @@ const skatOrder = (hand: Card[]) => hand.slice().sort((a, b) => {
   return ka - kb;
 });
 const skatUi: TrickUi<SMove, SView> = {
+  points: classicPoints,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: (m) => (m.t === "cards" ? m.cards : null),
   label: (m) => {
@@ -65,6 +69,7 @@ const dokoOrder = (hand: Card[], v?: DView) => {
   return hand.slice().sort((a, b) => key(a) - key(b));
 };
 const dokoUi: TrickUi<DMove, DView> = {
+  points: classicPoints,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: () => null,
   label: (m) => {
@@ -92,6 +97,7 @@ const schafOrder = (hand: Card[], v?: SKView) => {
   return hand.slice().sort((a, b) => key(a) - key(b));
 };
 const schafUi: TrickUi<SKMove, SKView> = {
+  points: classicPoints,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: () => null,
   label: (m) => (m.t === "pass" ? t("sk_passBtn") : m.t === "game" ? t("sk_" + m.mode) : null),
@@ -166,9 +172,11 @@ export interface GameEntry {
 }
 
 const SUIT_ORDER = ["C", "H", "S", "D"];
+/** A=11, ten=10, K=4, Q=3, J=2 (Skat, Doppelkopf and Schafkopf all count this way) */
 const stdOrder = (hand: Card[]) => hand.slice().sort((a, b) => SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)));
 
 const heartsUi: TrickUi<HMove, HView> = {
+  points: heartsPoints,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
   cardsOfMove: (m) => (m.t === "cards" ? m.cards : null),
   label: () => null,
