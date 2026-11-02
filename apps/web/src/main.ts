@@ -149,7 +149,8 @@ function showOnline(prefill = "", err0 = "") {
   let name = savedName(); let seats = entry().players.includes(4) ? 4 : entry().players[0]!; let err = err0;
   let rooms: { id: string; name: string; players: number; maxPlayers: number; meta: any }[] = [];
   const hub = connect({ url: HUB_URL, app: "cards", appKey: KEY });
-  const poll = async () => { try { rooms = (await hub.listRooms()).filter((r) => (r.meta as any)?.game === gameId); } catch { rooms = []; } if (alive) render(); };
+  let lobbyErr = false;
+  const poll = async () => { try { rooms = (await hub.listRooms()).filter((r) => (r.meta as any)?.game === gameId); lobbyErr = false; } catch { rooms = []; lobbyErr = true; } if (alive && !document.querySelector("#create:disabled")) render(); };
   let alive = true;
   const timer = setInterval(poll, 5000); void poll();
   const stop = () => { alive = false; clearInterval(timer); hub.close(); };
@@ -160,22 +161,39 @@ function showOnline(prefill = "", err0 = "") {
         <button class="btn primary" id="create">${t("createRoom")}</button></div>
       <div class="row"><label>${t("code")}</label><input type="text" id="code" maxlength="6" value="${esc(prefill)}" style="text-transform:uppercase"><button class="btn" id="join">${t("join")}</button></div>
       <div class="sub" style="margin:16px 0 6px">${t("openRooms")}</div>
-      <div id="rooms">${rooms.length ? rooms.map((r) => `<div class="row"><span style="flex:1">${esc(r.name)} · ${r.players}/${(r.meta as any)?.seats ?? r.maxPlayers}</span><button class="btn" data-code="${r.id}">${t("join")}</button></div>`).join("") : `<div class="sub">${t("noRooms")}</div>`}</div>
+      <div id="rooms">${rooms.length ? rooms.map((r) => `<div class="row"><span style="flex:1">${esc(r.name)} · ${r.players}/${(r.meta as any)?.seats ?? r.maxPlayers}</span><button class="btn" data-code="${r.id}">${t("join")}</button></div>`).join("") : `<div class="sub">${lobbyErr ? t("lobbyDown") : t("noRooms")}</div>`}</div>
       ${err ? `<div style="color:#ff9d9d;margin:8px 0">${esc(err)}</div>` : ""}
       ${langRow()}<div class="row"><button class="btn" id="back">${t("back")}</button></div>`);
     const nm = () => { name = (w.querySelector("#nm") as HTMLInputElement).value.trim() || t("you"); saveName(name); return name; };
     w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); seats = Number(b.dataset.n); render(); }));
     bindLang(w, () => { nm(); render(); });
     (w.querySelector("#back") as HTMLButtonElement).onclick = () => { stop(); showMenu(); };
+    const busy = (label: string) => {
+      w.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.disabled = true));
+      const m = document.createElement("div"); m.className = "sub"; m.style.margin = "8px 0"; m.textContent = label;
+      w.querySelector("#create")!.closest(".row")!.after(m);
+    };
+    const failText = (e: any) => {
+      const detail = String(e?.code ?? e?.message ?? e ?? "").replace(/^gamehub:\s*/, "");
+      return detail ? `${t("connFail")} (${detail})` : t("connFail");
+    };
+    const guard = (): boolean => { if (!KEY) { err = `${t("connFail")} (${t("noKey")})`; render(); return false; } return true; };
     (w.querySelector("#create") as HTMLButtonElement).onclick = async () => {
-      const n = nm(); stop();
-      try { enterRoom(await OnlineSession.create(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, { name: `${t(gameId)} · ${n}`, seats, public: true })); }
-      catch { err = t("connFail"); showOnline(); }
+      const n = nm(); if (!guard()) return;
+      busy(t("creating"));
+      const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 15000));
+      try {
+        const session = await Promise.race([OnlineSession.create(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, { name: `${t(gameId)} · ${n}`, seats, public: true }), timeout]);
+        stop(); enterRoom(session);
+      } catch (e) { console.error("create room failed", e); err = failText(e); render(); }
     };
     const joinCode = async (code: string) => {
-      const n = nm(); stop();
-      try { enterRoom(await OnlineSession.join(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, code.trim().toUpperCase())); }
-      catch (e: any) { err = e?.code === "room_full" ? t("roomFull") : t("connFail"); showOnline(code); }
+      const n = nm(); if (!guard()) return;
+      busy(t("connecting"));
+      try {
+        const session = await OnlineSession.join(defOf(), { url: HUB_URL, appKey: KEY, name: n, token }, code.trim().toUpperCase());
+        stop(); enterRoom(session);
+      } catch (e: any) { console.error("join room failed", e); err = e?.code === "room_full" ? t("roomFull") : e?.code === "no_such_room" ? t("roomNotFound") : failText(e); prefill = code; render(); }
     };
     (w.querySelector("#join") as HTMLButtonElement).onclick = () => joinCode((w.querySelector("#code") as HTMLInputElement).value);
     w.querySelectorAll<HTMLButtonElement>("[data-code]").forEach((b) => (b.onclick = () => joinCode(b.dataset.code!)));

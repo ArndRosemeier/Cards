@@ -74,8 +74,10 @@ export class OnlineSession<Config, State, Move, View, Ev> {
 
   static async create<C, S, M, V, E>(def: GameDef<C, S, M, V, E>, opts: SessionOptions, room: { name: string; seats: number; public?: boolean }) {
     const s = new OnlineSession<C, S, M, V, E>(def, opts);
-    await s.hub.ready;
-    await s.hub.create({ name: room.name, public: room.public ?? true, maxPlayers: Math.max(room.seats, def.rules.maxSeats), meta: { game: def.id, v: 1, seats: room.seats } });
+    try {
+      await s.hub.ready;
+      await s.hub.create({ name: room.name, public: room.public ?? true, maxPlayers: Math.max(room.seats, def.rules.maxSeats), meta: { game: def.id, v: 1, seats: room.seats } });
+    } catch (e) { s.hub.close(); throw e; }
     s.isHost = true; s.mySeat = 0;
     s.tokens = Array(room.seats).fill(null); s.tokens[0] = opts.token;
     s.lobby = { phase: "lobby", game: def.id, seats: [{ kind: "host", name: opts.name }, ...Array.from({ length: room.seats - 1 }, (): LobbySeat => ({ kind: "open", name: "" }))] };
@@ -86,8 +88,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
 
   static async join<C, S, M, V, E>(def: GameDef<C, S, M, V, E>, opts: SessionOptions, code: string) {
     const s = new OnlineSession<C, S, M, V, E>(def, opts);
-    await s.hub.ready;
-    await s.hub.join(code);
+    try { await s.hub.ready; await s.hub.join(code); } catch (e) { s.hub.close(); throw e; }
     s.emit("role", false);
     s.hub.send({ t: "hello", token: opts.token, name: opts.name }, s.hub.host!);
     return s;
