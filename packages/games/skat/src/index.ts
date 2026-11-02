@@ -1,2 +1,2 @@
 export * from "./rules.ts";
-export { skatBot } from "./bot.ts";
+export { skatBot, createSkatBot } from "./bot.ts";

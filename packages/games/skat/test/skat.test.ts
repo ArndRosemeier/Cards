@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Rng, type Card } from "@cards/engine";
 import { Skat, defaultConfig, gameValue, jackMultiplier, strength, BIDS, cardPoints } from "../src/rules.ts";
-import { skatBot } from "../src/bot.ts";
+import { skatBot, createSkatBot } from "../src/bot.ts";
 
 function run(seed: number, bots: boolean, cfg = defaultConfig) {
   const rng = Rng.fromSeed(seed);
@@ -100,4 +100,32 @@ test("ouvert game values", () => {
   assert.equal(gameValue("N", [] as Card[], true, false, false, "none", true), 59);
   // grand mit 1, ouvert, won schwarz: 24 * (2 + hand + schneider + schwarz + 2 announce + ouvert) = 24 * 8
   assert.equal(gameValue("G", ["CJ"] as Card[], true, true, true, "schwarz", true), 24 * 8);
+});
+
+import { dealPool, voidsFrom } from "../src/sim.ts";
+test("sampled worlds respect known voids", () => {
+  const rng = Rng.fromSeed(3);
+  // seat 1 did not follow a club lead: it holds no club (clubs are trump-free here, game H)
+  const voids = voidsFrom([[{ seat: 0, card: "CA" }, { seat: 1, card: "D7" }, { seat: 2, card: "C9" }]], [], "H");
+  assert.ok(voids[1]!.has("C"));
+  const pool = ["CK", "CQ", "CT", "D8", "D9", "DT", "S7", "S8", "S9", "SA", "ST", "SK"] as Card[];
+  for (let i = 0; i < 30; i++) {
+    const hands = dealPool(pool, [6, 6], [1, 2], voids, "H", rng)!;
+    assert.ok(hands, "a deal exists");
+    assert.ok(!hands[0]!.some((c) => c.startsWith("C")), "seat 1 has no club");
+    assert.equal(hands[0]!.length + hands[1]!.length, 12);
+  }
+});
+
+test("the simulation bot plays a full session legally against random players", () => {
+  const rng = Rng.fromSeed(77);
+  let { state } = Skat.setup({ rounds: 4, ramsch: true }, 3, rng);
+  const mine = createSkatBot();
+  for (let i = 0; i < 20000 && !Skat.result(state); i++) {
+    const seat = Skat.activeSeats(state)[0]!; const legal = Skat.legalMoves(state, seat);
+    const m = seat === 0 ? mine.choose(Skat.view(state, seat), legal, rng) : legal[rng.int(legal.length)]!;
+    assert.ok(legal.some((x) => JSON.stringify(x) === JSON.stringify(m)), "legal move");
+    state = Skat.apply(state, seat, m, rng).state;
+  }
+  assert.ok(Skat.result(state));
 });

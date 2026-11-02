@@ -3,7 +3,7 @@ import type { GameDef } from "@cards/net";
 import { MauMau, defaultConfig as mauCfg, mauMauBot } from "@cards/maumau";
 import { Hearts, defaultConfig as heartsCfg, heartsBot, type View as HView, type Move as HMove } from "@cards/hearts";
 import { RANKS, suitOf, rankOf, type Card } from "@cards/engine";
-import { Skat, defaultConfig as skatCfg, skatBot, BIDS, type View as SView, type Move as SMove } from "@cards/skat";
+import { Skat, defaultConfig as skatCfg, createSkatBot, BIDS, type View as SView, type Move as SMove } from "@cards/skat";
 import { Doppelkopf, defaultConfig as dokoCfg, dokoBot, isTrump as dokoTrump, strength as dokoStrength, type View as DView, type Move as DMove, type Mode as DMode } from "@cards/doppelkopf";
 import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTrump, strength as schafStrength, type View as SKView, type Move as SKMove, type Mode as SKMode } from "@cards/schafkopf";
 import { Holdem, defaultConfig as holdemCfg, createHoldemBot } from "@cards/holdem";
@@ -224,7 +224,7 @@ export const GAME_ENTRIES: GameEntry[] = [
   },
   {
     id: "skat", players: [3],
-    def: { id: "skat", rules: Skat, config: skatCfg, makeBot: (spec) => withLevel(skatBot, spec.level) },
+    def: { id: "skat", rules: Skat, config: skatCfg, makeBot: (spec) => withLevel(createSkatBot(), spec.level) },
     scene: (app, ui, hooks) => new TrickScene(app, ui, skatUi, hooks),
   },
   {
