@@ -7,6 +7,7 @@ import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
+import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
 const W = 1600, H = 900;
@@ -70,7 +71,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private onResize = () => this.resize();
   private resize() {
     const w = this.app.screen.width, h = this.app.screen.height, s = Math.min(w / W, h / H);
-    this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2); this.bg.width = w; this.bg.height = h;
+    this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2); cover(this.bg, w, h);
   }
   destroy() {
     this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*");

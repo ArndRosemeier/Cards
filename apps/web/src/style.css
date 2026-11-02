@@ -39,7 +39,7 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
 .result .panel { text-align:center; }
 .result h1 { font-size:40px; }
 .result .btns { display:flex; gap:10px; justify-content:center; margin-top:18px; }
-.actions { position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom) + 250px); transform:translateX(-50%); display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:90vw; }
+.actions { position:absolute; left:50%; bottom:var(--actions-bottom, calc(env(safe-area-inset-bottom) + 250px)); transform:translateX(-50%); display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:90vw; }
 .actions .btn { background:rgba(0,0,0,.55); backdrop-filter:blur(6px); }
 .actions .btn.primary { background:linear-gradient(#f2d37e,#d9ac3f); }
 .actions .btn:disabled { opacity:.45; cursor:default; }
@@ -67,7 +67,10 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
 .banner.err { background:#7a1f1f; color:#fff; }
 .rotate { display:none; }
 @media (orientation: portrait) and (max-width: 820px) {
-  .rotate { display:flex; position:absolute; inset:0; z-index:50; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(6,25,15,.92); color:#f4efe4; font-size:20px; text-align:center; padding:24px; pointer-events:auto; }
-  .rotate .ico { font-size:64px; color:#e8c66a; animation:spin 2.4s ease-in-out infinite; }
+  body:not(.portrait) .rotate { display:flex; position:absolute; inset:0; z-index:50; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(6,25,15,.92); color:#f4efe4; font-size:20px; text-align:center; padding:24px; pointer-events:auto; }
+  body:not(.portrait) .rotate .ico { font-size:64px; color:#e8c66a; animation:spin 2.4s ease-in-out infinite; }
 }
 @keyframes spin { 0%,30% { transform:rotate(0) } 70%,100% { transform:rotate(-90deg) } }
+body.portrait .board { font-size:11px; padding:5px 9px; min-width:96px; top:8px; right:8px; }
+body.portrait .board div { padding:1px 0; gap:10px; }
+body.portrait .banner { top:64px; max-width:92vw; text-align:center; }

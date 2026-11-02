@@ -6,18 +6,9 @@ import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { CARD_H, tableTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
-
-export const W = 1600, H = 900;
-const CENTER = { x: 800, y: 440 };
-
-export type Anchor = { cx: number; cy: number; rot: number; dx: number; dy: number };
-const A = (cx: number, cy: number, rot: number, dx: number, dy: number): Anchor => ({ cx, cy, rot, dx, dy });
-export const LAYOUTS: Record<number, Anchor[]> = {
-  2: [A(800, 770, 0, 0, 1), A(800, 125, Math.PI, 0, -1)],
-  3: [A(800, 770, 0, 0, 1), A(130, 450, Math.PI / 2, -1, 0), A(1470, 450, -Math.PI / 2, 1, 0)],
-  4: [A(800, 770, 0, 0, 1), A(130, 450, Math.PI / 2, -1, 0), A(800, 125, Math.PI, 0, -1), A(1470, 450, -Math.PI / 2, 1, 0)],
-  5: [A(800, 770, 0, 0, 1), A(130, 500, Math.PI / 2, -1, 0), A(520, 125, Math.PI, -0.6, -1), A(1080, 125, Math.PI, 0.6, -1), A(1470, 500, -Math.PI / 2, 1, 0)],
-};
+import { LAND, pickGeo, cover, type Anchor, type Geo } from "./geo.ts";
+export const W = LAND.W, H = LAND.H, LAYOUTS = LAND.layouts;
+export type { Anchor };
 
 /** How a game's moves map onto the generic table UI. */
 export interface TrickUi<M, V> {
@@ -44,7 +35,8 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private handLayer = new Container();
   private flyLayer = new Container();
   private fxLayer = new Container();
-  private plates: { label: Text; count: Text; ring: Graphics }[] = [];
+  private geo: Geo = LAND;
+  private plates: { label: Text; count: Text; ring: Graphics; box: Container }[] = [];
   private mine = new Map<Card, CardView>();
   private opp: CardView[][] = [];
   private talon: CardView[] = [];
@@ -74,11 +66,12 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private readonly hooks: SceneHooks<M>;
 
   constructor(app: Application, ui: HTMLElement, adapter: TrickUi<M, V>, hooks: SceneHooks<M>) {
+    this.geo = pickGeo(app.screen.width, app.screen.height);
     this.app = app; this.ui = ui; this.adapter = adapter; this.hooks = hooks;
     app.stage.addChild(this.bg, this.world);
     this.world.addChild(this.tableLayer, this.handLayer, this.flyLayer, this.fxLayer);
     this.handLayer.sortableChildren = true;
-    this.bg.texture = tableTexture(W, H);
+    this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.banner.className = "banner"; this.banner.style.display = "none";
     this.actions.className = "actions";
     this.board.className = "board";
@@ -89,12 +82,23 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   }
   private onResize = () => this.resize();
   private resize() {
-    const w = this.app.screen.width, h = this.app.screen.height, s = Math.min(w / W, h / H);
-    this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2);
-    this.bg.width = w; this.bg.height = h;
+    const w = this.app.screen.width, h = this.app.screen.height, g = pickGeo(w, h);
+    const changed = g !== this.geo; this.geo = g;
+    const s = Math.min(w / g.W, h / g.H);
+    this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2);
+    cover(this.bg, w, h);
+    document.body.classList.toggle("portrait", g.portrait);
+    if (g.portrait) document.documentElement.style.setProperty("--actions-bottom", `${Math.round(h - ((h - g.H * s) / 2 + (g.layouts[this.n || 4]![0]!.cy - 150 * g.ownScale) * s) + 8)}px`); else document.documentElement.style.removeProperty("--actions-bottom");
+    if (changed && this.ready) this.applyGeo();
+  }
+  /** The screen turned between landscape and portrait: move everything to its new place. */
+  private applyGeo() {
+    this.placePlates();
+    for (const cv of this.trick.keys()) { const sl = this.trickSlot(cv); const v = this.trick.get(cv)!; gsap.killTweensOf(v); v.position.set(sl.x, sl.y); }
+    this.layoutAll(false); this.layoutTalon();
   }
   destroy() {
-    this.destroyed = true;
+    this.destroyed = true; document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
     window.removeEventListener("resize", this.onResize);
     gsap.killTweensOf("*");
     this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove();
@@ -127,9 +131,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.me = u.view.you as number; this.n = u.view.handSizes.length;
     this.names = u.seats.map((s) => s.name);
     this.opp = Array.from({ length: this.n }, () => []);
-    const anchors = LAYOUTS[this.n]!;
     for (let s = 0; s < this.n; s++) {
-      const rel = (s - this.me + this.n) % this.n, a = anchors[rel]!;
       const box = new Graphics(), ring = new Graphics();
       const label = new Text({ text: s === this.me ? t("you") : this.names[s]!, style: { fill: "#f4efe4", fontSize: 24, fontWeight: "600", fontFamily: "Segoe UI, sans-serif" } });
       const count = new Text({ text: "", style: { fill: "#e8c66a", fontSize: 22, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
@@ -139,20 +141,21 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
       ring.roundRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 31).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       label.position.set(-20, 0); count.position.set(w / 2 - 30, 0);
       const plate = new Container(); plate.addChild(ring, box, label, count);
-      if (rel === 0) plate.position.set(330, 835);
-      else if (a.dy === -1) plate.position.set(a.cx, a.cy + 100);
-      else plate.position.set(a.cx + (a.dx === -1 ? 170 : -170), a.cy);
       this.tableLayer.addChild(plate);
-      this.plates[s] = { label, count, ring };
+      this.plates[s] = { label, count, ring, box: plate };
     }
+    this.placePlates();
+  }
+  private placePlates() {
+    for (let s = 0; s < this.n; s++) { const rel = (s - this.me + this.n) % this.n, p = this.geo.plate(this.geo.layouts[this.n]![rel]!, rel); this.plates[s]!.box.position.set(p.x, p.y); }
   }
 
-  private anchor(seat: number) { return LAYOUTS[this.n]![(seat - this.me + this.n) % this.n]!; }
+  private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
   private trickSlot(seat: number) {
     const a = this.anchor(seat);
-    return { x: CENTER.x + a.dx * 95, y: CENTER.y + a.dy * 70, rot: (Math.random() - 0.5) * 0.3 + (a.dx !== 0 ? 0.1 : 0), scale: 0.95 };
+    return { x: this.geo.center.x + a.dx * 95, y: this.geo.center.y + a.dy * 70, rot: (Math.random() - 0.5) * 0.3 + (a.dx !== 0 ? 0.1 : 0), scale: 0.95 };
   }
-  private talonSlot(i: number) { return { x: CENTER.x - 55 + i * 110, y: 250, rot: 0, scale: 0.8 }; }
+  private talonSlot(i: number) { return { x: this.geo.center.x - 55 + i * 110, y: this.geo.talonY, rot: 0, scale: 0.8 }; }
 
   private handOf(seat: number): CardView[] {
     if (seat === this.dummySeat && seat !== this.me) return this.adapter.order([...this.dummy.keys()], this.view ?? undefined).map((c) => this.dummy.get(c)!);
@@ -162,10 +165,10 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   }
   private fanSlot(seat: number, i: number, n: number) {
     const a = this.anchor(seat), own = seat === this.me, dum = seat === this.dummySeat && !own;
-    const step = own ? Math.min(78, 1100 / Math.max(n, 1)) : dum ? Math.min(46, 620 / Math.max(n, 1)) : Math.min(28, 420 / Math.max(n, 1));
+    const g = this.geo, step = own ? Math.min(g.ownStep, g.ownWidth / Math.max(n, 1)) : dum ? Math.min(g.dummyStep, g.dummyWidth / Math.max(n, 1)) : Math.min(28, 420 / Math.max(n, 1));
     const tt = i - (n - 1) / 2, lx = tt * step, ly = tt * tt * (own ? 0.9 : 0.5);
     const cos = Math.cos(a.rot), sin = Math.sin(a.rot);
-    return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.03 : 0.03), scale: own ? 1 : dum ? 0.72 : 0.56 };
+    return { x: a.cx + lx * cos - ly * sin, y: a.cy + lx * sin + ly * cos, rot: a.rot + tt * (own ? 0.03 : 0.03), scale: own ? g.ownScale : dum ? g.dummyScale : 0.56 };
   }
   private layout(seat: number, animate = true) {
     const hand = this.handOf(seat);
@@ -182,7 +185,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   private layoutAll(animate = true) { for (let s = 0; s < this.n; s++) this.layout(s, animate); }
   private layoutTalon() { this.talon.forEach((cv, i) => { const sl = this.talonSlot(i); cv.slot = sl; gsap.to(cv, { x: sl.x, y: sl.y, rotation: sl.rot, duration: 0.4, ease: "power3.out" }); gsap.to(cv.scale, { x: sl.scale, y: sl.scale, duration: 0.4 }); }); }
 
-  private newView(id: Card | null, up: boolean, at = { x: CENTER.x, y: CENTER.y }) {
+  private newView(id: Card | null, up: boolean, at = { x: this.geo.center.x, y: this.geo.center.y }) {
     const cv = new CardView(id, up); cv.position.set(at.x, at.y); cv.scale.set(0.8); this.flyLayer.addChild(cv); return cv;
   }
   private async fly(cv: CardView, to: { x: number; y: number; rot: number; scale: number }, duration = 0.5) {
@@ -302,7 +305,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     const a = seat === null ? null : this.anchor(seat);
     const tx = new Text({ text, style: { fill: "#ffe08a", fontSize: 44, fontWeight: "800", fontFamily: "Segoe UI, sans-serif", stroke: { color: "#000", width: 6 } } });
     tx.anchor.set(0.5);
-    const x = a ? CENTER.x + a.dx * 330 : CENTER.x, y = a ? CENTER.y + a.dy * 200 : CENTER.y - 200;
+    const c = this.geo.center, x = a ? c.x + a.dx * this.geo.toast.dx : c.x, y = a ? c.y + a.dy * this.geo.toast.dy : c.y - this.geo.toast.dy;
     tx.position.set(x, y); tx.alpha = 0; this.fxLayer.addChild(tx);
     gsap.to(tx, { alpha: 1, y: y - 24, duration: 0.3 }); gsap.to(tx, { alpha: 0, delay: 1.1, duration: 0.4, onComplete: () => tx.destroy() });
   }

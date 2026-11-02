@@ -8,6 +8,7 @@ import { sfx } from "./sfx.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { CARD_H, CARD_W, tableTexture, suitTexture } from "./cardart.ts";
 import { t } from "./i18n.ts";
+import { cover } from "./geo.ts";
 
 const W = 1600, H = 900;
 const DECK = { x: 690, y: 450 }, DISCARD = { x: 910, y: 450 };
@@ -78,7 +79,7 @@ export class MauScene {
     const w = this.app.screen.width, h = this.app.screen.height;
     const s = Math.min(w / W, h / H);
     this.world.scale.set(s); this.world.position.set((w - W * s) / 2, (h - H * s) / 2);
-    this.bg.width = w; this.bg.height = h;
+    cover(this.bg, w, h);
   }
   destroy() {
     this.destroyed = true;
