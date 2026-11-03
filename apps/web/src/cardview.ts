@@ -33,6 +33,10 @@ export interface DragCtl {
   hover?(card: CardView | null): void;
   /** put the card at this position of the hand and lay the hand out again */
   move(card: Card, index: number): void;
+  /** while a card is dragged: where it is now (world coordinates), or null when the drag ended */
+  dragOver?(card: Card | null, x: number, y: number): void;
+  /** the card was released here; return true when the scene used the drop (e.g. laid it off) and no re-sorting is wanted */
+  drop?(card: Card, x: number, y: number): boolean;
 }
 
 /** A player's own ordering of the hand, on top of the scene's default sort. */
@@ -122,6 +126,7 @@ export class CardView extends Container {
       }
       const p = toLocal(ev.clientX, ev.clientY);
       this.position.set(p.x + grab.x, p.y + grab.y);
+      ctl.dragOver?.(this.id!, this.x, this.y);
       this.rotation += (this.slot.rot * 0.4 - this.rotation) * 0.3;
       const xs = ctl.order().map((c) => c.slot.x).sort((a, b) => a - b);
       let idx = 0; for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i]! - this.x) < Math.abs(xs[idx]! - this.x)) idx = i;
@@ -131,6 +136,8 @@ export class CardView extends Container {
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
       if (!this.dragging) return;
       this.dragging = false; setTimeout(() => { this.noTap = false; }, 120);
+      ctl.dragOver?.(null, 0, 0);
+      if (ctl.drop?.(this.id!, this.x, this.y)) return;
       ctl.move(this.id!, Math.max(last, 0));
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);

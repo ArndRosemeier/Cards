@@ -374,6 +374,7 @@ function startLocal(name: string, players: number, seed: number) {
 }
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+if (import.meta.env.DEV) Object.defineProperty(window, "__scene", { get: () => scene });
 void boot();
 
 /** celebratory sparkles (painted spark sprite, additive blend) rising over the result screen */

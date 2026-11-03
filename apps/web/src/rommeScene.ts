@@ -22,7 +22,7 @@ const SUIT_ORDER = ["C", "H", "S", "D"];
 const sortSuit = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)));
 const sortRank = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)));
 
-interface MeldView { owner: number; cards: CardView[]; frame: Graphics }
+interface MeldView { owner: number; cards: CardView[]; frame: Graphics; rect?: { x: number; y: number; w: number; h: number }; badge?: Container }
 
 export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private geo: Geo = pickGeo(window.innerWidth, window.innerHeight); private world = new Container(); private bg = new Sprite();
@@ -96,7 +96,12 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   }
   private anchor(seat: number) { return this.geo.layouts[this.n]![(seat - this.me + this.n) % this.n]!; }
   private order = new HandOrder(); private dragCtl: DragCtl | null = null;
-  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), hover: (c) => spreadHand(this.handOf(this.me), c), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); } }); }
+  private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), hover: (c) => spreadHand(this.handOf(this.me), c), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); },
+    dragOver: (card, x, y) => { const idx = card ? this.meldAt(x, y) : -1; if (idx !== this.dropHint) { this.dropHint = idx; this.paintMelds(); } },
+    drop: (card, x, y) => { const idx = this.meldAt(x, y); this.dropHint = -1; this.paintMelds(); if (idx < 0) return false; const cards = this.selection.has(card) ? [...this.selection] : [card]; return this.tryLayoffWith(idx, cards, true); } }); }
+  private dropHint = -1;
+  /** the table meld under a point (world coordinates), or -1 */
+  private meldAt(x: number, y: number): number { return this.melds.findIndex((m) => m.rect && x >= m.rect.x - 14 && x <= m.rect.x + m.rect.w + 14 && y >= m.rect.y - 14 && y <= m.rect.y + m.rect.h + 14); }
   private handOf(seat: number): CardView[] {
     if (seat !== this.me) return this.opp[seat]!;
     const order = this.sortMode === "suit" ? sortSuit([...this.mine.keys()]) : sortRank([...this.mine.keys()]);
@@ -131,11 +136,43 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
         const sl = { x: x + cw / 2 + i * step, y: y + ch / 2, rot: 0, scale: sc }; cv.slot = sl;
         gsap.to(cv, { x: sl.x, y: sl.y, rotation: 0, duration: animate ? 0.4 : 0, ease: "power3.out", overwrite: "auto" }); gsap.to(cv.scale, { x: sc, y: sc, duration: animate ? 0.4 : 0 });
       });
-      m.frame.clear().roundRect(x - 6, y - 8, wdt + 12, ch + 16, 14).stroke({ width: 2, color: m.owner === this.me ? 0xffe08a : 0xffffff, alpha: 0.35 }).fill({ color: 0x000000, alpha: 0.12 });
+      m.rect = { x: x - 6, y: y - 8, w: wdt + 12, h: ch + 16 };
       m.frame.eventMode = "static"; m.frame.cursor = "pointer"; m.frame.removeAllListeners();
       const idx = this.melds.indexOf(m); m.frame.on("pointertap", () => this.tryLayoff(idx));
       x += wdt + 22;
     }
+    this.paintMelds();
+  }
+
+  /** What laying `cards` on table meld `i` would do: add them, swap a joker back, or nothing. */
+  private layoffKind(i: number, cards: Card[]): "add" | "swap" | null {
+    const m = this.view?.melds[i]; if (!m || !cards.length) return null;
+    if (parseMeld([...m.cards, ...cards])) return "add";
+    const jk = m.cards.find(isJoker), only = cards.length === 1 ? cards[0]! : null;
+    if (jk && only && !isJoker(only) && parseMeld(m.cards.map((c) => (c === jk ? only : c)))) return "swap";
+    return null;
+  }
+  /** Frames of the table melds: when cards are selected, the melds they fit glow and show a "+", the others fade. */
+  private paintMelds() {
+    const v = this.view, sel = [...this.selection];
+    const active = !!v && this.myTurn() && v.phase === "play" && v.opened[this.me] && sel.length > 0;
+    this.melds.forEach((m, i) => {
+      const r = m.rect; if (!r) return;
+      const kind = active ? this.layoffKind(i, sel) : null, hot = i === this.dropHint;
+      gsap.killTweensOf(m.frame); m.frame.alpha = 1;
+      m.frame.clear().roundRect(r.x, r.y, r.w, r.h, 14);
+      if (kind) m.frame.stroke({ width: hot ? 6 : 4, color: kind === "swap" ? 0xffc24d : 0x6dff9a, alpha: 1 }).fill({ color: kind === "swap" ? 0xffc24d : 0x6dff9a, alpha: hot ? 0.3 : 0.16 });
+      else m.frame.stroke({ width: hot ? 4 : 2, color: hot ? 0xff8a8a : m.owner === this.me ? 0xffe08a : 0xffffff, alpha: hot ? 0.9 : 0.35 }).fill({ color: 0x000000, alpha: 0.12 });
+      if (kind && !hot) gsap.fromTo(m.frame, { alpha: 0.55 }, { alpha: 1, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      else if (active && !kind) m.frame.alpha = 0.45;
+      // the "+" badge on the corner of a meld that takes the selection
+      if (kind && !m.badge) {
+        const b = new Container(), disc = new Graphics().circle(0, 0, 20).fill(0x1c7a3c).stroke({ width: 3, color: 0xffffff });
+        const tx = new Text({ text: kind === "swap" ? "⇄" : "+", style: { fill: "#fff", fontSize: 28, fontWeight: "800", fontFamily: "Segoe UI, sans-serif" } }); tx.anchor.set(0.5);
+        b.addChild(disc, tx); this.meldLayer.addChild(b); m.badge = b;
+      }
+      if (m.badge) { if (kind) { m.badge.position.set(r.x + r.w - 6, r.y + 4); m.badge.visible = true; } else { m.badge.destroy(); m.badge = undefined; } }
+    });
   }
 
   private mk(id: Card | null, up: boolean, at = STOCK) { const cv = new CardView(id, up); cv.position.set(at.x, at.y); cv.scale.set(0.8); this.flyLayer.addChild(cv); return cv; }
@@ -159,7 +196,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
           patchBoard(this.board, u.view.scores); await roundSummary(this.ui, rows, t("roundDone"), true);   // Rommé: fewer penalty points is better
         }
         const all = [...this.mine.values(), ...this.opp.flat(), ...this.melds.flatMap((m) => m.cards), ...(this.discardView ? [this.discardView] : [])];
-        this.melds.forEach((m) => m.frame.destroy()); this.melds = []; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();
+        this.melds.forEach((m) => { m.frame.destroy(); m.badge?.destroy(); }); this.melds = []; this.mine.clear(); this.order.reset(); this.opp = Array.from({ length: this.n }, () => []); this.discardView = null; this.staged = []; this.selection.clear();
         all.forEach((c) => gsap.to(c, { alpha: 0, duration: 0.4, onComplete: () => c.destroy() })); this.dealt = false; await sleep(this.ready && all.length ? 450 : 0); break;
       }
       case "dealt": if (!this.dealt) await this.dealAll(u); break;
@@ -234,7 +271,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       for (let s = 0; s < this.n; s++) { if (s === this.me) continue; const l = this.opp[s]!; while (l.length > v.handSizes[s]!) l.pop()!.destroy(); while (l.length < v.handSizes[s]!) { const cv = this.mk(null, false); this.handLayer.addChild(cv); l.push(cv); } }
       const sig = (ms: { cards: Card[] }[]) => ms.map((m) => m.cards.join(",")).join("|");
       if (sig(this.melds.map((m) => ({ cards: m.cards.map((c) => c.id!) }))) !== sig(v.melds)) {
-        this.melds.forEach((m) => { m.cards.forEach((c) => c.destroy()); m.frame.destroy(); }); this.melds = [];
+        this.melds.forEach((m) => { m.cards.forEach((c) => c.destroy()); m.frame.destroy(); m.badge?.destroy(); }); this.melds = [];
         for (const m of v.melds) { const mv: MeldView = { owner: m.owner, cards: m.cards.map((c) => { const cv = this.mk(c, true); return cv; }), frame: new Graphics() }; this.meldLayer.addChild(mv.frame); this.melds.push(mv); }
       }
       this.layoutAll(); this.layoutMelds(false); this.refreshDiscard(v);
@@ -248,14 +285,15 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private myTurn() { return !this.busy && this.legal.length > 0; }
   private send(m: Move) { if (this.busy) return; this.busy = true; this.legal = []; this.selection.clear(); this.staged = []; this.layoutAll(); this.refresh(); this.hooks.submit(m); }
   private draw(from: "stock" | "discard") { if (this.myTurn() && this.legal.some((m) => m.t === "draw" && m.from === from)) this.send({ t: "draw", from }); }
-  private tryLayoff(meld: number) {
-    if (!this.myTurn() || this.view?.phase !== "play" || !this.selection.size) return;
-    const m = this.view.melds[meld]; if (!m) return;
-    if (!this.view.opened[this.me]) { this.toast(t("rm_openFirst")); return; }
-    if (parseMeld([...m.cards, ...this.selection])) { this.send({ t: "layoff", cards: [...this.selection], meld }); return; }
-    const jk = m.cards.find(isJoker), only = this.selection.size === 1 ? [...this.selection][0]! : null;       // a natural card in place of the joker takes the joker back
-    if (jk && only && !isJoker(only) && parseMeld(m.cards.map((c) => (c === jk ? only : c)))) this.send({ t: "swap", meld, card: only });
-    else this.toast(t("rm_noFit"));
+  private tryLayoff(meld: number) { this.tryLayoffWith(meld, [...this.selection], false); }
+  private tryLayoffWith(meld: number, cards: Card[], dropped: boolean): boolean {
+    if (!this.myTurn() || this.view?.phase !== "play" || !cards.length) return false;
+    const m = this.view.melds[meld]; if (!m) return false;
+    if (!this.view.opened[this.me]) { this.toast(t("rm_openFirst")); return dropped; }
+    const kind = this.layoffKind(meld, cards);
+    if (kind === "add") { this.send({ t: "layoff", cards, meld }); return true; }
+    if (kind === "swap") { this.send({ t: "swap", meld, card: cards[0]! }); return true; }
+    this.toast(t("rm_noFit")); return dropped;
   }
   private toggle(card: Card) {
     if (this.staged.some((g) => g.includes(card))) return;
@@ -272,6 +310,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     }
     this.stockStack.eventMode = turn && v.phase === "draw" ? "static" : "none";
     if (this.discardView) { this.discardView.eventMode = turn && v.phase === "draw" ? "static" : "none"; this.discardView.cursor = "pointer"; this.discardView.removeAllListeners(); if (turn && v.phase === "draw") this.discardView.on("pointertap", () => this.draw("discard")); }
+    this.paintMelds();
     this.actions.innerHTML = "";
     const btn = (label: string, cls: string, fn: () => void, disabled = false) => { const b = document.createElement("button"); b.className = "btn " + cls; b.textContent = label; b.disabled = disabled; b.onclick = fn; this.actions.append(b); return b; };
     if (turn && v.phase === "play") {
@@ -283,13 +322,22 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
           btn(`${t("rm_open")} ${stagedVal}/${v.minOpen}`, "primary", () => this.send({ t: "meld", groups: this.staged }), stagedVal < v.minOpen);
           btn(t("rm_unstage"), "", () => { this.staged = []; this.layout(this.me); this.refresh(); });
         }
-      } else btn(`${t("rm_meld")}${meld ? ` (${meld.value})` : ""}`, "primary", () => this.send({ t: "meld", groups: [sel] }), !meld);
+      } else {
+        btn(`${t("rm_meld")}${meld ? ` (${meld.value})` : ""}`, "primary", () => this.send({ t: "meld", groups: [sel] }), !meld);
+        // laying cards onto melds that are already on the table: one fitting target gets a direct button, several get a hint
+        const targets = sel.length ? v.melds.map((_, i) => i).filter((i) => this.layoffKind(i, sel)) : [];
+        if (targets.length === 1) btn(this.layoffKind(targets[0]!, sel) === "swap" ? t("rm_swapJoker") : t("rm_layoff"), "primary", () => this.tryLayoff(targets[0]!));
+      }
       btn(t("rm_discard"), opened || !this.staged.length ? "primary" : "", () => this.send({ t: "discard", card: sel[0]! }), sel.length !== 1 || (v.taken === sel[0] && v.handSizes[this.me]! > 1));
     }
     this.sortBtn.style.display = this.dealt ? "block" : "none"; this.sortBtn.textContent = `${t("sort")}: ${this.sortMode === "suit" ? "123" : "♣♥"}`;
     this.sortBtn.onclick = () => { this.sortMode = this.sortMode === "suit" ? "rank" : "suit"; this.order.reset(); this.layout(this.me); this.refresh(); };
     for (let s = 0; s < this.n; s++) gsap.to(this.plates[s]!.ring, { alpha: !v.over && v.turn === s ? 1 : 0, duration: 0.25 });
     let msg = ""; if (!v.over) msg = v.turn === this.me ? (v.phase === "draw" ? t("rm_drawPrompt") : t("rm_playPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
+    if (turn && v.phase === "play" && v.opened[this.me] && v.melds.length) {
+      const sel2 = [...this.selection], fits = sel2.length ? v.melds.filter((_, i) => this.layoffKind(i, sel2)).length : 0;
+      msg = !sel2.length ? t("rm_layoffHint") : fits > 1 ? t("rm_tapGlowing") : fits === 1 ? t("rm_tapOne") : msg;
+    }
     this.banner.textContent = msg; this.banner.style.display = this.busy || !msg ? "none" : "block";
     this.board.innerHTML = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.scores[i]}</b></div>`).join("") + `<div class="x">${t("roundNo", { a: v.round + 1, b: v.rounds })}</div><div class="x">${t("rm_minOpen", { n: v.minOpen })}</div>`;
   }
