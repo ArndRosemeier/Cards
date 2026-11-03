@@ -158,21 +158,23 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   /** Frames of the table melds: when cards are selected, the melds they fit glow and show a "+", the others fade. */
   private paintMelds() {
     const v = this.view, sel = [...this.selection];
-    const active = !!v && this.myTurn() && v.phase === "play" && v.opened[this.me] && sel.length > 0;
+    const playing = !!v && this.myTurn() && v.phase === "play" && sel.length > 0, active = playing && !!v!.opened[this.me], locked = playing && !active;   // locked: not opened yet, so nothing may be added
     this.melds.forEach((m, i) => {
       const r = m.rect; if (!r) return;
-      const kind = active ? this.layoffKind(i, sel) : null, hot = i === this.dropHint;
+      const kind = active || locked ? this.layoffKind(i, sel) : null, hot = i === this.dropHint;
       gsap.killTweensOf(m.frame); m.frame.alpha = 1;
       m.frame.clear().roundRect(r.x, r.y, r.w, r.h, 14);
-      if (kind) m.frame.stroke({ width: hot ? 6 : 4, color: kind === "swap" ? 0xffc24d : 0x6dff9a, alpha: 1 }).fill({ color: kind === "swap" ? 0xffc24d : 0x6dff9a, alpha: hot ? 0.3 : 0.16 });
+      if (kind && locked) m.frame.stroke({ width: 3, color: 0xc9c9c9, alpha: 0.9 }).fill({ color: 0xc9c9c9, alpha: 0.12 });
+      else if (kind) m.frame.stroke({ width: hot ? 6 : 4, color: kind === "swap" ? 0xffc24d : 0x6dff9a, alpha: 1 }).fill({ color: kind === "swap" ? 0xffc24d : 0x6dff9a, alpha: hot ? 0.3 : 0.16 });
       else m.frame.stroke({ width: hot ? 4 : 2, color: hot ? 0xff8a8a : m.owner === this.me ? 0xffe08a : 0xffffff, alpha: hot ? 0.9 : 0.35 }).fill({ color: 0x000000, alpha: 0.12 });
-      if (kind && !hot) gsap.fromTo(m.frame, { alpha: 0.55 }, { alpha: 1, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
-      else if (active && !kind) m.frame.alpha = 0.45;
-      // the "+" badge on the corner of a meld that takes the selection
+      if (kind && !hot && !locked) gsap.fromTo(m.frame, { alpha: 0.55 }, { alpha: 1, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      else if (playing && !kind) m.frame.alpha = 0.45;
+      // the badge on the corner of a meld that takes the selection ("+", "⇄", or a lock before opening)
+      if (m.badge && m.badge.name !== (locked ? "lock" : "go")) { m.badge.destroy(); m.badge = undefined; }
       if (kind && !m.badge) {
-        const b = new Container(), disc = new Graphics().circle(0, 0, 20).fill(0x1c7a3c).stroke({ width: 3, color: 0xffffff });
-        const tx = new Text({ text: kind === "swap" ? "⇄" : "+", style: { fill: "#fff", fontSize: 28, fontWeight: "800", fontFamily: "Segoe UI, sans-serif" } }); tx.anchor.set(0.5);
-        b.addChild(disc, tx); this.meldLayer.addChild(b); m.badge = b;
+        const b = new Container(), disc = new Graphics().circle(0, 0, 20).fill(locked ? 0x6b6b6b : 0x1c7a3c).stroke({ width: 3, color: 0xffffff });
+        const tx = new Text({ text: locked ? "🔒" : kind === "swap" ? "⇄" : "+", style: { fill: "#fff", fontSize: locked ? 22 : 28, fontWeight: "800", fontFamily: "Segoe UI, sans-serif" } }); tx.anchor.set(0.5);
+        b.addChild(disc, tx); b.name = locked ? "lock" : "go"; this.meldLayer.addChild(b); m.badge = b;
       }
       if (m.badge) { if (kind) { m.badge.position.set(r.x + r.w - 6, r.y + 4); m.badge.visible = true; } else { m.badge.destroy(); m.badge = undefined; } }
     });
@@ -337,6 +339,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     this.sortBtn.onclick = () => { this.sortMode = this.sortMode === "suit" ? "rank" : "suit"; this.order.reset(); this.layout(this.me); this.refresh(); };
     for (let s = 0; s < this.n; s++) gsap.to(this.plates[s]!.ring, { alpha: !v.over && v.turn === s ? 1 : 0, duration: 0.25 });
     let msg = ""; if (!v.over) msg = v.turn === this.me ? (v.phase === "draw" ? t("rm_drawPrompt") : t("rm_playPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
+    if (turn && v.phase === "play" && !v.opened[this.me] && v.melds.length && this.selection.size && v.melds.some((_, i) => this.layoffKind(i, [...this.selection]))) msg = t("rm_fitsLocked", { n: v.minOpen });
     if (turn && v.phase === "play" && v.opened[this.me] && v.melds.length) {
       const sel2 = [...this.selection], fits = sel2.length ? v.melds.filter((_, i) => this.layoffKind(i, sel2)).length : 0;
       const only = fits === 1 ? v.melds.findIndex((_, i) => this.layoffKind(i, sel2)) : -1;
