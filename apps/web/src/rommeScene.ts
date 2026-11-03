@@ -17,7 +17,7 @@ import type { GameScene, SceneHooks } from "./trickScene.ts";
 
 import { pickGeo, setActionsBottom, type Geo } from "./geo.ts";
 const STOCK = { x: 700, y: 480 }, DISC = { x: 860, y: 480 };
-const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 800 }); Object.assign(DISC, { x: 410, y: 800 }); } else { Object.assign(STOCK, { x: 700, y: 480 }); Object.assign(DISC, { x: 860, y: 480 }); } };
+const setPiles = (g: Geo) => { if (g.portrait) { Object.assign(STOCK, { x: 250, y: 672 }); Object.assign(DISC, { x: 410, y: 672 }); } else { Object.assign(STOCK, { x: 700, y: 480 }); Object.assign(DISC, { x: 860, y: 480 }); } };
 const SUIT_ORDER = ["C", "H", "S", "D"];
 const sortSuit = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)));
 const sortRank = (h: Card[]) => h.slice().sort((a, b) => (isJoker(a) ? 1 : 0) - (isJoker(b) ? 1 : 0) || RANKS.indexOf(rankOf(a)) - RANKS.indexOf(rankOf(b)) || SUIT_ORDER.indexOf(suitOf(a)) - SUIT_ORDER.indexOf(suitOf(b)));
@@ -26,7 +26,7 @@ interface MeldView { owner: number; cards: CardView[]; frame: Graphics; rect?: {
 
 export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private geo: Geo = pickGeo(window.innerWidth, window.innerHeight); private world = new Container(); private bg = new Sprite();
-  private tableLayer = new Container(); private meldLayer = new Container(); private handLayer = new Container(); private flyLayer = new Container(); private fxLayer = new Container();
+  private tableLayer = new Container(); private meldLayer = new Container(); private plateLayer = new Container(); private handLayer = new Container(); private flyLayer = new Container(); private fxLayer = new Container();
   private mine = new Map<Card, CardView>(); private opp: CardView[][] = []; private melds: MeldView[] = [];
   private stockStack = new Container(); private stockText = new Text({ text: "", style: { fill: "#fff", fontSize: 22, fontWeight: "700", fontFamily: "Segoe UI, sans-serif" } });
   private discardView: CardView | null = null;
@@ -40,7 +40,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   constructor(app: Application, ui: HTMLElement, hooks: SceneHooks<Move>) {
     this.app = app; this.ui = ui; this.hooks = hooks; setPiles(this.geo);
     app.stage.addChild(this.bg, this.world); attachAmbience(app, this.bg);
-    this.world.addChild(this.tableLayer, this.meldLayer, this.handLayer, this.flyLayer, this.fxLayer);
+    this.world.addChild(this.tableLayer, this.meldLayer, this.plateLayer, this.handLayer, this.flyLayer, this.fxLayer);
     this.bg.texture = tableTexture(this.geo.W, this.geo.H);
     this.stockStack.position.set(STOCK.x, STOCK.y); this.stockText.anchor.set(0.5); this.stockText.position.set(STOCK.x, STOCK.y + 92);
     this.tableLayer.addChild(this.stockStack, this.stockText);
@@ -90,7 +90,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       ring.roundRect(-104, -30, 208, 60, 30).stroke({ width: 3, color: 0xffe08a }); ring.alpha = 0;
       const plate = new Container(); plate.addChild(ring, box, name, count); if (s !== this.me) addAvatar(plate, this.names[s]!, name, -76, 0, 22);
       { const pp = this.geo.portrait ? this.geo.plate(a, rel) : rel === 0 ? { x: 170, y: 668 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 170 : -170), y: a.cy + 130 }; plate.position.set(pp.x, pp.y); }
-      this.tableLayer.addChild(plate); this.plates[s] = { ring, count, name };
+      this.plateLayer.addChild(plate); this.plates[s] = { ring, count, name };
     }
     for (let i = 0; i < 3; i++) { const c = new CardView(null, false); c.position.set(-i * 1.5, -i * 1.5); c.scale.set(0.8); this.stockStack.addChild(c); }
   }
@@ -98,7 +98,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private order = new HandOrder(); private dragCtl: DragCtl | null = null;
   private ctl(): DragCtl { return (this.dragCtl ??= { canvas: this.app.canvas as HTMLCanvasElement, order: () => this.handOf(this.me), hover: (c) => spreadHand(this.handOf(this.me), c), move: (card, i) => { this.order.move(this.handOf(this.me).map((c) => c.id!), card, i); this.layout(this.me); },
     dragOver: (card, x, y) => { const idx = card ? this.meldAt(x, y) : -1; if (idx !== this.dropHint) { this.dropHint = idx; this.paintMelds(); } },
-    drop: (card, x, y) => { const idx = this.meldAt(x, y); this.dropHint = -1; this.paintMelds(); if (idx < 0) return false; const cards = this.selection.has(card) ? [...this.selection] : [card]; return this.tryLayoffWith(idx, cards, true); } }); }
+    drop: (card, x, y) => { const idx = this.meldAt(x, y); this.dropHint = -1; this.paintMelds(); if (idx < 0) return false; const cards = this.selection.has(card) ? [...this.selection] : [card]; const used = this.tryLayoffWith(idx, cards, true); if (used) spreadHand(this.handOf(this.me), null); return used; } }); }
   private dropHint = -1;
   /** the table meld under a point (world coordinates), or -1 */
   private meldAt(x: number, y: number): number { return this.melds.findIndex((m) => m.rect && x >= m.rect.x - 14 && x <= m.rect.x + m.rect.w + 14 && y >= m.rect.y - 14 && y <= m.rect.y + m.rect.h + 14); }
@@ -120,6 +120,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
       const d = animate ? 0.4 : 0; const staged = this.staged.some((g) => g.includes(cv.id!));
       gsap.to(cv, { x: cv.slot.x, y: cv.slot.y - (this.selection.has(cv.id!) ? 40 : staged ? 70 : 0), rotation: cv.slot.rot, duration: d, ease: "power3.out", overwrite: "auto" });
       gsap.to(cv.scale, { x: cv.slot.scale, y: cv.slot.scale, duration: d });
+      if (seat === this.me) gsap.to(cv, { lift: this.selection.has(cv.id!) ? 0.6 : 0, duration: d });
     });
     const p = this.plates[seat]; if (p) p.count.text = String(hand.length);
   }
@@ -127,11 +128,13 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
 
   private layoutMelds(animate = true) {
     // left-to-right, wrapping rows, in the central area
-    const pt = this.geo.portrait, x0 = pt ? 150 : 250; let x = x0, y = pt ? 250 : 190; const rowH = pt ? 130 : 120, maxX = pt ? 585 : 1350, sc = pt ? 0.6 : 0.5, cw = CardView.W * sc, ch = CardView.H * sc;
+    const pt = this.geo.portrait, x0 = pt ? 150 : 250; const topSeat = this.n !== 3;   // a name plate sits at the top edge of the table
+    let x = x0, y = pt ? 322 : topSeat ? 262 : 190; const rowH = pt ? 124 : topSeat ? 112 : 120, maxX = pt ? 585 : 1350, sc = pt ? 0.55 : 0.5, cw = CardView.W * sc, ch = CardView.H * sc;
     for (const m of this.melds) {
-      const step = pt ? 27 : 34, wdt = (m.cards.length - 1) * step + cw;
+      const step = pt ? 25 : 34, wdt = (m.cards.length - 1) * step + cw;
       if (x + wdt > maxX) { x = x0; y += rowH; }
       m.cards.forEach((cv, i) => {
+        if (!cv) return;
         this.meldLayer.addChild(cv);
         const sl = { x: x + cw / 2 + i * step, y: y + ch / 2, rot: 0, scale: sc }; cv.slot = sl;
         gsap.to(cv, { x: sl.x, y: sl.y, rotation: 0, duration: animate ? 0.4 : 0, ease: "power3.out", overwrite: "auto" }); gsap.to(cv.scale, { x: sc, y: sc, duration: animate ? 0.4 : 0 });
@@ -336,7 +339,8 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     let msg = ""; if (!v.over) msg = v.turn === this.me ? (v.phase === "draw" ? t("rm_drawPrompt") : t("rm_playPrompt")) : t("turnOf", { n: this.names[v.turn ?? 0] ?? "" });
     if (turn && v.phase === "play" && v.opened[this.me] && v.melds.length) {
       const sel2 = [...this.selection], fits = sel2.length ? v.melds.filter((_, i) => this.layoffKind(i, sel2)).length : 0;
-      msg = !sel2.length ? t("rm_layoffHint") : fits > 1 ? t("rm_tapGlowing") : fits === 1 ? t("rm_tapOne") : msg;
+      const only = fits === 1 ? v.melds.findIndex((_, i) => this.layoffKind(i, sel2)) : -1;
+      msg = !sel2.length ? t("rm_layoffHint") : fits > 1 ? t("rm_tapGlowing") : fits === 1 ? t(this.layoffKind(only, sel2) === "swap" ? "rm_tapSwap" : "rm_tapOne") : msg;
     }
     this.banner.textContent = msg; this.banner.style.display = this.busy || !msg ? "none" : "block";
     this.board.innerHTML = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.scores[i]}</b></div>`).join("") + `<div class="x">${t("roundNo", { a: v.round + 1, b: v.rounds })}</div><div class="x">${t("rm_minOpen", { n: v.minOpen })}</div>`;

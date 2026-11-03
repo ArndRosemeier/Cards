@@ -76,7 +76,7 @@ body.portrait .hud .btn { padding:6px 9px; font-size:13px; }
 body.portrait .board { font-size:11px; line-height:1.15; padding:3px 10px; min-width:0; top:48px; left:50%; right:auto; transform:translateX(-50%); display:flex; flex-wrap:wrap; justify-content:center; gap:0 14px; max-width:94vw; }
 body.portrait .board div { padding:1px 0; gap:6px; }
 body.portrait .board .x { border-top:0; margin:0; padding:1px 0; }
-body.portrait .banner { top:102px; max-width:92vw; text-align:center; }
+body.portrait .banner { top:102px; max-width:92vw; text-align:center; white-space:normal; box-sizing:border-box; }
 body.portrait .hcontrols { right:auto; left:50%; transform:translateX(-50%); flex-direction:column; align-items:center; width:94vw; bottom:calc(env(safe-area-inset-bottom) + 8px); }
 .rules-overlay { position:absolute; inset:0; z-index:60; display:grid; place-items:center; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); }
 .rules { max-width:min(560px, 92vw); max-height:86vh; overflow:auto; padding:22px 24px; border-radius:20px; background:rgba(12,28,20,.94); border:1px solid rgba(232,198,106,.4); text-align:left; }
