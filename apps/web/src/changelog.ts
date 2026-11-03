@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.01", date: "2026-11-03",
+    de: ["Rommé: Passt eine Karte sowohl zum Anlegen als auch zum Joker-Tausch (z. B. ein weiteres Ass an zwei Asse und einen Joker), gibt es jetzt beide Knöpfe: „Anlegen“ und „Joker tauschen“."],
+    en: ["Rummy: when a card can either be added to a meld or swapped for its joker (e.g. another ace onto two aces and a joker), both buttons are now offered: “Lay off” and “Swap joker”."] },
   { v: "1.00", date: "2026-11-03",
     de: [
       "Rommé: Karten an Reihen auf dem Tisch anlegen ist jetzt klar erkennbar – passende Reihen leuchten grün mit „+“, es gibt einen „Anlegen“-Knopf, und Karten lassen sich auch auf eine Reihe ziehen. Joker tauschen leuchtet bernsteinfarben.",

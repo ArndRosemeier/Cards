@@ -148,12 +148,14 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   }
 
   /** What laying `cards` on table meld `i` would do: add them, swap a joker back, or nothing. */
-  private layoffKind(i: number, cards: Card[]): "add" | "swap" | null {
-    const m = this.view?.melds[i]; if (!m || !cards.length) return null;
-    if (parseMeld([...m.cards, ...cards])) return "add";
+  private layoffKind(i: number, cards: Card[]): "add" | "swap" | null { return this.layoffOptions(i, cards)[0] ?? null; }
+  /** Everything `cards` can do with table meld `i`: add to it and/or (for one card) swap the joker out of it. */
+  private layoffOptions(i: number, cards: Card[]): ("add" | "swap")[] {
+    const m = this.view?.melds[i], out: ("add" | "swap")[] = []; if (!m || !cards.length) return out;
+    if (parseMeld([...m.cards, ...cards])) out.push("add");
     const jk = m.cards.find(isJoker), only = cards.length === 1 ? cards[0]! : null;
-    if (jk && only && !isJoker(only) && parseMeld(m.cards.map((c) => (c === jk ? only : c)))) return "swap";
-    return null;
+    if (jk && only && !isJoker(only)) { const r = parseMeld(m.cards.map((c) => (c === jk ? only : c))); if (r && !r.cards.some(isJoker)) out.push("swap"); }
+    return out;
   }
   /** Frames of the table melds: when cards are selected, the melds they fit glow and show a "+", the others fade. */
   private paintMelds() {
@@ -291,11 +293,11 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
   private send(m: Move) { if (this.busy) return; this.busy = true; this.legal = []; this.selection.clear(); this.staged = []; this.layoutAll(); this.refresh(); this.hooks.submit(m); }
   private draw(from: "stock" | "discard") { if (this.myTurn() && this.legal.some((m) => m.t === "draw" && m.from === from)) this.send({ t: "draw", from }); }
   private tryLayoff(meld: number) { this.tryLayoffWith(meld, [...this.selection], false); }
-  private tryLayoffWith(meld: number, cards: Card[], dropped: boolean): boolean {
+  private tryLayoffWith(meld: number, cards: Card[], dropped: boolean, mode?: "add" | "swap"): boolean {
     if (!this.myTurn() || this.view?.phase !== "play" || !cards.length) return false;
     const m = this.view.melds[meld]; if (!m) return false;
     if (!this.view.opened[this.me]) { this.toast(t("rm_openFirst")); return dropped; }
-    const kind = this.layoffKind(meld, cards);
+    const opts = this.layoffOptions(meld, cards), kind = mode && opts.includes(mode) ? mode : opts[0];   // tapping or dropping adds; the button can choose the swap
     if (kind === "add") { this.send({ t: "layoff", cards, meld }); return true; }
     if (kind === "swap") { this.send({ t: "swap", meld, card: cards[0]! }); return true; }
     this.toast(t("rm_noFit")); return dropped;
@@ -331,7 +333,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
         btn(`${t("rm_meld")}${meld ? ` (${meld.value})` : ""}`, "primary", () => this.send({ t: "meld", groups: [sel] }), !meld);
         // laying cards onto melds that are already on the table: one fitting target gets a direct button, several get a hint
         const targets = sel.length ? v.melds.map((_, i) => i).filter((i) => this.layoffKind(i, sel)) : [];
-        if (targets.length === 1) btn(this.layoffKind(targets[0]!, sel) === "swap" ? t("rm_swapJoker") : t("rm_layoff"), "primary", () => this.tryLayoff(targets[0]!));
+        if (targets.length === 1) for (const o of this.layoffOptions(targets[0]!, sel)) btn(o === "swap" ? t("rm_swapJoker") : t("rm_layoff"), "primary", () => this.tryLayoffWith(targets[0]!, [...this.selection], false, o));
       }
       btn(t("rm_discard"), opened || !this.staged.length ? "primary" : "", () => this.send({ t: "discard", card: sel[0]! }), sel.length !== 1 || (v.taken === sel[0] && v.handSizes[this.me]! > 1));
     }
@@ -343,7 +345,7 @@ export class RommeScene implements GameScene<Update<View, Move, Ev>> {
     if (turn && v.phase === "play" && v.opened[this.me] && v.melds.length) {
       const sel2 = [...this.selection], fits = sel2.length ? v.melds.filter((_, i) => this.layoffKind(i, sel2)).length : 0;
       const only = fits === 1 ? v.melds.findIndex((_, i) => this.layoffKind(i, sel2)) : -1;
-      msg = !sel2.length ? t("rm_layoffHint") : fits > 1 ? t("rm_tapGlowing") : fits === 1 ? t(this.layoffKind(only, sel2) === "swap" ? "rm_tapSwap" : "rm_tapOne") : msg;
+      msg = !sel2.length ? t("rm_layoffHint") : fits > 1 ? t("rm_tapGlowing") : fits === 1 ? t((() => { const o = this.layoffOptions(only, sel2); return o.length > 1 ? "rm_tapBoth" : o[0] === "swap" ? "rm_tapSwap" : "rm_tapOne"; })()) : msg;
     }
     this.banner.textContent = msg; this.banner.style.display = this.busy || !msg ? "none" : "block";
     this.board.innerHTML = this.names.map((nm, i) => `<div class="${v.turn === i ? "on" : ""}"><span>${i === this.me ? t("you") : nm}</span><b>${v.scores[i]}</b></div>`).join("") + `<div class="x">${t("roundNo", { a: v.round + 1, b: v.rounds })}</div><div class="x">${t("rm_minOpen", { n: v.minOpen })}</div>`;
