@@ -14,6 +14,8 @@ import { getLang, setLang, t } from "./i18n.ts";
 import { Rng } from "@cards/engine";
 import { cardsInMove, hintText } from "./hint.ts";
 import { getStats, recordResult, resetStats } from "./stats.ts";
+import { VERSION, BUILD_SHA, BUILD_DATE } from "./version.ts";
+import { CHANGELOG } from "./changelog.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
 let gameId = "maumau";
@@ -122,7 +124,7 @@ function showMenu() {
   music.stop(); if (!menuFx) menuFx = createMenuScene(app);
   let players = entry().players.includes(3) ? 3 : entry().players[0]!; let name = savedName();
   const render = () => {
-    const w = panel(`<img class="logo" src="cards/logo.webp" alt=""><h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div>${cuedBadge()}
+    const w = panel(`<img class="logo" src="cards/logo.webp" alt=""><h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div><button class="verchip" id="ver">v${VERSION}${newVersion() ? `<i>${t("newBadge")}</i>` : ""} · ${t("whatsNew")}</button>${cuedBadge()}
       <div class="games">${GAMES.map((g) => `<button class="game ${g === gameId ? "sel" : ""}" data-g="${g}" ${live(g) ? "" : "disabled"}>${t(g)}${live(g) ? "" : `<small>${t("soon")}</small>`}</button>`).join("")}</div>
       <div class="row"><label>${t("name")}</label><input type="text" id="nm" maxlength="20" value="${esc(name)}" placeholder="${t("you")}"${cuedName ? " readonly" : ""}></div>
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
@@ -133,6 +135,7 @@ function showMenu() {
       <div class="row"><label>${t("cardBack")}</label><div class="seg backs" id="bk">${BACKS.map((b) => `<button class="${getBack() === b ? "sel" : ""}" data-b="${b}"><img src="cards/${b}.webp" alt=""></button>`).join("")}</div></div>
       <div class="row" style="justify-content:flex-end"><button class="btn" id="stats">${t("stats")}</button><button class="btn" id="rules">${t("rules")}</button><button class="btn" id="online">${t("online")}</button><button class="btn primary" id="go">${t("play")}</button></div>`);
     (w.querySelector("#stats") as HTMLButtonElement).onclick = showStats;
+    (w.querySelector("#ver") as HTMLButtonElement).onclick = (e) => { showWhatsNew(); markVersionSeen(); (e.currentTarget as HTMLElement).querySelector("i")?.remove(); };
     (w.querySelector("#rules") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
     w.querySelectorAll<HTMLButtonElement>("#lv button").forEach((b) => (b.onclick = () => { saveLevel(Number(b.dataset.lv)); w.querySelectorAll("#lv button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     const nm = () => (name = (w.querySelector("#nm") as HTMLInputElement).value.trim());
@@ -146,6 +149,19 @@ function showMenu() {
     (w.querySelector("#online") as HTMLButtonElement).onclick = () => { nm(); if (name) saveName(name); showOnline(); };
   };
   render();
+}
+
+const SEEN_KEY = "cards.seenVersion";
+function newVersion(): boolean { try { return localStorage.getItem(SEEN_KEY) !== VERSION; } catch { return false; } }
+function markVersionSeen() { try { localStorage.setItem(SEEN_KEY, VERSION); } catch { /* storage unavailable */ } }
+function showWhatsNew() {
+  const lang = getLang() === "en" ? "en" : "de";
+  const o = document.createElement("div"); o.className = "rules-overlay";
+  o.innerHTML = `<div class="rules whatsnew"><h2>${t("whatsNew")}</h2><div class="sub">${t("version")} ${VERSION}${BUILD_SHA ? ` · ${t("build")} ${esc(BUILD_SHA)}` : ""} · ${BUILD_DATE.toLocaleString(lang === "en" ? "en-GB" : "de-DE", { dateStyle: "medium", timeStyle: "short" })}</div>
+    ${CHANGELOG.map((r) => `<h3>v${r.v} <small>${r.date}</small></h3><ul>${r[lang].map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`).join("")}
+    <div class="btns"><button class="btn primary" id="x">${t("close")}</button></div></div>`;
+  (o.querySelector("#x") as HTMLButtonElement).onclick = () => o.remove();
+  ui.append(o);
 }
 
 function showStats() {

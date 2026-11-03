@@ -1,0 +1,30 @@
+/** What is new, newest first. Add an entry whenever a change is worth telling; `v` is the version the commit produces (see version.ts). */
+export interface Release { v: string; date: string; de: string[]; en: string[] }
+
+export const CHANGELOG: Release[] = [
+  { v: "1.00", date: "2026-11-03",
+    de: [
+      "Rommé: Karten an Reihen auf dem Tisch anlegen ist jetzt klar erkennbar – passende Reihen leuchten grün mit „+“, es gibt einen „Anlegen“-Knopf, und Karten lassen sich auch auf eine Reihe ziehen. Joker tauschen leuchtet bernsteinfarben.",
+      "Rommé: Vor dem Auslegen zeigt ein Schloss, dass Anlegen erst nach dem Auslegen geht.",
+      "Skat: Die KI spielt deutlich stärker (Reizen, Drücken, Kartenspiel per Simulation). Jeder sieht jetzt die Punkte seiner Partei.",
+      "Texas Hold’em: Neue, stärkere KI. Nach jeder Hand wartet das Spiel auf „Nächste Hand“ (der Gastgeber drückt).",
+      "Doppelkopf und Schafkopf zeigen die Teampunkte.",
+      "Online-Chat in allen Online-Spielen, mit Hinweis bei neuen Nachrichten.",
+      "Lautstärke für Effekte und Musik als Regler.",
+      "cued-Anmeldung: Name und Avatar kommen aus dem cued-Konto.",
+      "Neue Seite lädt sofort: alte Versionen bleiben nicht mehr im Cache hängen.",
+      "Versionsnummer und diese Übersicht.",
+    ],
+    en: [
+      "Rummy: laying cards onto melds on the table is now obvious – fitting melds glow green with a “+”, there is a “Lay off” button, and you can drag cards onto a meld. A joker swap glows amber.",
+      "Rummy: before you have opened, a lock shows that adding to melds only works after opening.",
+      "Skat: the AI plays much stronger (bidding, discarding, simulation-based card play). Everyone now sees their team's points.",
+      "Texas Hold’em: new, stronger AI. After each hand the game waits for “Next hand” (the host presses it).",
+      "Doppelkopf and Schafkopf show the team points.",
+      "Online chat in all online games, with a notification for new messages.",
+      "Volume sliders for effects and music.",
+      "cued sign-in: name and avatar come from the cued account.",
+      "New releases load straight away: old versions no longer stick in the cache.",
+      "Version number and this overview.",
+    ] },
+];
