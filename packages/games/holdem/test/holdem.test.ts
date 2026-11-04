@@ -4,6 +4,7 @@ import { Rng, type Card } from "@cards/engine";
 import { score5, bestScore, categoryOf, HAND_NAMES } from "../src/eval.ts";
 import { Holdem, defaultConfig } from "../src/rules.ts";
 import { holdemBot, createHoldemBot, equityVsRanges, PERSONAS } from "../src/bot.ts";
+import { BANTER, banterLine } from "../src/banter.ts";
 
 const H = (s: string) => s.split(" ") as Card[];
 const cat = (s: string) => HAND_NAMES[categoryOf(score5(H(s)))];
@@ -105,4 +106,23 @@ test("every quirk persona plays a full game with legal moves and keeps chips", (
     }
     assert.ok(Holdem.result(state), `${persona.id} game finishes`);
   }
+});
+
+test("table talk: pools match in both languages, bots speak now and then with known lines, never twice in a row", () => {
+  for (const [k, p] of Object.entries(BANTER)) assert.equal(p.de.length, p.en.length, `${k} de/en lengths`);
+  let decisions = 0; const said: string[] = [];
+  for (const [k, persona] of [...PERSONAS, undefined].entries()) {
+    const rng = Rng.fromSeed(900 + k);
+    let { state } = Holdem.setup({ ...defaultConfig, handsPerLevel: 3 }, 4, rng);
+    const bots = [0, 1, 2, 3].map(() => createHoldemBot(persona));
+    for (let i = 0; i < 20000 && !Holdem.result(state); i++) {
+      const seat = Holdem.activeSeats(state)[0]!, legal = Holdem.legalMoves(state, seat);
+      const m = bots[seat]!.choose(Holdem.view(state, seat), legal, rng); decisions++;
+      const q = bots[seat]!.say(); if (q) { said.push(q); assert.ok(banterLine(q, "de") && banterLine(q, "en"), `unknown line ${q}`); assert.equal(bots[seat]!.say(), null, "say() is consumed"); }
+      state = Holdem.apply(state, seat, m, rng).state;
+    }
+  }
+  const rate = said.length / decisions;
+  assert.ok(rate > 0.01 && rate < 0.2, `talk rate ${rate.toFixed(3)} (${said.length}/${decisions})`);
+  assert.ok(new Set(said).size > 25, `variety: ${new Set(said).size} different lines`);
 });

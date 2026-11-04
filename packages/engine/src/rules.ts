@@ -26,4 +26,6 @@ export interface GameRules<Config, State, Move, View, Ev> {
 /** A computer player. Sees only its own view plus the legal moves, never the hidden state. */
 export interface Bot<View, Move> {
   choose(view: View, legal: Move[], rng: Rng): Move;
+  /** Optional table talk that belongs to the move `choose` just returned: an id the clients turn into a line (once). */
+  say?(): string | null;
 }

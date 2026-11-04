@@ -1,13 +1,13 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import gsap from "gsap";
 import type { Card } from "@cards/engine";
-import type { Ev, Move, View } from "@cards/holdem";
+import { banterLine, type Ev, type Move, type View } from "@cards/holdem";
 import type { Update } from "@cards/net";
 import { sfx } from "./sfx.ts";
 import { popEmote } from "./emote.ts";
 import { CardView, sleep, tween } from "./cardview.ts";
 import { tableTexture } from "./cardart.ts";
-import { t } from "./i18n.ts";
+import { t, getLang } from "./i18n.ts";
 import { attachAmbience } from "./ambience.ts";
 import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
@@ -91,6 +91,21 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); cover(this.bg, w, h);
     document.body.classList.toggle("portrait", g.portrait);
   }
+  private bubbles = new Map<number, Container>();
+  /** Table talk: a speech bubble next to a seat's plate (id is a banter line id, shown in the player's language). */
+  say(seat: number, id: string) {
+    const sp = this.seats[seat], text = banterLine(id, getLang() === "en" ? "en" : "de"); if (!sp || !text || this.destroyed) return;
+    this.bubbles.get(seat)?.destroy({ children: true });
+    const tx = new Text({ text, style: { fill: "#f4efe4", fontSize: 24, fontFamily: "Segoe UI, sans-serif", fontWeight: "500", wordWrap: true, wordWrapWidth: 300, align: "center" } }); tx.anchor.set(0.5);
+    const w = tx.width + 34, h = tx.height + 22;
+    const c = new Container(), bg = new Graphics().roundRect(-w / 2, -h / 2, w, h, 18).fill({ color: 0x0b2a1c, alpha: 0.92 }).stroke({ width: 2.5, color: 0xe8c66a })
+      .poly([-10, h / 2 - 1, 10, h / 2 - 1, 0, h / 2 + 14]).fill({ color: 0x0b2a1c, alpha: 0.92 });
+    c.addChild(bg, tx);
+    const x = Math.min(this.geo.W - w / 2 - 12, Math.max(w / 2 + 12, sp.plate.position.x)), y = sp.plate.position.y - 54 - h / 2;
+    c.position.set(x, y); c.alpha = 0; c.scale.set(0.6); this.layerFx.addChild(c); this.bubbles.set(seat, c);
+    gsap.to(c, { alpha: 1, duration: 0.18 }); gsap.to(c.scale, { x: 1, y: 1, duration: 0.35, ease: "back.out(2)" });
+    gsap.to(c, { alpha: 0, delay: 2.2 + text.length * 0.035, duration: 0.5, onComplete: () => { c.destroy({ children: true }); if (this.bubbles.get(seat) === c) this.bubbles.delete(seat); } });
+  }
   emote(seat: number, id: string) { const sp = this.seats[seat]; if (sp) popEmote(this.layerFx, sp.plate.position.x, sp.plate.position.y, id); }
   destroy() {
     document.body.classList.remove("portrait"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*");
@@ -113,6 +128,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
       const u = this.queue.shift()!; this.busy = true; this.legal = []; this.refresh();
       try {
         if (!this.ready) { this.ready = true; this.setup(u); }
+        for (const q of u.says ?? []) this.say(q.seat, q.id);
         for (const ev of u.events) await this.animate(ev, u);
       } catch (e) { console.error("animation error", e); }
       this.sync(u.view);

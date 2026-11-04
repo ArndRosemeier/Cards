@@ -7,6 +7,7 @@ export const EASY_MISTAKE = 0.3;
 export function withLevel<V, M>(bot: Bot<V, M>, level: number | undefined): Bot<V, M> {
   if (level === undefined || level >= 1) return bot;
   return {
+    say: () => bot.say?.() ?? null,
     choose(view, legal, rng) {
       const move = bot.choose(view, legal, rng);
       // only swap moves the rules enumerate (card plays, bids, draws); composite moves such as melds are left alone

@@ -12,6 +12,8 @@ export interface Update<View, Move, Ev> {
   legal: Move[];           // legal moves for this seat (empty when it is not its turn)
   result: GameResult | null;
   seats: SeatSpec[];
+  /** table talk of bots that came with this change: line ids the scene shows next to the seat */
+  says?: { seat: number; id: string }[];
 }
 export type Link<View, Move, Ev> = (u: Update<View, Move, Ev>) => void;
 
@@ -105,7 +107,8 @@ export class TableHost<Config, State, Move, View, Ev> {
   pause(on: boolean): void { this.paused = on; if (!on) this.pump(); }
   dispose(): void { this.paused = true; this.links.clear(); }
 
-  private updateFor(seat: Seat, events: Ev[]): Update<View, Move, Ev> {
+  private says: { seat: number; id: string }[] = [];
+  private updateFor(seat: Seat, events: Ev[], says?: { seat: number; id: string }[]): Update<View, Move, Ev> {
     const redact = this.rules.redactEvent;
     return {
       seq: this.seq,
@@ -114,13 +117,15 @@ export class TableHost<Config, State, Move, View, Ev> {
       legal: this.rules.legalMoves(this.state, seat),
       result: this.rules.result(this.state),
       seats: this.seats,
+      ...(says?.length ? { says } : {}),
     };
   }
 
   private broadcast(events: Ev[]): void {
     this.seq++;
     this.lastEvents = events;
-    for (const [seat, link] of this.links) link(this.updateFor(seat, events));
+    const says = this.says; this.says = [];
+    for (const [seat, link] of this.links) link(this.updateFor(seat, events, says));
     this.opts.onChange?.();
   }
 
@@ -135,6 +140,7 @@ export class TableHost<Config, State, Move, View, Ev> {
       const bot = this.bots.get(seat);
       if (!bot || !this.rules.activeSeats(this.state).includes(seat)) return this.pump();
       const move = bot.choose(this.rules.view(this.state, seat), this.rules.legalMoves(this.state, seat), this.rng);
+      const id = bot.say?.(); if (id) this.says.push({ seat, id });
       this.submit(seat, move);
     }, delay);
   }

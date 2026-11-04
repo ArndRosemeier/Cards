@@ -1,6 +1,7 @@
 import { makeDeck, RANKS, rankOf, suitOf, Rng, type Bot, type Card } from "@cards/engine";
 import { bestScore } from "./eval.ts";
 import type { Move, View } from "./rules.ts";
+import { BANTER } from "./banter.ts";
 
 const rv = (c: Card) => RANKS.indexOf(rankOf(c)) + 2;
 
@@ -100,7 +101,9 @@ export const PERSONAS: Persona[] = [
  * plays tighter in early position and wider on the button, shoves or folds with short stacks, sizes value bets
  * by strength, and mixes in bluffs at a rate that keeps its bets from being pure value.
  */
-export function createHoldemBot(persona?: Persona): Bot<View, Move> {
+export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): string | null } {
+  let quip: string | null = null, sinceQuip = 3, petHand = -1;
+  const recent: string[] = [];
   const loose = persona?.loose ?? 0, aggr = persona?.aggr ?? 1;
   const seen = new Map<number, Seen>();
   let last: View | null = null;
@@ -121,8 +124,7 @@ export function createHoldemBot(persona?: Persona): Bot<View, Move> {
     last = v;
   };
 
-  return {
-    choose(v, legal, rng) {
+  const decide = (v: View, legal: Move[], rng: Rng): Move => {
       const nextHand = legal.find((m) => m.t === "next");
       if (nextHand) return nextHand;
       observe(v);
@@ -234,9 +236,35 @@ export function createHoldemBot(persona?: Persona): Bot<View, Move> {
       const need = (odds < 0.25 ? odds * 0.92 + marginal * 0.5 : odds + marginal) - loose;
       if (eq > need && callMove) return callMove;
       return foldMove ?? safe();
-    },
+  };
+
+  /** Table talk for the move just made: sets `quip` to a line id (see banter.ts) now and then, never the same line twice in a row. */
+  const talk = (v: View, mv: Move, rng: Rng) => {
+    sinceQuip++;
+    if (mv.t === "next" || sinceQuip < 3) return;
+    const me = v.you as number, all = v.stacks[me]! + v.bets[me]!;
+    const pre = v.community.length === 0, loud = persona ? 1 : 0.6;
+    const choose = (pool: string, p: number): boolean => {
+      if (rng.next() >= p) return false;
+      const lines = BANTER[pool]!.de, free = lines.map((_, i) => `${pool}#${i}`).filter((id) => !recent.includes(id));
+      const id = free[rng.int(free.length)] ?? `${pool}#${rng.int(lines.length)}`;
+      quip = id; sinceQuip = 0; recent.push(id); if (recent.length > 8) recent.shift();
+      return true;
+    };
+    if (persona?.pet && pre && petHand !== v.handNo && persona.pet(v.hand) && mv.t !== "fold") { petHand = v.handNo; if (choose(`pet:${persona.id}`, 0.5)) return; }
+    if (mv.t === "raise") { if (mv.to >= all) { if (choose("allin", 0.6)) return; } else if (choose("raise", 0.14 * loud * Math.min(2, persona?.aggr ?? 1))) return; }
+    else if (mv.t === "fold") { if (choose("fold", 0.12 * loud)) return; }
+    else if (mv.t === "call" && v.toCall > v.pot * 0.4) { if (choose("call", 0.18 * loud)) return; }
+    else if (mv.t === "check" && !pre) { if (choose("check", 0.05 * loud)) return; }
+    if (persona && BANTER[`gen:${persona.id}`]) choose(`gen:${persona.id}`, 0.07);
+  };
+
+  return {
+    choose(v, legal, rng) { const mv = decide(v, legal, rng); quip = null; talk(v, mv, rng); return mv; },
+    /** The table talk that went with the last `choose` (once). */
+    say() { const q = quip; quip = null; return q; },
   };
 }
 
 /** Shared default instance (no cross-game memory is kept between different tables only if you use createHoldemBot). */
-export const holdemBot: Bot<View, Move> = createHoldemBot();
+export const holdemBot: Bot<View, Move> = createHoldemBot();   // (it talks too; callers that ignore say() simply never show it)
