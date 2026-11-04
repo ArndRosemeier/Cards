@@ -102,7 +102,7 @@ export const PERSONAS: Persona[] = [
  * by strength, and mixes in bluffs at a rate that keeps its bets from being pure value.
  */
 export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): string | null } {
-  let quip: string | null = null, sinceQuip = 3, petHand = -1;
+  let quip: string | null = null, sinceQuip = 3;
   const recent: string[] = [];
   const loose = persona?.loose ?? 0, aggr = persona?.aggr ?? 1;
   const seen = new Map<number, Seen>();
@@ -251,12 +251,12 @@ export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): s
       quip = id; sinceQuip = 0; recent.push(id); if (recent.length > 8) recent.shift();
       return true;
     };
-    if (persona?.pet && pre && petHand !== v.handNo && persona.pet(v.hand) && mv.t !== "fold") { petHand = v.handNo; if (choose(`pet:${persona.id}`, 0.5)) return; }
+    if (persona && BANTER[`gen:${persona.id}`] && choose(`gen:${persona.id}`, 0.08)) return;   // the quirk's own chatter: any moment, whatever the cards
     if (mv.t === "raise") { if (mv.to >= all) { if (choose("allin", 0.6)) return; } else if (choose("raise", 0.14 * loud * Math.min(2, persona?.aggr ?? 1))) return; }
     else if (mv.t === "fold") { if (choose("fold", 0.12 * loud)) return; }
     else if (mv.t === "call" && v.toCall > v.pot * 0.4) { if (choose("call", 0.18 * loud)) return; }
     else if (mv.t === "check" && !pre) { if (choose("check", 0.05 * loud)) return; }
-    if (persona && BANTER[`gen:${persona.id}`]) choose(`gen:${persona.id}`, 0.07);
+
   };
 
   return {

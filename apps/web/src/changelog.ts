@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.04", date: "2026-11-04",
+    de: ["Texas Hold’em: Die Sprüche der Computerspieler verraten nicht mehr ihre Hand. Eigenheiten werden unabhängig von den Karten kommentiert (z. B. „Sieben ist meine Glückszahl.“ – auch wenn gar keine Sieben auf der Hand ist)."],
+    en: ["Texas Hold’em: the bots' table talk no longer gives their hand away. Quirks are commented on whatever the cards are (e.g. “Seven is my lucky number.” – even with no seven in hand)."] },
   { v: "1.03", date: "2026-11-04",
     de: ["Texas Hold’em: Die Computerspieler sprechen jetzt am Tisch – kurze Sprüche in Sprechblasen, passend zu ihrer Eigenheit (z. B. „Eine Sieben! Immer dabei.“), beim Erhöhen, All-in, Aussteigen und Mitgehen. Rund 90 verschiedene Sprüche, jeder wiederholt sich erst nach einer Weile, auch online für alle Mitspieler."],
     en: ["Texas Hold’em: the computer players now talk at the table – short lines in speech bubbles that fit their quirk (e.g. “A seven! Always in.”), when raising, going all in, folding or calling. About 90 different lines, none repeats for a while, and online everyone sees them."] },

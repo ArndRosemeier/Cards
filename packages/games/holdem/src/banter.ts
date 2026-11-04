@@ -2,22 +2,23 @@
  * Table talk of the Hold'em bots. A bot picks a pool and a line number; every client shows that line in its own language
  * (so both lists in a pool must have the same length and the same order).
  *
- * `raise`, `allin`, `fold`, `call` and `check` are for every bot; `pet:<id>` is said when a quirk bot plays one of its pet hands;
- * `gen:<id>` is the quirk's own general chatter.
+ * `raise`, `allin`, `fold`, `call` and `check` are for every bot; `gen:<id>` is a quirk's own chatter.
+ * Nothing here may depend on the bot's cards: the quirk lines are said at any moment, whatever the hand, and the
+ * other lines only follow the (public) move, so the talk never gives a hand away.
  */
 export interface Pool { de: string[]; en: string[] }
 export const BANTER: Record<string, Pool> = {
   raise: {
-    de: ["Das kostet.", "Ich erhöhe.", "Na dann, mehr Chips!", "Mal sehen, wer mitgeht.", "Hier, bitte schön.", "Zu billig hier.", "Ich hab da so ein Gefühl.", "Wer traut sich?", "Das riecht nach Gewinn.", "Aufstocken!", "Ein bisschen Würze.", "Nicht erschrecken."],
-    en: ["That'll cost you.", "I raise.", "More chips, please!", "Let's see who follows.", "Here you go.", "Too cheap in here.", "I have a feeling.", "Who dares?", "Smells like a win.", "Sweetening the pot.", "A little spice.", "Don't flinch."],
+    de: ["Das kostet.", "Ich erhöhe.", "Na dann, mehr Chips!", "Mal sehen, wer mitgeht.", "Hier, bitte schön.", "Zu billig hier.", "Wer traut sich?", "Weiter geht's.", "Ein kleiner Anstoß.", "Aufstocken!", "Ein bisschen Würze.", "Nicht erschrecken."],
+    en: ["That'll cost you.", "I raise.", "More chips, please!", "Let's see who follows.", "Here you go.", "Too cheap in here.", "Who dares?", "On we go.", "A little nudge.", "Sweetening the pot.", "A little spice.", "Don't flinch."],
   },
   allin: {
     de: ["Alles rein!", "Ich schieb alles.", "Jetzt oder nie.", "All in, Leute.", "Augen zu und durch.", "Zeit für Drama.", "Nichts zu verlieren. Doch, alles.", "Sagt nicht, ich hätte nicht gewarnt.", "Das ist der Moment.", "Volle Kanne!"],
     en: ["All in!", "Everything goes in.", "Now or never.", "All in, folks.", "Eyes closed, here we go.", "Time for drama.", "Nothing to lose. Well, everything.", "Don't say I didn't warn you.", "This is the moment.", "Full throttle!"],
   },
   fold: {
-    de: ["Nee, ohne mich.", "Das war mir zu heiß.", "Ich passe.", "Hm, lieber nicht.", "Weg damit.", "Vernunft siegt. Diesmal.", "Ich seh nix Gutes.", "Viel Spaß damit.", "Nächste Runde.", "Zu teuer für mich."],
-    en: ["Nope, not for me.", "Too hot for me.", "I'll pass.", "Hm, better not.", "Mucked.", "Reason wins. This time.", "I see nothing good.", "Enjoy that one.", "Next round.", "Too rich for me."],
+    de: ["Nee, ohne mich.", "Das war mir zu heiß.", "Ich passe.", "Hm, lieber nicht.", "Weg damit.", "Vernunft siegt. Diesmal.", "Nicht mein Spiel.", "Viel Spaß damit.", "Nächste Runde.", "Zu teuer für mich."],
+    en: ["Nope, not for me.", "Too hot for me.", "I'll pass.", "Hm, better not.", "Mucked.", "Reason wins. This time.", "Not my game.", "Enjoy that one.", "Next round.", "Too rich for me."],
   },
   call: {
     de: ["Ich schau mir das an.", "Ich bin dabei.", "Mitgehen kostet nichts. Fast.", "Zeig mal, was du hast.", "Ich glaub dir nicht.", "Na gut, einmal noch.", "Ich bleib.", "Neugier ist stärker."],
@@ -27,21 +28,21 @@ export const BANTER: Record<string, Pool> = {
     de: ["Tisch klopf.", "Ich warte.", "Mal abwarten.", "Zeit lassen.", "Schau'n wir.", "Nur ein Klopfen."],
     en: ["Knock knock.", "I'll wait.", "Let's see.", "Taking my time.", "We'll see.", "Just a tap."],
   },
-  "pet:sevens": {
-    de: ["Eine Sieben! Immer dabei.", "Sieben ist meine Glückszahl.", "Sieben – da sag ich nicht Nein.", "Die Sieben ruft!", "Bei einer Sieben hör ich auf zu denken.", "Sieben heißt: spielen."],
-    en: ["A seven! Always in.", "Seven is my lucky number.", "A seven? I can't say no.", "The seven calls!", "With a seven I stop thinking.", "Seven means play."],
+  "gen:sevens": {
+    de: ["Sieben ist meine Glückszahl.", "Ich mag Siebenen. Wer nicht?", "Die Sieben wird unterschätzt.", "Jeder hat so seine Lieblingszahl.", "Sieben ist einfach eine schöne Zahl.", "Auf die Sieben lass ich nichts kommen."],
+    en: ["Seven is my lucky number.", "I like sevens. Who doesn't?", "The seven is underrated.", "Everyone has a favourite number.", "Seven is just a lovely number.", "I won't hear a word against the seven."],
   },
-  "pet:aces": {
-    de: ["Ein Ass! Das spiel ich.", "Asse bringen Glück.", "Ass im Ärmel. Oder auf der Hand.", "Ein Ass lass ich nie liegen.", "Ass – natürlich bin ich dabei.", "Alles Gute kommt von oben, besonders Asse."],
-    en: ["An ace! I'm playing that.", "Aces bring luck.", "Ace up my sleeve. Or in my hand.", "I never lay down an ace.", "An ace – of course I'm in.", "All good things come from above, especially aces."],
+  "gen:aces": {
+    de: ["Asse bringen Glück.", "Ich mag Asse. Wer nicht?", "Ein Ass ist ein Ass.", "Alles Gute kommt von oben.", "Asse haben Charakter.", "Auf Asse lass ich nichts kommen."],
+    en: ["Aces bring luck.", "I like aces. Who doesn't?", "An ace is an ace.", "All good things come from above.", "Aces have character.", "I won't hear a word against aces."],
   },
-  "pet:suited": {
-    de: ["Gleiche Farbe, gutes Gefühl.", "Farbe bekennen!", "Zwei von einer Farbe, wie schön.", "Das sieht hübsch aus.", "Ich liebe Farbe.", "Eine Farbe, ein Plan."],
-    en: ["Same suit, good feeling.", "Showing my colours!", "Two of a colour, lovely.", "Pretty, isn't it?", "I love a matching pair.", "One colour, one plan."],
+  "gen:suited": {
+    de: ["Ich mag's farblich abgestimmt.", "Farbe bekennen!", "Schöne Farben heute am Tisch.", "Ein Herz für Farben.", "Bunt ist gut.", "Eine Farbe, ein Plan."],
+    en: ["I like things colour-coordinated.", "Showing my colours!", "Lovely colours at the table today.", "I have a soft spot for colour.", "Colourful is good.", "One colour, one plan."],
   },
-  "pet:connector": {
-    de: ["Nachbarn! Straße, ich komme.", "Die zwei gehören zusammen.", "Das wird eine Straße, ich spür's.", "Aufeinanderfolgende Karten sind Schicksal.", "Ein Schritt nach dem anderen.", "Zwei Nachbarn, ein Traum."],
-    en: ["Neighbours! Straight, here I come.", "These two belong together.", "That's a straight, I can feel it.", "Consecutive cards are fate.", "One step at a time.", "Two neighbours, one dream."],
+  "gen:connector": {
+    de: ["Ein Schritt nach dem anderen.", "Reihenfolge muss sein.", "Nachbarn gehören zusammen.", "Straßen sind was Schönes.", "Ordnung ist das halbe Spiel.", "Ich mag's der Reihe nach."],
+    en: ["One step at a time.", "Order matters.", "Neighbours belong together.", "Straights are lovely.", "Order is half the game.", "I like things in sequence."],
   },
   "gen:maniac": {
     de: ["Mehr! Mehr!", "Langsam ist nicht mein Tempo.", "Druck machen!", "Wer zögert, verliert."],
