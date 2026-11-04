@@ -63,6 +63,36 @@ export function preflop(hole: Card[]): number {
 interface Seen { acts: number; aggr: number }
 
 /**
+ * A playing quirk. Every bot plays the same sound base game; a persona bends it so that a table of bots is not
+ * predictable, and so that opponents cannot read a bot just from its habits. `de`/`en` are the names a player may see.
+ */
+export interface Persona {
+  id: string; de: string; en: string;
+  /** hands this bot always plays preflop (never folds them, limps or raises, calls raises) */
+  pet?: (hole: Card[]) => boolean;
+  /** 0 = baseline; above 0 it calls with less equity than the pot odds ask for, below 0 it folds more */
+  loose?: number;
+  /** 1 = baseline; scales how often it raises and bluffs */
+  aggr?: number;
+  /** chance of a random preflop all-in when nobody has raised yet */
+  shove?: number;
+  /** slow-plays strong hands (checks or calls instead of betting) most of the time */
+  trap?: boolean;
+}
+const hasRank = (r: string) => (h: Card[]) => h.some((c) => rankOf(c) === r);
+export const PERSONAS: Persona[] = [
+  { id: "sevens", de: "Siebener-Fan", en: "Sevens fan", pet: hasRank("7") },
+  { id: "aces", de: "Ass-Jäger", en: "Ace hunter", pet: hasRank("A") },
+  { id: "suited", de: "Farb-Fan", en: "Suit lover", pet: (h) => suitOf(h[0]!) === suitOf(h[1]!) },
+  { id: "connector", de: "Straßen-Träumer", en: "Straight dreamer", pet: (h) => Math.abs(rv(h[0]!) - rv(h[1]!)) === 1 },
+  { id: "maniac", de: "Draufgänger", en: "Maniac", aggr: 1.8, loose: 0.04 },
+  { id: "rock", de: "Fels", en: "Rock", loose: -0.06, aggr: 0.8 },
+  { id: "station", de: "Calling Station", en: "Calling station", loose: 0.1, aggr: 0.5 },
+  { id: "gambler", de: "Zocker", en: "Gambler", shove: 0.06, aggr: 1.2 },
+  { id: "trapper", de: "Fallensteller", en: "Trapper", trap: true },
+];
+
+/**
  * A fresh bot with its own memory of how the opponents behave. Use one instance per seat.
  *
  * What it does beyond hand strength: it estimates each opponent's range from the size of their bet and from how
@@ -70,7 +100,8 @@ interface Seen { acts: number; aggr: number }
  * plays tighter in early position and wider on the button, shoves or folds with short stacks, sizes value bets
  * by strength, and mixes in bluffs at a rate that keeps its bets from being pure value.
  */
-export function createHoldemBot(): Bot<View, Move> {
+export function createHoldemBot(persona?: Persona): Bot<View, Move> {
+  const loose = persona?.loose ?? 0, aggr = persona?.aggr ?? 1;
   const seen = new Map<number, Seen>();
   let last: View | null = null;
 
@@ -146,6 +177,11 @@ export function createHoldemBot(): Bot<View, Move> {
       // ---- preflop ----------------------------------------------------------------------------------
       if (preflopRound) {
         const unraised = toCall <= bb;
+        if (persona?.shove && unraised && raises.length && rng.next() < persona.shove) return shove() ?? safe();
+        if (persona?.pet?.(v.hand)) {                                          // a pet hand is always played
+          if (unraised && raises.length && rng.next() < 0.45 * aggr) return sized(1.2 + rng.next() * 0.8) ?? safe();
+          if (toCall <= bb || toCall <= myStack * 0.35) { if (callMove) return callMove; if (checkMove) return checkMove; }   // it plays on, unless the raise is a huge part of its stack
+        }
         if (effBB <= 12) {                                                    // short stacks: shove or fold
           const thr = (effBB <= 6 ? 0.3 : effBB <= 9 ? 0.38 : 0.45) - 0.12 * pos + 0.03 * (n - 1);
           if (unraised) {
@@ -156,8 +192,8 @@ export function createHoldemBot(): Bot<View, Move> {
           return eq > odds + 0.03 && (callMove || raises.length) ? (callMove ?? shove()!) : (foldMove ?? safe());
         }
         if (unraised) {
-          const open = 0.5 - 0.17 * pos - 0.02 * Math.max(0, 5 - live.length);
-          if (hs >= open + 0.02 * (n - 1) && raises.length) return sized(1.4 + rng.next() * 0.6) ?? safe();
+          const open = 0.5 - 0.17 * pos - 0.02 * Math.max(0, 5 - live.length) - 0.5 * loose;
+          if (hs >= open + 0.02 * (n - 1) && raises.length && (aggr >= 1 || rng.next() < aggr)) return sized(1.4 + rng.next() * 0.6) ?? safe();
           if (hs >= open - 0.1 && callMove && toCall <= bb && toCall > 0 && pos > 0.4 && rng.next() < 0.6) return callMove;
           if (checkMove) return checkMove;
           // a cheap price is always worth it: compare a rough equity against the pot odds, and never throw a pair away for under a big blind
@@ -168,8 +204,8 @@ export function createHoldemBot(): Bot<View, Move> {
         }
         // facing a raise: equity against the raiser's range
         const eq = eqVs();
-        const need = odds * 1.08 + 0.03 - 0.04 * pos;
-        if (eq > 0.62 + 0.03 * (n - 1) && raises.length && rng.next() < 0.7) return sized(0.9 + rng.next() * 0.5) ?? callMove ?? safe();
+        const need = odds * 1.08 + 0.03 - 0.04 * pos - loose;
+        if (eq > 0.62 + 0.03 * (n - 1) - 0.05 * (aggr - 1) && raises.length && rng.next() < 0.7 * Math.min(1.3, aggr)) return sized(0.9 + rng.next() * 0.5) ?? callMove ?? safe();
         if (eq > need && callMove) return callMove;
         // set mining: a pair is worth a small raise when the stacks are deep
         if (callMove && rv(v.hand[0]!) === rv(v.hand[1]!) && toCall * 12 <= myStack && toCall <= 6 * bb) return callMove;
@@ -181,20 +217,21 @@ export function createHoldemBot(): Bot<View, Move> {
       const street = v.community.length;                                     // 3 flop, 4 turn, 5 river
       const marginal = 0.05 - 0.02 * pos;
       if (toCall === 0) {
-        if (eq > 0.86 && n === 1 && rng.next() < 0.22) return checkMove ?? safe();           // slow-play the monster now and then
-        if (eq > 0.66 + 0.04 * (n - 1) && raises.length) return sized(eq > 0.82 ? 0.7 + rng.next() * 0.4 : 0.45 + rng.next() * 0.25) ?? safe();
+        if (eq > 0.86 && n === 1 && rng.next() < (persona?.trap ? 0.75 : 0.22)) return checkMove ?? safe();
+        if (persona?.trap && eq > 0.66 && rng.next() < 0.6) return checkMove ?? safe();           // slow-play the monster now and then
+        if (eq > 0.66 + 0.04 * (n - 1) - 0.06 * (aggr - 1) && raises.length && (aggr >= 1 || rng.next() < aggr)) return sized(eq > 0.82 ? 0.7 + rng.next() * 0.4 : 0.45 + rng.next() * 0.25) ?? safe();
         if (eq > 0.55 && n <= 2 && raises.length && rng.next() < 0.5) return sized(0.33) ?? safe();    // thin value / protection
         // bluffs: semi-bluffs with equity, a few river bluffs, more when in position and few opponents are left
         const bluffy = street < 5 ? eq > 0.22 && eq < 0.52 : eq < 0.22;
-        const rate = (street < 5 ? 0.3 : 0.1) * (0.6 + 0.8 * pos) / n;
+        const rate = (street < 5 ? 0.3 : 0.1) * (0.6 + 0.8 * pos) * aggr / n;
         if (bluffy && n <= 2 && raises.length && rng.next() < rate) return sized(street < 5 ? 0.5 : 0.65) ?? safe();
         return checkMove ?? safe();
       }
       const allIn = toCall >= myStack;
-      if (eq > 0.78 && raises.length && !allIn && rng.next() < 0.65) return sized(0.75 + rng.next() * 0.5) ?? callMove ?? safe();
+      if (eq > 0.78 && raises.length && !allIn && rng.next() < (persona?.trap ? 0.25 : 0.65 * Math.min(1.3, aggr))) return sized(0.75 + rng.next() * 0.5) ?? callMove ?? safe();
       // semi-bluff raise with a drawing hand, rarely
       if (street < 5 && eq > 0.3 && eq < 0.48 && n === 1 && raises.length && !allIn && toCall <= pot * 0.5 && rng.next() < 0.07) return sized(0.8) ?? callMove ?? safe();
-      const need = odds < 0.25 ? odds * 0.92 + marginal * 0.5 : odds + marginal;
+      const need = (odds < 0.25 ? odds * 0.92 + marginal * 0.5 : odds + marginal) - loose;
       if (eq > need && callMove) return callMove;
       return foldMove ?? safe();
     },

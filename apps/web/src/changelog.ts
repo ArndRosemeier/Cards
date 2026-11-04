@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.02", date: "2026-11-04",
+    de: ["Texas Hold’em: Die Computerspieler haben jetzt Eigenheiten (zum Beispiel spielt einer jede Hand mit einer Sieben, einer jedes Ass, einer ist ein Draufgänger, einer ein Fels). Dadurch sind sie schwerer zu durchschauen. In Testturnieren ändert keine Eigenheit die Gewinnrate um mehr als ein paar Prozentpunkte."],
+    en: ["Texas Hold’em: the computer players now have quirks (for example one plays every hand with a seven, one every ace, one is a maniac, one a rock). That makes them harder to read. In test tournaments no quirk changes the win rate by more than a few points."] },
   { v: "1.01", date: "2026-11-03",
     de: ["Rommé: Passt eine Karte sowohl zum Anlegen als auch zum Joker-Tausch (z. B. ein weiteres Ass an zwei Asse und einen Joker), gibt es jetzt beide Knöpfe: „Anlegen“ und „Joker tauschen“."],
     en: ["Rummy: when a card can either be added to a meld or swapped for its joker (e.g. another ace onto two aces and a joker), both buttons are now offered: “Lay off” and “Swap joker”."] },

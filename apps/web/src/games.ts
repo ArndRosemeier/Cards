@@ -6,7 +6,7 @@ import { RANKS, suitOf, rankOf, type Card } from "@cards/engine";
 import { Skat, defaultConfig as skatCfg, createSkatBot, BIDS, type View as SView, type Move as SMove } from "@cards/skat";
 import { Doppelkopf, defaultConfig as dokoCfg, dokoBot, isTrump as dokoTrump, strength as dokoStrength, type View as DView, type Move as DMove, type Mode as DMode } from "@cards/doppelkopf";
 import { Schafkopf, defaultConfig as schafCfg, schafkopfBot, isTrump as schafTrump, strength as schafStrength, type View as SKView, type Move as SKMove, type Mode as SKMode } from "@cards/schafkopf";
-import { Holdem, defaultConfig as holdemCfg, createHoldemBot } from "@cards/holdem";
+import { Holdem, defaultConfig as holdemCfg, createHoldemBot, PERSONAS, type Persona } from "@cards/holdem";
 import { Romme, defaultConfig as rommeCfg, rommeBot } from "@cards/romme";
 import { RommeScene } from "./rommeScene.ts";
 import { Canasta, defaultConfig as canastaCfg, canastaBot } from "@cards/canasta";
@@ -17,6 +17,20 @@ import { HoldemScene } from "./holdemScene.ts";
 import { TrickScene, type GameScene, type SceneHooks, type TrickUi } from "./trickScene.ts";
 import { t } from "./i18n.ts";
 import { withLevel } from "./levels.ts";
+
+/**
+ * Each Hold'em bot at a table gets a playing quirk most of the time (see PERSONAS in the holdem package: measured in
+ * 300-game tournaments, none of them changes the win rate by more than a few points). Quirks are not repeated
+ * within the last three bots, so a table is varied. Hints (nameless bots) always use the plain bot.
+ */
+const recentQuirks: string[] = [];
+function pickPersona(): Persona | undefined {
+  if (Math.random() < 0.25) return undefined;
+  const pool = PERSONAS.filter((p) => !recentQuirks.includes(p.id));
+  const p = pool[Math.floor(Math.random() * pool.length)];
+  if (p) { recentQuirks.push(p.id); if (recentQuirks.length > 3) recentQuirks.shift(); }
+  return p;
+}
 
 const skatSuit = ["C", "S", "H", "D"];
 const CLASSIC: Record<string, number> = { A: 11, T: 10, K: 4, Q: 3, J: 2 };
@@ -239,7 +253,7 @@ export const GAME_ENTRIES: GameEntry[] = [
   },
   {
     id: "holdem", players: [2, 3, 4, 5, 6],
-    def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: (spec) => withLevel(createHoldemBot(), spec.level) },
+    def: { id: "holdem", rules: Holdem, config: holdemCfg, makeBot: (spec) => withLevel(createHoldemBot(spec.name ? pickPersona() : undefined), spec.level) },
     scene: (app, ui, hooks) => new HoldemScene(app, ui, hooks),
   },
   {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { Rng, type Card } from "@cards/engine";
 import { score5, bestScore, categoryOf, HAND_NAMES } from "../src/eval.ts";
 import { Holdem, defaultConfig } from "../src/rules.ts";
-import { holdemBot, createHoldemBot, equityVsRanges } from "../src/bot.ts";
+import { holdemBot, createHoldemBot, equityVsRanges, PERSONAS } from "../src/bot.ts";
 
 const H = (s: string) => s.split(" ") as Card[];
 const cat = (s: string) => HAND_NAMES[categoryOf(score5(H(s)))];
@@ -87,4 +87,22 @@ test("the bot shoves aces with a short stack and folds trash to a big raise", ()
   const mv = createHoldemBot().choose(Holdem.view(a.s, a.seat), Holdem.legalMoves(a.s, a.seat), rng);
   assert.equal(mv.t, "raise");
   assert.equal((mv as { to: number }).to, Holdem.view(a.s, a.seat).maxRaiseTo, "all-in");
+});
+
+test("every quirk persona plays a full game with legal moves and keeps chips", () => {
+  for (const [k, persona] of PERSONAS.entries()) {
+    const rng = Rng.fromSeed(300 + k);
+    let { state } = Holdem.setup({ ...defaultConfig, handsPerLevel: 3 }, 4, rng);
+    const bots = [createHoldemBot(persona), createHoldemBot(), createHoldemBot(persona), createHoldemBot()];
+    const total = 4 * defaultConfig.stack;
+    for (let i = 0; i < 20000 && !Holdem.result(state); i++) {
+      const seat = Holdem.activeSeats(state)[0]!;
+      const legal = Holdem.legalMoves(state, seat);
+      const m = bots[seat]!.choose(Holdem.view(state, seat), legal, rng);
+      assert.ok(legal.some((l) => JSON.stringify(l) === JSON.stringify(m)), `${persona.id}: illegal move ${JSON.stringify(m)}`);
+      state = Holdem.apply(state, seat, m, rng).state;
+      assert.equal(state.stacks.reduce((a, b) => a + b, 0) + state.total.reduce((a, b) => a + b, 0), total, "chips conserved");
+    }
+    assert.ok(Holdem.result(state), `${persona.id} game finishes`);
+  }
 });
