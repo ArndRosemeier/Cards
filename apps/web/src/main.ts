@@ -16,9 +16,10 @@ import { cardsInMove, hintText } from "./hint.ts";
 import { getStats, recordResult, resetStats } from "./stats.ts";
 import { VERSION, BUILD_SHA, BUILD_DATE } from "./version.ts";
 import { CHANGELOG } from "./changelog.ts";
+import { savedGame, saveGame, savedCount, saveCount } from "./prefs.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
-let gameId = "maumau";
+let gameId = savedGame((id) => !!entryOf(id)) ?? "maumau";
 const ui = document.getElementById("ui")!;
 const ALL_BOTS = ["Anna", "Ben", "Clara", "Dario", "Eva", "Finn", "Gina", "Hugo", "Ines", "Jonas", "Kira", "Leo"];
 const pickBotNames = () => ALL_BOTS.map((n) => ({ n, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.n).slice(0, 6);
@@ -122,7 +123,8 @@ let menuFx: { destroy(): void } | null = null;
 const killMenuFx = () => { menuFx?.destroy(); menuFx = null; };
 function showMenu() {
   music.stop(); if (!menuFx) menuFx = createMenuScene(app);
-  let players = entry().players.includes(3) ? 3 : entry().players[0]!; let name = savedName();
+  const defPlayers = () => savedCount("players", gameId, entry().players) ?? (entry().players.includes(3) ? 3 : entry().players[0]!);
+  let players = defPlayers(); let name = savedName();
   const render = () => {
     const w = panel(`<img class="logo" src="cards/logo.webp" alt=""><h1>${t("title")}</h1><div class="sub">${t("vsBots")}</div><button class="verchip" id="ver">v${VERSION}${newVersion() ? `<i>${t("newBadge")}</i>` : ""} · ${t("whatsNew")}</button>${cuedBadge()}
       <div class="games">${GAMES.map((g) => `<button class="game ${g === gameId ? "sel" : ""}" data-g="${g}" ${live(g) ? "" : "disabled"}>${t(g)}${live(g) ? "" : `<small>${t("soon")}</small>`}</button>`).join("")}</div>
@@ -139,8 +141,8 @@ function showMenu() {
     (w.querySelector("#rules") as HTMLButtonElement).onclick = () => showRules(ui, gameId, t(gameId), t("close"));
     w.querySelectorAll<HTMLButtonElement>("#lv button").forEach((b) => (b.onclick = () => { saveLevel(Number(b.dataset.lv)); w.querySelectorAll("#lv button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     const nm = () => (name = (w.querySelector("#nm") as HTMLInputElement).value.trim());
-    w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); players = Number(b.dataset.n); render(); }));
-    w.querySelectorAll<HTMLButtonElement>("[data-g]:not([disabled])").forEach((b) => (b.onclick = () => { nm(); gameId = b.dataset.g!; if (!entry().players.includes(players)) players = entry().players[entry().players.length - 1]!; render(); }));
+    w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); players = Number(b.dataset.n); saveCount("players", gameId, players); render(); }));
+    w.querySelectorAll<HTMLButtonElement>("[data-g]:not([disabled])").forEach((b) => (b.onclick = () => { nm(); gameId = b.dataset.g!; saveGame(gameId); players = defPlayers(); render(); }));
     w.querySelectorAll<HTMLButtonElement>("#fc button").forEach((b) => (b.onclick = () => { setFourColor(b.dataset.v === "1"); w.querySelectorAll("#fc button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     w.querySelectorAll<HTMLButtonElement>("#bk button").forEach((b) => (b.onclick = () => { setBack(b.dataset.b!); w.querySelectorAll("#bk button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     bindLang(w, () => { nm(); render(); });
@@ -195,7 +197,7 @@ async function autoJoin(code: string) {
 }
 
 function showOnline(prefill = "", err0 = "") {
-  let name = savedName(); let seats = entry().players.includes(4) ? 4 : entry().players[0]!; let err = err0;
+  let name = savedName(); let seats = savedCount("seats", gameId, entry().players) ?? (entry().players.includes(4) ? 4 : entry().players[0]!); let err = err0;
   let rooms: { id: string; name: string; players: number; maxPlayers: number; meta: any }[] = [];
   const hub = connect({ url: HUB_URL, app: "cards", appKey: KEY });
   let lobbyErr = false;
@@ -214,7 +216,7 @@ function showOnline(prefill = "", err0 = "") {
       ${err ? `<div style="color:#ff9d9d;margin:8px 0">${esc(err)}</div>` : ""}
       ${langRow()}<div class="row"><button class="btn" id="back">${t("back")}</button></div>`);
     const nm = () => { name = (w.querySelector("#nm") as HTMLInputElement).value.trim() || t("you"); saveName(name); return name; };
-    w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); seats = Number(b.dataset.n); render(); }));
+    w.querySelectorAll<HTMLButtonElement>("#pl button").forEach((b) => (b.onclick = () => { nm(); seats = Number(b.dataset.n); saveCount("seats", gameId, seats); render(); }));
     bindLang(w, () => { nm(); render(); });
     (w.querySelector("#back") as HTMLButtonElement).onclick = () => { stop(); showMenu(); };
     const busy = (label: string) => {

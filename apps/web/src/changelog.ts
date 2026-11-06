@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.05", date: "2026-11-06",
+    de: ["Das Menü merkt sich jetzt das zuletzt gewählte Spiel sowie pro Spiel die Spielerzahl – auch für Online-Räume (Name, Sprache, Computerstärke, Lautstärke, Kartenrücken und Vierfarben-Deck wurden schon gemerkt)."],
+    en: ["The menu now remembers the last game you picked and, per game, the number of players – also for online rooms (name, language, computer strength, volume, card back and four-colour deck were already remembered)."] },
   { v: "1.04", date: "2026-11-04",
     de: ["Texas Hold’em: Die Sprüche der Computerspieler verraten nicht mehr ihre Hand. Eigenheiten werden unabhängig von den Karten kommentiert (z. B. „Sieben ist meine Glückszahl.“ – auch wenn gar keine Sieben auf der Hand ist)."],
     en: ["Texas Hold’em: the bots' table talk no longer gives their hand away. Quirks are commented on whatever the cards are (e.g. “Seven is my lucky number.” – even with no seven in hand)."] },
