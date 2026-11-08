@@ -4,7 +4,7 @@ import { Rng, type Card } from "@cards/engine";
 import { score5, bestScore, categoryOf, HAND_NAMES } from "../src/eval.ts";
 import { Holdem, defaultConfig } from "../src/rules.ts";
 import { holdemBot, createHoldemBot, equityVsRanges, PERSONAS } from "../src/bot.ts";
-import { BANTER, banterLine } from "../src/banter.ts";
+import { BANTER, banterLine, fitsMove } from "../src/banter.ts";
 
 const H = (s: string) => s.split(" ") as Card[];
 const cat = (s: string) => HAND_NAMES[categoryOf(score5(H(s)))];
@@ -118,11 +118,25 @@ test("table talk: pools match in both languages, bots speak now and then with kn
     for (let i = 0; i < 20000 && !Holdem.result(state); i++) {
       const seat = Holdem.activeSeats(state)[0]!, legal = Holdem.legalMoves(state, seat);
       const m = bots[seat]!.choose(Holdem.view(state, seat), legal, rng); decisions++;
-      const q = bots[seat]!.say(); if (q) { said.push(q); assert.ok(banterLine(q, "de") && banterLine(q, "en"), `unknown line ${q}`); assert.equal(bots[seat]!.say(), null, "say() is consumed"); }
+      const q = bots[seat]!.say();
+      if (q) {
+        const [pool, n] = q.split("#"), cls = m.t === "raise" ? "a" : m.t === "fold" ? "f" : "c";
+        if (pool === "raise" || pool === "allin") assert.equal(m.t, "raise", `${q} goes with a raise, not ${m.t}`);
+        else if (pool === "fold" || pool === "call" || pool === "check") assert.equal(m.t, pool, `${q} goes with ${pool}, not ${m.t}`);
+        else assert.ok(fitsMove(pool!, Number(n), cls), `${q} contradicts the move ${m.t}`);
+      }
+      if (q) { said.push(q); assert.ok(banterLine(q, "de") && banterLine(q, "en"), `unknown line ${q}`); assert.equal(bots[seat]!.say(), null, "say() is consumed"); }
       state = Holdem.apply(state, seat, m, rng).state;
     }
   }
   const rate = said.length / decisions;
   assert.ok(rate > 0.01 && rate < 0.2, `talk rate ${rate.toFixed(3)} (${said.length}/${decisions})`);
   assert.ok(new Set(said).size > 25, `variety: ${new Set(said).size} different lines`);
+});
+
+test("every quirk can say something for each kind of move, so none is silent or contradicts itself", () => {
+  for (const p of PERSONAS) {
+    const pool = `gen:${p.id}`; assert.ok(BANTER[pool], `${pool} exists`);
+    for (const cls of ["a", "c", "f"] as const) assert.ok(BANTER[pool]!.de.some((_, i) => fitsMove(pool, i, cls)), `${pool} has a line for ${cls}`);
+  }
 });

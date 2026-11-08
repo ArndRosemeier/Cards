@@ -377,15 +377,13 @@ function startLocal(name: string, players: number, seed: number) {
     onFinished: (w, _n, _m, sc) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now()), sc), 1500),
   });
   teardown = () => host.dispose();
-  const botEmote = (id?: string) => { if (players < 2) return; const seat = 1 + Math.floor(Math.random() * (players - 1)); scene?.emote?.(seat, id ?? EMOTES[Math.floor(Math.random() * EMOTES.length)]!); lastBotEmote = Date.now(); };
+  const botEmote = (id?: string) => { if (players < 2) return; const seat = 1 + Math.floor(Math.random() * (players - 1)); scene?.emote?.(seat, id ?? EMOTES[Math.floor(Math.random() * EMOTES.length)]!); };
   addHud(() => { host.dispose(); scene?.destroy(); scene = null; showMenu(); }, (id) => {
     if (Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); scene?.emote?.(0, id);
     if (Math.random() < 0.6) setTimeout(() => botEmote(id === "thumbs" ? "clap" : id === "oops" ? "hmm" : id === "clap" ? "thumbs" : "oops"), 900 + Math.random() * 900);
   });
-  let lastBotEmote = Date.now();
   host.attach(0, (u: any) => {
     lastUpdate = u; scene?.receive(u);
-    if (!q.get("auto") && Date.now() - lastBotEmote > 45000 && Math.random() < 0.03) botEmote();
     if (q.get("auto") && u.legal.length && !u.result) setTimeout(() => host.submit(0, d.makeBot({ kind: "bot", name: "" }).choose(u.view, u.legal, host.rng)), fast ? 150 : 1800);
   });
   host.start();

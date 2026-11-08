@@ -1,7 +1,7 @@
 import { makeDeck, RANKS, rankOf, suitOf, Rng, type Bot, type Card } from "@cards/engine";
 import { bestScore } from "./eval.ts";
 import type { Move, View } from "./rules.ts";
-import { BANTER } from "./banter.ts";
+import { BANTER, fitsMove } from "./banter.ts";
 
 const rv = (c: Card) => RANKS.indexOf(rankOf(c)) + 2;
 
@@ -244,10 +244,12 @@ export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): s
     if (mv.t === "next" || sinceQuip < 3) return;
     const me = v.you as number, all = v.stacks[me]! + v.bets[me]!;
     const pre = v.community.length === 0, loud = persona ? 1 : 0.6;
+    const cls = mv.t === "raise" ? "a" : mv.t === "fold" ? "f" : "c";
     const choose = (pool: string, p: number): boolean => {
       if (rng.next() >= p) return false;
-      const lines = BANTER[pool]!.de, free = lines.map((_, i) => `${pool}#${i}`).filter((id) => !recent.includes(id));
-      const id = free[rng.int(free.length)] ?? `${pool}#${rng.int(lines.length)}`;
+      const ok = BANTER[pool]!.de.map((_, i) => i).filter((i) => fitsMove(pool, i, cls)), fresh = ok.filter((i) => !recent.includes(`${pool}#${i}`));
+      const pickFrom = fresh.length ? fresh : ok; if (!pickFrom.length) return false;
+      const id = `${pool}#${pickFrom[rng.int(pickFrom.length)]}`;
       quip = id; sinceQuip = 0; recent.push(id); if (recent.length > 8) recent.shift();
       return true;
     };

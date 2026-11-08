@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.06", date: "2026-11-08",
+    de: ["Computerspieler-Kommentare passen jetzt zu dem, was sie tun: Texas-Hold’em-Sprüche gehören immer zur tatsächlichen Aktion (ein Fels, der erhöht, sagt nicht mehr „Ich warte auf was Gutes“), und die Computerspieler schicken keine zufälligen Emotes mehr aus heiterem Himmel – sie antworten nur noch auf deine."],
+    en: ["Computer players' comments now fit what they do: Texas Hold’em lines always go with the actual action (a rock that raises no longer says “I'm waiting for something good”), and the computer players no longer send random emotes out of the blue – they only answer yours."] },
   { v: "1.05", date: "2026-11-06",
     de: ["Das Menü merkt sich jetzt das zuletzt gewählte Spiel sowie pro Spiel die Spielerzahl – auch für Online-Räume (Name, Sprache, Computerstärke, Lautstärke, Kartenrücken und Vierfarben-Deck wurden schon gemerkt)."],
     en: ["The menu now remembers the last game you picked and, per game, the number of players – also for online rooms (name, language, computer strength, volume, card back and four-colour deck were already remembered)."] },
