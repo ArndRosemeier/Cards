@@ -5,6 +5,7 @@ import { score5, bestScore, categoryOf, HAND_NAMES } from "../src/eval.ts";
 import { Holdem, defaultConfig } from "../src/rules.ts";
 import { holdemBot, createHoldemBot, equityVsRanges, PERSONAS } from "../src/bot.ts";
 import { BANTER, banterLine, fitsMove } from "../src/banter.ts";
+import { HandRecorder, handToText, type HandRecord } from "../src/handlog.ts";
 
 const H = (s: string) => s.split(" ") as Card[];
 const cat = (s: string) => HAND_NAMES[categoryOf(score5(H(s)))];
@@ -139,4 +140,39 @@ test("every quirk can say something for each kind of move, so none is silent or 
     const pool = `gen:${p.id}`; assert.ok(BANTER[pool], `${pool} exists`);
     for (const cls of ["a", "c", "f"] as const) assert.ok(BANTER[pool]!.de.some((_, i) => fitsMove(pool, i, cls)), `${pool} has a line for ${cls}`);
   }
+});
+
+test("hand history: every hand is recorded with a consistent pot and renders as PokerStars-style text", () => {
+  const rng = Rng.fromSeed(77), seats = 4, names = ["Du", "Ines", "Leo", "Anna"].map((name) => ({ name }));
+  const bots = Array.from({ length: seats }, (_, i) => createHoldemBot(i === 2 ? PERSONAS[0] : undefined));
+  const rec = new HandRecorder("test"), hands: HandRecord[] = [];
+  const feed = (events: any[], state: any) => hands.push(...rec.feed({ events: events.map((e) => Holdem.redactEvent!(e, 0)), view: Holdem.view(state, 0), seats: names }));
+  let { state, events } = Holdem.setup({ ...defaultConfig, handsPerLevel: 3 }, seats, rng); feed(events, state);
+  for (let i = 0; i < 20000 && !Holdem.result(state); i++) {
+    const seat = Holdem.activeSeats(state)[0]!, legal = Holdem.legalMoves(state, seat);
+    const m = bots[seat]!.choose(Holdem.view(state, seat), legal, rng);
+    const r = Holdem.apply(state, seat, m, rng); state = r.state; feed(r.events, state);
+  }
+  assert.ok(hands.length >= 5, `hands recorded: ${hands.length}`);
+  for (const h of hands) {
+    assert.equal(h.awards.reduce((a, x) => a + x.amount, 0), h.pot, `hand ${h.hand}: awards equal the pot`);
+    assert.ok(h.seats.length >= 2 && h.seats.length <= seats, "busted players drop out of later hands");
+    assert.ok(h.hole[0]?.length === 2, "own hole cards known");
+    for (const a of h.actions) { assert.ok(a.toCall >= 0 && a.potBefore > 0 && a.stackBefore >= 0, `sane numbers ${JSON.stringify(a)}`); if (a.action === "raise") assert.ok(a.amount - a.toCall > 0, "a raise raises something"); }
+    const text = handToText(h, "Test");
+    assert.match(text, /^PokerStars Hand #\d+:  Hold'em No Limit \(\d+\/\d+\) - \d{4}\/\d\d\/\d\d/);
+    assert.match(text, /\*\*\* HOLE CARDS \*\*\*\nDealt to Du \[\w\w \w\w\]/);
+    assert.match(text, /\*\*\* SUMMARY \*\*\*\nTotal pot \d+ \| Rake 0/);
+    if (h.board.length === 5) assert.match(text, /\*\*\* RIVER \*\*\*/);
+    if (h.uncalled) assert.match(text, /Uncalled bet \(\d+\) returned to /);
+  }
+  // the first hand is reproducible by hand: blinds, hole cards, actions in order
+  const t0 = handToText(hands[0]!);
+  assert.ok(t0.indexOf("posts small blind") < t0.indexOf("*** HOLE CARDS ***"));
+});
+test("bots explain their decisions", () => {
+  const rng = Rng.fromSeed(5); let { state } = Holdem.setup(defaultConfig, 3, rng);
+  const seat = Holdem.activeSeats(state)[0]!, bot = createHoldemBot(PERSONAS[1]);
+  bot.choose(Holdem.view(state, seat), Holdem.legalMoves(state, seat), rng);
+  const info = bot.explain()!; assert.equal(info.quirk, "aces"); assert.ok("equity" in info && "potOdds" in info);
 });

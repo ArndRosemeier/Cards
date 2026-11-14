@@ -17,6 +17,7 @@ import { getStats, recordResult, resetStats } from "./stats.ts";
 import { VERSION, BUILD_SHA, BUILD_DATE } from "./version.ts";
 import { CHANGELOG } from "./changelog.ts";
 import { savedGame, saveGame, savedCount, saveCount } from "./prefs.ts";
+import { startRecording, recordUpdate, handCount, clearHands, downloadText, downloadJson } from "./handstore.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
 let gameId = savedGame((id) => !!entryOf(id)) ?? "maumau";
@@ -166,13 +167,31 @@ function showWhatsNew() {
   ui.append(o);
 }
 
+function showHandHistory() {
+  const n = handCount(), o = document.createElement("div"); o.className = "rules-overlay";
+  o.innerHTML = `<div class="rules"><h2>${t("hh")}</h2><div class="sub">${n ? t("hhCount", { n }) : t("hhNone")}</div>
+    <p style="font-size:13px;opacity:.75;line-height:1.4">${t("hhNote")}</p>
+    <div class="btns" style="gap:8px;flex-wrap:wrap">${n ? `<button class="btn" id="hclr">${t("hhClear")}</button><button class="btn" id="hjson">${t("hhJson")}</button><button class="btn primary" id="htxt">${t("hhText")}</button>` : ""}<button class="btn" id="x">${t("close")}</button></div></div>`;
+  (o.querySelector("#x") as HTMLButtonElement).onclick = () => o.remove();
+  (o.querySelector("#htxt") as HTMLButtonElement | null)?.addEventListener("click", downloadText);
+  (o.querySelector("#hjson") as HTMLButtonElement | null)?.addEventListener("click", downloadJson);
+  (o.querySelector("#hclr") as HTMLButtonElement | null)?.addEventListener("click", () => { clearHands(); o.remove(); showHandHistory(); });
+  ui.append(o);
+}
+const addHandHistoryButton = () => {
+  if (gameId !== "holdem") return;
+  const hud = document.querySelector<HTMLElement>(".hud"); if (!hud || hud.querySelector("#hhbtn")) return;
+  const b = document.createElement("button"); b.className = "btn"; b.id = "hhbtn"; b.title = t("hh"); b.textContent = "📜"; b.onclick = showHandHistory; hud.insertBefore(b, hud.querySelector("#rulesbtn"));
+};
+
 function showStats() {
   const all = getStats(), rows = GAMES.filter((g) => all[g]);
   const o = document.createElement("div"); o.className = "rules-overlay";
   o.innerHTML = `<div class="rules"><h2>${t("stats")}</h2>${rows.length ? `<table class="stats"><tr><th></th><th>${t("statsPlayed")}</th><th>${t("statsWon")}</th><th>${t("statsRate")}</th><th>${t("statsStreak")}</th></tr>${rows.map((g) => { const r = all[g]!; return `<tr><td>${t(g)}</td><td>${r.played}</td><td>${r.won}</td><td>${Math.round((100 * r.won) / r.played)}%</td><td>${r.streak} (${r.best})</td></tr>`; }).join("")}</table>` : `<div class="sub">${t("statsEmpty")}</div>`}
-    <div class="btns" style="gap:8px">${rows.length ? `<button class="btn" id="rst">${t("statsReset")}</button>` : ""}<button class="btn primary" id="x">${t("close")}</button></div></div>`;
+    <div class="btns" style="gap:8px">${handCount() ? `<button class="btn" id="hh">${t("hh")} (${handCount()})</button>` : ""}${rows.length ? `<button class="btn" id="rst">${t("statsReset")}</button>` : ""}<button class="btn primary" id="x">${t("close")}</button></div></div>`;
   (o.querySelector("#x") as HTMLButtonElement).onclick = () => o.remove();
   (o.querySelector("#rst") as HTMLButtonElement | null)?.addEventListener("click", () => { resetStats(); o.remove(); showStats(); });
+  (o.querySelector("#hh") as HTMLButtonElement | null)?.addEventListener("click", () => { o.remove(); showHandHistory(); });
   ui.append(o);
 }
 
@@ -275,12 +294,13 @@ function enterRoom(session: Session) {
   };
   let gameShown = false;
   session.on("lobby", (l) => { if (l.phase === "lobby") showLobby(); else if (!gameShown) showGame(); });
-  session.on("update", (u) => { if (!gameShown) showGame(); lastUpdate = u; scene?.receive(u); });
+  session.on("update", (u) => { if (!gameShown) showGame(); lastUpdate = u; scene?.receive(u); if (gameId === "holdem") recordUpdate(u as any); });
   session.on("emote", (seat, id) => scene?.emote?.(seat, id));
   session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); toast(t(c === "host_lost" ? "hostLost" : "connLost")); } else if (c === "room_full") { session.leave(); showOnline("", t("roomFull")); } });
   const showGame = () => {
     gameShown = started = true;
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
+    if (gameId === "holdem") startRecording(`online ${session.code}`);
     setTableTheme(gameId);
     scene = entry().scene(app, ui, { submit: (m) => { lastUpdate = null; session.submit(m); }, onFinished: (w, names, _me, sc) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) });
     addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); }, (id) => { const me = session.mySeat; if (me === null || Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); session.sendEmote(id); scene?.emote?.(me, id); }, (text) => session.sendChat(text));
@@ -313,7 +333,7 @@ function addHud(onMenu: () => void, onEmote?: (id: string) => void, onChat?: (te
     pop.addEventListener("input", () => { vb.innerHTML = `${sfx.volume === 0 && music.volume === 0 ? "🔇" : "🔊"}<small>▾</small>`; });
     ui.append(pop);
   };
-  ui.append(hud);
+  ui.append(hud); addHandHistoryButton();
   music.start(gameId); sfx.shuffle();
   const rot = document.createElement("div"); rot.className = "rotate"; rot.innerHTML = `<div class="ico">⟳</div><div>${t("rotate")}</div>`; ui.append(rot);
 }
@@ -370,7 +390,8 @@ function startLocal(name: string, players: number, seed: number) {
   const botNames = pickBotNames();
   const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: botNames[i]!, level: savedLevel() }))];
   const d = defOf();
-  const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, ...(fast ? { botDelay: () => 100 } : {}) });
+  const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, annotate: gameId === "holdem", ...(fast ? { botDelay: () => 100 } : {}) });
+  if (gameId === "holdem") startRecording("solo");
   setTableTheme(gameId);
   scene = entry().scene(app, ui, {
     submit: (m: any) => { lastUpdate = null; host.submit(0, m); },
@@ -383,7 +404,7 @@ function startLocal(name: string, players: number, seed: number) {
     if (Math.random() < 0.6) setTimeout(() => botEmote(id === "thumbs" ? "clap" : id === "oops" ? "hmm" : id === "clap" ? "thumbs" : "oops"), 900 + Math.random() * 900);
   });
   host.attach(0, (u: any) => {
-    lastUpdate = u; scene?.receive(u);
+    lastUpdate = u; scene?.receive(u); if (gameId === "holdem") recordUpdate(u);
     if (q.get("auto") && u.legal.length && !u.result) setTimeout(() => host.submit(0, d.makeBot({ kind: "bot", name: "" }).choose(u.view, u.legal, host.rng)), fast ? 150 : 1800);
   });
   host.start();

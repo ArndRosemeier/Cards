@@ -101,8 +101,9 @@ export const PERSONAS: Persona[] = [
  * plays tighter in early position and wider on the button, shoves or folds with short stacks, sizes value bets
  * by strength, and mixes in bluffs at a rate that keeps its bets from being pure value.
  */
-export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): string | null } {
+export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): string | null; explain(): Record<string, unknown> | null } {
   let quip: string | null = null, sinceQuip = 3;
+  let info: Record<string, unknown> | null = null, lastEq: number | null = null;
   const recent: string[] = [];
   const loose = persona?.loose ?? 0, aggr = persona?.aggr ?? 1;
   const seen = new Map<number, Seen>();
@@ -161,7 +162,7 @@ export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): s
         return Math.min(8, k);
       });
       const eqSamples = n > 3 ? 110 : 150;
-      const eqVs = (o?: number[]) => equityVsRanges(v.hand, v.community, o ?? ks, rng, eqSamples);
+      const eqVs = (o?: number[]) => (lastEq = equityVsRanges(v.hand, v.community, o ?? ks, rng, eqSamples));
       const hs = preflop(v.hand);
       const odds = toCall / Math.max(1, pot + toCall);
       const effBB = Math.min(myStack + v.bets[me]!, Math.max(...opponents.map((o) => v.stacks[o]! + v.bets[o]!), 0)) / bb;
@@ -262,7 +263,13 @@ export function createHoldemBot(persona?: Persona): Bot<View, Move> & { say(): s
   };
 
   return {
-    choose(v, legal, rng) { const mv = decide(v, legal, rng); quip = null; talk(v, mv, rng); return mv; },
+    choose(v, legal, rng) {
+      lastEq = null; const mv = decide(v, legal, rng); quip = null; talk(v, mv, rng);
+      info = { quirk: persona?.id ?? null, equity: lastEq === null ? null : Math.round(lastEq * 100) / 100, potOdds: v.toCall > 0 ? Math.round((v.toCall / (v.pot + v.toCall)) * 100) / 100 : 0 };
+      return mv;
+    },
+    /** What the bot knew when it made its last move: a quirk name, its equity against the ranges it assumed, the pot odds. */
+    explain() { return info; },
     /** The table talk that went with the last `choose` (once). */
     say() { const q = quip; quip = null; return q; },
   };

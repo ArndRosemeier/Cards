@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.07", date: "2026-11-14",
+    de: ["Texas Hold’em: Handverlauf. Jede gespielte Hand wird auf dem Gerät aufgezeichnet (Button 📜 im Spiel, oder unter Statistik) und lässt sich als Textdatei im PokerStars-Format oder als JSON laden. Gegen den Computer enthält die JSON-Datei zu jedem Zug des Computers dessen Einschätzung (Gewinnchance, Pot Odds, Eigenheit) – die Grundlage für einen späteren Poker-Trainer."],
+    en: ["Texas Hold’em: hand history. Every hand you play is recorded on this device (📜 button in the game, or under Statistics) and can be downloaded as a PokerStars-style text file or as JSON. Against the computer, the JSON file holds the computer's own assessment (win chance, pot odds, quirk) for each of its moves – the base for a later poker trainer."] },
   { v: "1.06", date: "2026-11-08",
     de: ["Computerspieler-Kommentare passen jetzt zu dem, was sie tun: Texas-Hold’em-Sprüche gehören immer zur tatsächlichen Aktion (ein Fels, der erhöht, sagt nicht mehr „Ich warte auf was Gutes“), und die Computerspieler schicken keine zufälligen Emotes mehr aus heiterem Himmel – sie antworten nur noch auf deine."],
     en: ["Computer players' comments now fit what they do: Texas Hold’em lines always go with the actual action (a rock that raises no longer says “I'm waiting for something good”), and the computer players no longer send random emotes out of the blue – they only answer yours."] },

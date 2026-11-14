@@ -14,6 +14,8 @@ export interface Update<View, Move, Ev> {
   seats: SeatSpec[];
   /** table talk of bots that came with this change: line ids the scene shows next to the seat */
   says?: { seat: number; id: string }[];
+  /** analysis of bot decisions that came with this change; only sent when the host runs with `annotate` (never online) */
+  notes?: { seat: number; info: Record<string, unknown> }[];
 }
 export type Link<View, Move, Ev> = (u: Update<View, Move, Ev>) => void;
 
@@ -24,6 +26,8 @@ export interface HostOptions {
   setTimeout?: (fn: () => void, ms: number) => unknown;
   /** Called after every state change (used to keep a shadow copy on the host's successor). */
   onChange?: () => void;
+  /** attach each bot's analysis (Bot.explain) to the updates: solo tables only, as it shows what the bots hold */
+  annotate?: boolean;
 }
 
 export interface TableSnapshot<State> { state: State; seq: number; rng: number; seats: SeatSpec[] }
@@ -108,7 +112,8 @@ export class TableHost<Config, State, Move, View, Ev> {
   dispose(): void { this.paused = true; this.links.clear(); }
 
   private says: { seat: number; id: string }[] = [];
-  private updateFor(seat: Seat, events: Ev[], says?: { seat: number; id: string }[]): Update<View, Move, Ev> {
+  private notes: { seat: number; info: Record<string, unknown> }[] = [];
+  private updateFor(seat: Seat, events: Ev[], says?: { seat: number; id: string }[], notes?: { seat: number; info: Record<string, unknown> }[]): Update<View, Move, Ev> {
     const redact = this.rules.redactEvent;
     return {
       seq: this.seq,
@@ -118,14 +123,15 @@ export class TableHost<Config, State, Move, View, Ev> {
       result: this.rules.result(this.state),
       seats: this.seats,
       ...(says?.length ? { says } : {}),
+      ...(notes?.length ? { notes } : {}),
     };
   }
 
   private broadcast(events: Ev[]): void {
     this.seq++;
     this.lastEvents = events;
-    const says = this.says; this.says = [];
-    for (const [seat, link] of this.links) link(this.updateFor(seat, events, says));
+    const says = this.says, notes = this.notes; this.says = []; this.notes = [];
+    for (const [seat, link] of this.links) link(this.updateFor(seat, events, says, notes));
     this.opts.onChange?.();
   }
 
@@ -141,6 +147,7 @@ export class TableHost<Config, State, Move, View, Ev> {
       if (!bot || !this.rules.activeSeats(this.state).includes(seat)) return this.pump();
       const move = bot.choose(this.rules.view(this.state, seat), this.rules.legalMoves(this.state, seat), this.rng);
       const id = bot.say?.(); if (id) this.says.push({ seat, id });
+      if (this.opts.annotate) { const info = bot.explain?.(); if (info) this.notes.push({ seat, info }); }
       this.submit(seat, move);
     }, delay);
   }

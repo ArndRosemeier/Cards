@@ -28,4 +28,6 @@ export interface Bot<View, Move> {
   choose(view: View, legal: Move[], rng: Rng): Move;
   /** Optional table talk that belongs to the move `choose` just returned: an id the clients turn into a line (once). */
   say?(): string | null;
+  /** Optional analysis of the move `choose` just returned (equity, pot odds, ...), for hand histories and trainers. */
+  explain?(): Record<string, unknown> | null;
 }
