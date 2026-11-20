@@ -40,6 +40,8 @@ export interface TrickUi<M, V> {
 export interface SceneHooks<M> { submit(m: M): void; onFinished(winner: number, names: string[], me: number, scores?: number[]): void }
 export interface GameScene<U> {
   receive(u: U): void; destroy(): void;
+  /** Scenes that fix their table geometry when they start report it, so the app can start them again when the screen turns. */
+  readonly portraitLayout?: boolean;
   /** Hint button: make these cards of the own hand glow. */
   hint?(cards: Card[]): void;
   /** A reaction from a seat: show it at that seat's plate. */
@@ -100,7 +102,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     this.chip.className = "trumpchip"; this.chip.style.display = "none";
     ui.append(this.banner, this.actions, this.board, this.panelEl, this.lastBtn, this.chip);
     this.resize();
-    window.addEventListener("resize", this.onResize);
+    window.addEventListener("cards:resize", this.onResize);
   }
   private onResize = () => this.resize();
   private resize() {
@@ -124,7 +126,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
   hint(cards: Card[]) { for (const c of cards) (this.mine.get(c) ?? this.dummy.get(c))?.glowFor(7); }
   destroy() {
     this.destroyed = true; document.body.classList.remove("portrait", "dummytop"); document.documentElement.style.removeProperty("--actions-bottom");
-    window.removeEventListener("resize", this.onResize);
+    window.removeEventListener("cards:resize", this.onResize);
     gsap.killTweensOf("*");
     this.banner.remove(); this.actions.remove(); this.board.remove(); this.panelEl.remove(); this.lastBtn.remove(); this.chip.remove();
     this.app.stage.removeChildren();

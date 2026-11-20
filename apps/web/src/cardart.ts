@@ -1,5 +1,6 @@
 import { Texture } from "pixi.js";
 import type { Card, Suit } from "@cards/engine";
+import { viewSize } from "./geo.ts";
 
 export const CARD_W = 140, CARD_H = 200;
 export const S = 2; // texture supersampling; sprites are scaled by 1/S
@@ -187,7 +188,7 @@ function drawShadow(): HTMLCanvasElement {
 /** Painted table backgrounds (public/bg/*.webp, generated, see audio/manifest-like notes in README). The procedural felt below is the fallback. */
 const THEME_OF: Record<string, string> = { maumau: "maumau", hearts: "felt", doppelkopf: "felt", skat: "bavaria", schafkopf: "bavaria", holdem: "casino", romme: "salon", canasta: "salon", bridge: "bridge" };
 const painted = new Map<string, HTMLImageElement>();
-const isPortrait = () => typeof window !== "undefined" && window.innerHeight > window.innerWidth;
+const isPortrait = () => { if (typeof window === "undefined") return false; const v = viewSize(); return v.h > v.w; };
 let theme = "felt";
 export function setTableTheme(gameId: string) { theme = THEME_OF[gameId] ?? "felt"; }
 export function preloadBackgrounds() {

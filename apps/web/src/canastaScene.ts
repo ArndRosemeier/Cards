@@ -14,7 +14,7 @@ import { attachAmbience } from "./ambience.ts";
 import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
-import { pickGeo, setActionsBottom, type Geo } from "./geo.ts";
+import { pickGeo, setActionsBottom, viewSize, type Geo } from "./geo.ts";
 const STOCK = { x: 270, y: 520 }, DISC = { x: 400, y: 520 };
 const setPiles = (g: Geo) => { MS = g.portrait ? 0.55 : 0.45; CW = CardView.W * MS; CH = CardView.H * MS; if (g.portrait) { Object.assign(STOCK, { x: 250, y: 645 }); Object.assign(DISC, { x: 410, y: 645 }); } else { Object.assign(STOCK, { x: 270, y: 520 }); Object.assign(DISC, { x: 400, y: 520 }); } };
 const SUIT_ORDER = ["C", "H", "S", "D"];
@@ -25,7 +25,7 @@ interface MeldView { side: number; idx: number; kind: "meld" | "reds"; cards: Ca
 const FONT = "Segoe UI, sans-serif";
 
 export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
-  private geo: Geo = pickGeo(window.innerWidth, window.innerHeight); private world = new Container(); private bg = new Sprite();
+  private geo: Geo = pickGeo(viewSize().w, viewSize().h); private world = new Container(); private bg = new Sprite();
   private tableLayer = new Container(); private meldLayer = new Container(); private handLayer = new Container(); private flyLayer = new Container(); private fxLayer = new Container();
   private mine = new Map<Card, CardView>(); private opp: CardView[][] = []; private groups: MeldView[] = [];
   private stockStack = new Container(); private stockText = new Text({ text: "", style: { fill: "#fff", fontSize: 22, fontWeight: "700", fontFamily: FONT } });
@@ -54,14 +54,15 @@ export class CanastaScene implements GameScene<Update<View, Move, Ev>> {
     this.actions.className = "actions"; if (!this.geo.portrait) this.actions.style.bottom = "calc(env(safe-area-inset-bottom) + 262px)";
     this.banner.className = "banner"; this.banner.style.display = "none"; this.board.className = "board";
     ui.append(this.actions, this.banner, this.board);
-    this.resize(); window.addEventListener("resize", this.onResize);
+    this.resize(); window.addEventListener("cards:resize", this.onResize);
   }
   private onResize = () => this.resize();
   private resize() { const w = this.app.screen.width, h = this.app.screen.height, g = this.geo, s = Math.min(w / g.W, h / g.H); this.world.scale.set(s); this.world.position.set((w - g.W * s) / 2, (h - g.H * s) / 2); document.body.classList.toggle("portrait", g.portrait); setActionsBottom(g, w, h, this.n || 4); cover(this.bg, w, h); }
   emote(seat: number, id: string) { const pc = this.plates[seat]?.ring.parent; if (pc) popEmote(this.fxLayer, pc.position.x + (seat === this.me ? 130 : 0), pc.position.y, id); }
   hint(cards: Card[]) { for (const c of cards) this.mine.get(c)?.glowFor(7); }
-  destroy() { document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
+  destroy() { document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom"); this.destroyed = true; window.removeEventListener("cards:resize", this.onResize); gsap.killTweensOf("*"); this.actions.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren(); }
 
+  get portraitLayout() { return this.geo.portrait; }
   receive(u: Update<View, Move, Ev>) { this.queue.push(u); void this.drain(); }
   private async drain() {
     if (this.running) return; this.running = true;

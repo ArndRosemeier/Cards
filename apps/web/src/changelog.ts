@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.08", date: "2026-11-20",
+    de: ["iPad und Handy: Das Layout bleibt jetzt richtig, wenn die App aus dem Hintergrund zurückkommt oder das Gerät gedreht wird. Vorher wurde nach einer Drehung noch die alte Anordnung berechnet, sodass alles verschoben wirkte. Texas Hold’em, Rommé und Canasta stellen sich beim Drehen jetzt ebenfalls um."],
+    en: ["iPad and phone: the layout now stays right when the app returns from the background or the device is turned. Before, the old arrangement was still computed after a turn, so everything looked shifted. Texas Hold’em, Rummy and Canasta now rearrange when you turn the device, too."] },
   { v: "1.07", date: "2026-11-14",
     de: ["Texas Hold’em: Handverlauf. Jede gespielte Hand wird auf dem Gerät aufgezeichnet (Button 📜 im Spiel, oder unter Statistik) und lässt sich als Textdatei im PokerStars-Format oder als JSON laden. Gegen den Computer enthält die JSON-Datei zu jedem Zug des Computers dessen Einschätzung (Gewinnchance, Pot Odds, Eigenheit) – die Grundlage für einen späteren Poker-Trainer."],
     en: ["Texas Hold’em: hand history. Every hand you play is recorded on this device (📜 button in the game, or under Statistics) and can be downloaded as a PokerStars-style text file or as JSON. Against the computer, the JSON file holds the computer's own assessment (win chance, pot odds, quirk) for each of its moves – the base for a later poker trainer."] },

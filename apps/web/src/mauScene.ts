@@ -71,7 +71,7 @@ export class MauScene {
     this.passBtn.onclick = () => this.send({ t: "pass" });
     ui.append(this.banner, this.passBtn);
     this.resize();
-    window.addEventListener("resize", this.onResize);
+    window.addEventListener("cards:resize", this.onResize);
   }
   private onResize = () => this.resize();
   resize() {
@@ -97,7 +97,7 @@ export class MauScene {
   destroy() {
     document.body.classList.remove("portrait"); document.documentElement.style.removeProperty("--actions-bottom");
     this.destroyed = true;
-    window.removeEventListener("resize", this.onResize);
+    window.removeEventListener("cards:resize", this.onResize);
     gsap.killTweensOf("*");
     this.banner.remove(); this.passBtn.remove();
     this.ui.querySelectorAll(".suits,.result").forEach((e) => e.remove());

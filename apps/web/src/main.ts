@@ -6,7 +6,7 @@ import { createMenuScene } from "./menuScene.ts";
 import { showRules } from "./rulesText.ts";
 import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
-import type { GameScene } from "./trickScene.ts";
+import type { GameScene, SceneHooks } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
 import { EMOTES } from "./emote.ts";
 import { setTableTheme, preloadBackgrounds, preloadCardArt, BACKS, getBack, setBack, getFourColor, setFourColor } from "./cardart.ts";
@@ -17,6 +17,7 @@ import { getStats, recordResult, resetStats } from "./stats.ts";
 import { VERSION, BUILD_SHA, BUILD_DATE } from "./version.ts";
 import { CHANGELOG } from "./changelog.ts";
 import { savedGame, saveGame, savedCount, saveCount } from "./prefs.ts";
+import { viewSize, pickGeo } from "./geo.ts";
 import { startRecording, recordUpdate, handCount, clearHands, downloadText, downloadJson } from "./handstore.ts";
 
 type Session = OnlineSession<any, any, any, any, any>;
@@ -41,6 +42,18 @@ let teardown: (() => void) | null = null;
 /** the newest update for the own seat: what the hint button asks the bot about */
 let lastEmote = 0;
 let lastUpdate: any = null;
+/** Makes the current game's scene again (with the same hooks); set where a scene is created. */
+let remakeScene: (() => GameScene<any>) | null = null;
+let turnedSinceStart = false;
+/** Hand an update to the scene. Scenes that fix their layout at start (Hold'em, Rummy, Canasta) are started again, from the current state, when the screen turned. */
+function deliver(u: any) {
+  lastUpdate = u;
+  if (turnedSinceStart && scene && remakeScene) {
+    turnedSinceStart = false;
+    scene.destroy(); scene = remakeScene(); scene.receive({ ...u, events: [] }); return;
+  }
+  scene?.receive(u);
+}
 
 function toast(text: string) {
   ui.querySelector(".hint-toast")?.remove();
@@ -68,10 +81,37 @@ const saveLevel = (n: number) => { try { localStorage.setItem("level", String(n)
 const saveName = (n: string) => { if (cuedName) return; try { localStorage.setItem("name", n); } catch { /* ignore */ } };
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
+/**
+ * Keeps the canvas and every scene in step with the real size of the play area. Scenes listen to "cards:resize", which is only sent
+ * after the canvas has its new size (Pixi's own resize runs a frame later than the window event, so scenes used to lay out for the
+ * previous size). After resuming from the background or turning the screen, iOS reports the final size late, so the size is checked
+ * again a few times.
+ */
+function keepFitted(stage: HTMLElement) {
+  let last = { w: stage.clientWidth, h: stage.clientHeight };
+  const fit = () => {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h || (w === last.w && h === last.h)) return;
+    last = { w, h }; app.renderer.resize(w, h); window.dispatchEvent(new Event("cards:resize"));
+  };
+  window.addEventListener("cards:resize", () => { const s = scene; if (s && s.portraitLayout !== undefined && s.portraitLayout !== pickGeo(viewSize().w, viewSize().h).portrait) { turnedSinceStart = true; if (lastUpdate) deliver(lastUpdate); } });
+  const settle = () => { fit(); for (const ms of [60, 250, 800, 2000]) setTimeout(fit, ms); };
+  new ResizeObserver(fit).observe(stage);
+  window.addEventListener("resize", settle); window.addEventListener("orientationchange", settle);
+  window.addEventListener("pageshow", settle); window.addEventListener("focus", settle);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") settle(); });
+  window.visualViewport?.addEventListener("resize", settle);
+  // let the browser restore the graphics context after the app was in the background
+  app.canvas.addEventListener("webglcontextlost", (e) => e.preventDefault());
+}
+
 async function boot() {
   app = new Application();
-  await app.init({ resizeTo: window, antialias: true, backgroundAlpha: 0, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true });
-  document.getElementById("stage")!.append(app.canvas);
+  const stage = document.getElementById("stage")!, size = viewSize();
+  // Sized from the #stage element, not from the window: on an iPad the window size is briefly stale when the app comes back from the background or turns.
+  await app.init({ width: size.w, height: size.h, antialias: true, backgroundAlpha: 0, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true });
+  stage.append(app.canvas);
+  keepFitted(stage);
   if (q.get("autostart")) {
     gameId = q.get("game") ?? "maumau"; const ok = entry().players, want = Number(q.get("players") ?? 3);
     return startLocal(q.get("name") ?? "Arnd", ok.includes(want) ? want : ok.includes(3) ? 3 : ok[ok.length - 1]!, Number(q.get("seed") ?? Date.now()));
@@ -294,7 +334,7 @@ function enterRoom(session: Session) {
   };
   let gameShown = false;
   session.on("lobby", (l) => { if (l.phase === "lobby") showLobby(); else if (!gameShown) showGame(); });
-  session.on("update", (u) => { if (!gameShown) showGame(); lastUpdate = u; scene?.receive(u); if (gameId === "holdem") recordUpdate(u as any); });
+  session.on("update", (u) => { if (!gameShown) showGame(); deliver(u); if (gameId === "holdem") recordUpdate(u as any); });
   session.on("emote", (seat, id) => scene?.emote?.(seat, id));
   session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); toast(t(c === "host_lost" ? "hostLost" : "connLost")); } else if (c === "room_full") { session.leave(); showOnline("", t("roomFull")); } });
   const showGame = () => {
@@ -302,7 +342,8 @@ function enterRoom(session: Session) {
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";
     if (gameId === "holdem") startRecording(`online ${session.code}`);
     setTableTheme(gameId);
-    scene = entry().scene(app, ui, { submit: (m) => { lastUpdate = null; session.submit(m); }, onFinished: (w, names, _me, sc) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) });
+    const hooks = { submit: (m: any) => { lastUpdate = null; session.submit(m); }, onFinished: (w: number, names: string[], _me: number, sc: number[]) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) };
+    scene = entry().scene(app, ui, hooks); remakeScene = () => entry().scene(app, ui, hooks); turnedSinceStart = false;
     addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); }, (id) => { const me = session.mySeat; if (me === null || Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); session.sendEmote(id); scene?.emote?.(me, id); }, (text) => session.sendChat(text));
   };
   showLobby();
@@ -393,10 +434,11 @@ function startLocal(name: string, players: number, seed: number) {
   const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, annotate: gameId === "holdem", ...(fast ? { botDelay: () => 100 } : {}) });
   if (gameId === "holdem") startRecording("solo");
   setTableTheme(gameId);
-  scene = entry().scene(app, ui, {
+  const hooks: SceneHooks<any> = {
     submit: (m: any) => { lastUpdate = null; host.submit(0, m); },
     onFinished: (w, _n, _m, sc) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now()), sc), 1500),
-  });
+  };
+  scene = entry().scene(app, ui, hooks); remakeScene = () => entry().scene(app, ui, hooks); turnedSinceStart = false;
   teardown = () => host.dispose();
   const botEmote = (id?: string) => { if (players < 2) return; const seat = 1 + Math.floor(Math.random() * (players - 1)); scene?.emote?.(seat, id ?? EMOTES[Math.floor(Math.random() * EMOTES.length)]!); };
   addHud(() => { host.dispose(); scene?.destroy(); scene = null; showMenu(); }, (id) => {
@@ -404,7 +446,7 @@ function startLocal(name: string, players: number, seed: number) {
     if (Math.random() < 0.6) setTimeout(() => botEmote(id === "thumbs" ? "clap" : id === "oops" ? "hmm" : id === "clap" ? "thumbs" : "oops"), 900 + Math.random() * 900);
   });
   host.attach(0, (u: any) => {
-    lastUpdate = u; scene?.receive(u); if (gameId === "holdem") recordUpdate(u);
+    deliver(u); if (gameId === "holdem") recordUpdate(u);
     if (q.get("auto") && u.legal.length && !u.result) setTimeout(() => host.submit(0, d.makeBot({ kind: "bot", name: "" }).choose(u.view, u.legal, host.rng)), fast ? 150 : 1800);
   });
   host.start();

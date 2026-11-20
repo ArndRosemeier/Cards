@@ -38,6 +38,12 @@ export const PORT: Geo = {
   plate: (a, rel) => (rel === 0 ? { x: 150, y: 1240 } : a.dy === -1 ? { x: a.cx, y: a.cy + 100 } : { x: a.cx + (a.dx === -1 ? 20 : -20), y: a.cy + 235 }),
 };
 
+/** The size of the play area in CSS pixels: the fixed #stage element, which follows the real visible area (window.innerWidth/innerHeight can be stale for a moment after an iPad resumes or rotates). */
+export function viewSize(): { w: number; h: number } {
+  const s = typeof document !== "undefined" ? document.getElementById("stage") : null;
+  return { w: s?.clientWidth || window.innerWidth, h: s?.clientHeight || window.innerHeight };
+}
+
 /** Upright phones (tall, narrow screens) get the portrait geometry. */
 export const pickGeo = (w: number, h: number, allowPortrait = true): Geo => (allowPortrait && h > w * 1.15 && w < 900 ? PORT : LAND);
 

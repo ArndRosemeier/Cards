@@ -12,7 +12,7 @@ import { attachAmbience } from "./ambience.ts";
 import { cover } from "./geo.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 
-import { pickGeo, type Geo } from "./geo.ts";
+import { pickGeo, viewSize, type Geo } from "./geo.ts";
 // table geometry; set once per scene from the screen orientation (see setGeo)
 const TABLE = { x: 800, y: 430, rx: 640, ry: 290 }, DECK = { x: 800, y: 175 }, POT = { x: 800, y: 512 };
 const K = { slotDX: 128, slotY: 405, cardScale: 0.82, ownY: 652, ownPlateY: 805, seatIn: 40, ownDX: 150, ownScale: 0.95 };
@@ -67,7 +67,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private handDone = false;
   private me = 0; private n = 0; private names: string[] = [];
   private controls = document.createElement("div"); private banner = document.createElement("div"); private board = document.createElement("div");
-  private readonly geo: Geo = pickGeo(window.innerWidth, window.innerHeight);
+  private readonly geo: Geo = pickGeo(viewSize().w, viewSize().h);
   private readonly app: Application; private readonly ui: HTMLElement; private readonly hooks: SceneHooks<Move>;
   private raiseTo = 0;
 
@@ -83,7 +83,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     this.layerB.addChild(this.dealerBtn);
     this.controls.className = "hcontrols"; this.banner.className = "banner hbanner"; this.banner.style.display = "none"; this.board.className = "board hboard";
     ui.append(this.controls, this.banner, this.board);
-    this.resize(); window.addEventListener("resize", this.onResize);
+    this.resize(); window.addEventListener("cards:resize", this.onResize);
   }
   private onResize = () => this.resize();
   private resize() {
@@ -108,7 +108,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   }
   emote(seat: number, id: string) { const sp = this.seats[seat]; if (sp) popEmote(this.layerFx, sp.plate.position.x, sp.plate.position.y, id); }
   destroy() {
-    document.body.classList.remove("portrait"); this.destroyed = true; window.removeEventListener("resize", this.onResize); gsap.killTweensOf("*");
+    document.body.classList.remove("portrait"); this.destroyed = true; window.removeEventListener("cards:resize", this.onResize); gsap.killTweensOf("*");
     this.controls.remove(); this.banner.remove(); this.board.remove(); this.app.stage.removeChildren();
   }
   private drawTable() {
@@ -121,6 +121,7 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
     g.ellipse(TABLE.x, TABLE.y, TABLE.rx - 60, TABLE.ry - 50).stroke({ width: 2, color: 0xe8c66a, alpha: 0.25 });
   }
 
+  get portraitLayout() { return this.geo.portrait; }
   receive(u: Update<View, Move, Ev>) { this.queue.push(u); void this.drain(); }
   private async drain() {
     if (this.running) return; this.running = true;
