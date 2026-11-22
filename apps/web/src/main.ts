@@ -95,7 +95,12 @@ function keepFitted(stage: HTMLElement) {
     last = { w, h }; app.renderer.resize(w, h); window.dispatchEvent(new Event("cards:resize"));
   };
   window.addEventListener("cards:resize", () => { const s = scene; if (s && s.portraitLayout !== undefined && s.portraitLayout !== pickGeo(viewSize().w, viewSize().h).portrait) { turnedSinceStart = true; if (lastUpdate) deliver(lastUpdate); } });
-  const settle = () => { fit(); for (const ms of [60, 250, 800, 2000]) setTimeout(fit, ms); };
+  const settle = () => { window.scrollTo(0, 0); fit(); for (const ms of [60, 250, 800, 2000]) setTimeout(fit, ms); };
+  // safety net: if the browser ever skips a resize notification (iPad after resume, split view), the next tick catches it
+  setInterval(() => { if (document.visibilityState === "visible") fit(); }, 1000);
+  // no pinch zoom / page zoom: a zoomed page looks like a shrunken or shifted table, and iOS ignores user-scalable=no
+  for (const ev of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+  document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
   new ResizeObserver(fit).observe(stage);
   window.addEventListener("resize", settle); window.addEventListener("orientationchange", settle);
   window.addEventListener("pageshow", settle); window.addEventListener("focus", settle);

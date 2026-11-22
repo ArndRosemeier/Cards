@@ -44,8 +44,8 @@ export function viewSize(): { w: number; h: number } {
   return { w: s?.clientWidth || window.innerWidth, h: s?.clientHeight || window.innerHeight };
 }
 
-/** Upright phones (tall, narrow screens) get the portrait geometry. */
-export const pickGeo = (w: number, h: number, allowPortrait = true): Geo => (allowPortrait && h > w * 1.15 && w < 900 ? PORT : LAND);
+/** Any screen held upright gets the portrait geometry: phones (tall, narrow) and tablets (iPad 3:4, also the big iPad Pro, which is wider than 900 px); otherwise the table would sit tiny in the middle of a tall screen. */
+export const pickGeo = (w: number, h: number, allowPortrait = true): Geo => (allowPortrait && (h > w * 1.2 || (h > w * 1.15 && w < 900)) ? PORT : LAND);
 
 /** Scale a background sprite to cover the screen without distorting it. */
 export function cover(bg: Sprite, w: number, h: number) {

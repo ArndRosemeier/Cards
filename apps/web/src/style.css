@@ -2,6 +2,7 @@
 * { box-sizing: border-box; }
 html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); overflow:hidden;
   font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+html,body { touch-action:pan-x pan-y; overscroll-behavior:none; }
 #stage { position:fixed; inset:0; }
 #stage canvas { display:block; }
 #ui { position:fixed; inset:0; pointer-events:none; }

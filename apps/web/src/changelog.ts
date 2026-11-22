@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.09", date: "2026-11-22",
+    de: ["iPad: Der Tisch nutzt jetzt den ganzen Bildschirm. Hochkant (auch beim großen iPad Pro) wird die Hochkant-Anordnung verwendet statt eines kleinen Querformat-Tischs in der Mitte. Außerdem: kein versehentliches Zoomen mehr per Zwei-Finger-Geste, und die Größe wird sekündlich geprüft, damit der Tisch nach dem Zurückkehren in die App nicht verschoben oder verkleinert bleibt."],
+    en: ["iPad: the table now uses the whole screen. Held upright (the big iPad Pro too), the upright layout is used instead of a small landscape table in the middle. Also: no accidental pinch zoom any more, and the size is re-checked every second so the table cannot stay shifted or shrunken after returning to the app."] },
   { v: "1.08", date: "2026-11-20",
     de: ["iPad und Handy: Das Layout bleibt jetzt richtig, wenn die App aus dem Hintergrund zurückkommt oder das Gerät gedreht wird. Vorher wurde nach einer Drehung noch die alte Anordnung berechnet, sodass alles verschoben wirkte. Texas Hold’em, Rommé und Canasta stellen sich beim Drehen jetzt ebenfalls um."],
     en: ["iPad and phone: the layout now stays right when the app returns from the background or the device is turned. Before, the old arrangement was still computed after a turn, so everything looked shifted. Texas Hold’em, Rummy and Canasta now rearrange when you turn the device, too."] },
