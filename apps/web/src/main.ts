@@ -16,7 +16,7 @@ import { cardsInMove, hintText } from "./hint.ts";
 import { getStats, recordResult, resetStats } from "./stats.ts";
 import { VERSION, BUILD_SHA, BUILD_DATE } from "./version.ts";
 import { CHANGELOG } from "./changelog.ts";
-import { savedGame, saveGame, savedCount, saveCount } from "./prefs.ts";
+import { botDelay, botWait, setBotWait, botVar, setBotVar, BOT_WAIT_MIN, BOT_WAIT_MAX, savedGame, saveGame, savedCount, saveCount } from "./prefs.ts";
 import { viewSize, pickGeo } from "./geo.ts";
 import { startRecording, recordUpdate, handCount, clearHands, downloadText, downloadJson } from "./handstore.ts";
 
@@ -30,7 +30,7 @@ const fast = !!q.get("fast");
 const KEY = import.meta.env.VITE_GAMEHUB_KEY, HUB_URL = import.meta.env.VITE_GAMEHUB_URL;
 
 const entry = (): GameEntry => entryOf(gameId);
-const defOf = () => { const d = entry().def; return fast ? { ...d, botDelay: () => 100 } : d; };
+const defOf = () => { const d = entry().def; return { ...d, botDelay: fast ? () => 100 : botDelay }; };
 
 let app: Application;
 let scene: GameScene<any> | null = null;
@@ -144,7 +144,7 @@ function panel(html: string): HTMLElement {
   return wrap;
 }
 /** Two volume sliders (effects, music), saved between sessions. */
-function volumeRows(): HTMLElement {
+function volumeRows(which: "sound" | "pace" | "all" = "all"): HTMLElement {
   const box = document.createElement("div"); box.className = "volrows";
   const mk = (icon: string, label: string, get: () => number, set: (v: number) => void, preview?: () => void) => {
     const row = document.createElement("div"); row.className = "volrow"; row.title = label;
@@ -157,7 +157,24 @@ function volumeRows(): HTMLElement {
     ic.onclick = () => { if (Number(sl.value) > 0) { ic.dataset.prev = sl.value; sl.value = "0"; } else sl.value = ic.dataset.prev ?? "70"; set(Number(sl.value) / 100); paint(); preview?.(); };
     paint(); row.append(ic, lab, sl); return row;
   };
-  box.append(mk("🔊", t("volSfx"), () => sfx.volume, (v) => sfx.setVolume(v), () => sfx.place()), mk("♪", t("volMusic"), () => music.volume, (v) => music.setVolume(v)));
+  // computer pace: how long the computer players "think" before a move
+  const pace = document.createElement("div"); pace.className = "volrow"; pace.title = t("botPace");
+  const pic = document.createElement("span"); pic.className = "volic"; pic.textContent = "⏱";
+  const plab = document.createElement("span"); plab.className = "volname";
+  const psl = document.createElement("input"); psl.type = "range"; psl.min = String(BOT_WAIT_MIN * 10); psl.max = String(BOT_WAIT_MAX * 10); psl.step = "1"; psl.value = String(Math.round(botWait() * 10)); psl.setAttribute("aria-label", t("botPace"));
+  const ppaint = () => { const v = Number(psl.value); plab.textContent = `${(v / 10).toFixed(1)} s`; psl.style.setProperty("--p", `${((v - BOT_WAIT_MIN * 10) / ((BOT_WAIT_MAX - BOT_WAIT_MIN) * 10)) * 100}%`); };
+  psl.oninput = () => { setBotWait(Number(psl.value) / 10); ppaint(); };
+  ppaint(); pace.append(pic, plab, psl);
+  // random share of that time
+  const rnd = document.createElement("div"); rnd.className = "volrow"; rnd.title = t("botVar");
+  const ric = document.createElement("span"); ric.className = "volic"; ric.textContent = "🎲";
+  const rlab = document.createElement("span"); rlab.className = "volname";
+  const rsl = document.createElement("input"); rsl.type = "range"; rsl.min = "0"; rsl.max = "100"; rsl.step = "5"; rsl.value = String(Math.round(botVar() * 100)); rsl.setAttribute("aria-label", t("botVar"));
+  const rpaint = () => { const v = Number(rsl.value); rlab.textContent = `± ${v}%`; rsl.style.setProperty("--p", `${v}%`); };
+  rsl.oninput = () => { setBotVar(Number(rsl.value) / 100); rpaint(); };
+  rpaint(); rnd.append(ric, rlab, rsl);
+  if (which !== "pace") box.append(mk("🔊", t("volSfx"), () => sfx.volume, (v) => sfx.setVolume(v), () => sfx.place()), mk("♪", t("volMusic"), () => music.volume, (v) => music.setVolume(v)));
+  if (which !== "sound") box.append(pace, rnd);
   return box;
 }
 const langRow = () => `<div class="row"><label>${t("language")}</label><div class="seg" id="lg">${["de", "en"].map((l) => `<button class="${getLang() === l ? "sel" : ""}" data-l="${l}">${l.toUpperCase()}</button>`).join("")}</div></div>`;
@@ -178,6 +195,7 @@ function showMenu() {
       <div class="row"><label>${t("players")}</label><div class="seg" id="pl">${entry().players.map((n) => `<button class="${n === players ? "sel" : ""}" data-n="${n}">${n}</button>`).join("")}</div></div>
       <div class="row"><label>${t("computer")}</label><div class="seg" id="lv">${[0, 1].map((l) => `<button class="${savedLevel() === l ? "sel" : ""}" data-lv="${l}">${t(l ? "lvNormal" : "lvEasy")}</button>`).join("")}</div></div>
       <div class="row"><label>${t("volume")}</label><div id="volslot" class="volinline"></div></div>
+      <div class="row"><label>${t("botPaceRow")}</label><div id="paceslot" class="volinline"></div></div>
       ${langRow()}
       <div class="row"><label>${t("fourColor")}</label><div class="seg" id="fc"><button class="${getFourColor() ? "" : "sel"}" data-v="0">${t("off")}</button><button class="${getFourColor() ? "sel" : ""}" data-v="1">${t("on")}</button></div></div>
       <div class="row"><label>${t("cardBack")}</label><div class="seg backs" id="bk">${BACKS.map((b) => `<button class="${getBack() === b ? "sel" : ""}" data-b="${b}"><img src="cards/${b}.webp" alt=""></button>`).join("")}</div></div>
@@ -192,7 +210,7 @@ function showMenu() {
     w.querySelectorAll<HTMLButtonElement>("#fc button").forEach((b) => (b.onclick = () => { setFourColor(b.dataset.v === "1"); w.querySelectorAll("#fc button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     w.querySelectorAll<HTMLButtonElement>("#bk button").forEach((b) => (b.onclick = () => { setBack(b.dataset.b!); w.querySelectorAll("#bk button").forEach((x) => x.classList.toggle("sel", x === b)); }));
     bindLang(w, () => { nm(); render(); });
-    w.querySelector("#volslot")!.append(volumeRows());
+    w.querySelector("#volslot")!.append(volumeRows("sound")); w.querySelector("#paceslot")!.append(volumeRows("pace"));
     (w.querySelector("#go") as HTMLButtonElement).onclick = () => { nm(); name ||= t("you"); saveName(name); startLocal(name, players, Date.now()); };
     (w.querySelector("#online") as HTMLButtonElement).onclick = () => { nm(); if (name) saveName(name); showOnline(); };
   };
@@ -436,7 +454,7 @@ function startLocal(name: string, players: number, seed: number) {
   const botNames = pickBotNames();
   const seats: SeatSpec[] = [{ kind: "human", name }, ...Array.from({ length: players - 1 }, (_, i): SeatSpec => ({ kind: "bot", name: botNames[i]!, level: savedLevel() }))];
   const d = defOf();
-  const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, annotate: gameId === "holdem", ...(fast ? { botDelay: () => 100 } : {}) });
+  const host = new TableHost(d.rules, d.config, seats, d.makeBot, { seed, annotate: gameId === "holdem", botDelay: fast ? () => 100 : botDelay });
   if (gameId === "holdem") startRecording("solo");
   setTableTheme(gameId);
   const hooks: SceneHooks<any> = {

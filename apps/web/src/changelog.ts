@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.10", date: "2026-11-22",
+    de: ["Neu: einstellbare Bedenkzeit der Computerspieler (⏱-Regler neben Effekte und Musik, im Menü und im Spiel; 0,2 bis 5 Sekunden, gilt in allen Spielen und sofort). So kannst du den Zügen leichter folgen. Standard bleibt wie bisher (ca. 1,3 s). In Online-Spielen bestimmt die Einstellung des Gastgebers."],
+    en: ["New: adjustable thinking time for computer players (⏱ slider next to Effects and Music, in the menu and in the game; 0.2 to 5 seconds) and a 🎲 slider for the random share (0 to 100%, so moves do not feel clockwork; applies to all games and immediately), so it is easier to follow the moves. The default stays as before (about 1.3 s). In online games the host's setting decides."] },
   { v: "1.09", date: "2026-11-22",
     de: ["iPad: Der Tisch nutzt jetzt den ganzen Bildschirm. Hochkant (auch beim großen iPad Pro) wird die Hochkant-Anordnung verwendet statt eines kleinen Querformat-Tischs in der Mitte. Außerdem: kein versehentliches Zoomen mehr per Zwei-Finger-Geste, und die Größe wird sekündlich geprüft, damit der Tisch nach dem Zurückkehren in die App nicht verschoben oder verkleinert bleibt."],
     en: ["iPad: the table now uses the whole screen. Held upright (the big iPad Pro too), the upright layout is used instead of a small landscape table in the middle. Also: no accidental pinch zoom any more, and the size is re-checked every second so the table cannot stay shifted or shrunken after returning to the app."] },
