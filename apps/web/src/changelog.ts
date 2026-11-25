@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.15", date: "2026-11-25",
+    de: ["Bridge: optionale Reiz-Erklärung. Im Reizkasten gibt es oben rechts einen „?“-Knopf. Ist er an, steht unter der Tabelle, was das letzte Gebot nach den Regeln der Computerspieler bedeutet (z. B. „1SA-Eröffnung: ausgeglichen, 15–17 Punkte“, Stayman, Transfer, Blackwood, Überruf, Informationskontra, Sperrgebot …). Tippe auf ein Gebot mit „?“, um dessen Bedeutung zu sehen. Die Erklärung verrät keine Karten und gilt für alle Spieler, auch online."],
+    en: ["Bridge: optional bid explainer. The bidding box has a “?” button at the top right. When it is on, the text under the table says what the latest call means by the computer players' rules (e.g. “1NT opening: balanced, 15–17 points”, Stayman, transfers, Blackwood, overcalls, takeout doubles, pre-empts …). Tap a call marked “?” to see its meaning. The explanation never reveals cards and works for every player, online too."] },
   { v: "1.14", date: "2026-11-25",
     de: ["Bridge: Die Computerspieler rechnen jetzt schon ab dem dritten Stich (10 Karten pro Hand) mit der „doppelt offen“-Simulation statt erst ab dem sechsten; der Rechner ist dafür deutlich schneller geworden. Außerdem schätzen sie die Stärke des Partners aus seinen Ansagen genauer (Eröffnung, Antwort, Wiederholung), reizen mit starken Händen nach gegnerischer Eröffnung besser und versuchen eher Schlemm. Im Test etwa +0,6 IMP pro Spiel im Kartenspiel."],
     en: ["Bridge: the computer players now use the double-dummy simulation from the third trick on (10 cards per hand) instead of the sixth, and the solver is much faster. They also estimate partner's strength from their calls more accurately (opening, response, rebid), bid strong hands better after an opposing opening, and try for slam more often. In tests this was worth about +0.6 IMP per board in the card play."] },

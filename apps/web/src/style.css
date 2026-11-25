@@ -74,6 +74,14 @@ input[type=text] { flex:1; padding:10px 12px; border-radius:10px; border:1px sol
 .auction span.last { background:rgba(232,198,106,.18); }
 .auction span.now { opacity:.7; animation:pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { from { opacity:.3 } to { opacity:.9 } }
+.auctionwrap { position:relative; min-width:0; max-width:300px; }
+.bidq { position:absolute; right:-2px; top:-8px; width:22px; height:22px; border-radius:50%; border:1px solid rgba(232,198,106,.6); background:rgba(0,0,0,.55); color:#ffe08a; font-size:13px; line-height:1; cursor:pointer; z-index:2; padding:0; }
+.bidq.on { background:#e8c66a; color:#10241a; }
+.bidexplain { display:none; margin-top:6px; padding:6px 8px; border-radius:10px; background:rgba(232,198,106,.12); border:1px solid rgba(232,198,106,.3); font-size:12.5px; line-height:1.35; text-align:left; max-width:300px; }
+.bidexplain b { color:#ffe08a; }
+.auction span.ex { cursor:pointer; }
+.auction span .qm { font-size:9px; color:#ffe08a; margin-left:1px; }
+.auction span.sel { outline:1px solid #ffe08a; }
 .bidmini { flex-direction:column; align-items:stretch; gap:6px; padding:6px 8px; }
 .bidchip { padding:5px 12px; border-radius:999px; border:1px solid rgba(232,198,106,.5); background:rgba(0,0,0,.45); color:#ffe08a; font-size:13px; cursor:pointer; }
 .panelbox:has(> .bidmini) { left:14px; right:auto; top:62px; transform:none; width:max-content; max-width:min(330px,94vw); }
@@ -210,3 +218,4 @@ body.portrait .board.hboard { top:14px; left:auto; right:8px; transform:none; ma
 .whatsnew .sub { margin:0 0 4px; font-size:13px; }
 #paceslot .volname { display:block; width:auto; min-width:34px; font-size:12px; white-space:nowrap; text-align:right; }
 @media (max-width:480px) { #paceslot .volrows { flex-direction:column; gap:6px; } }
+.bidexplain:empty { display:none !important; }

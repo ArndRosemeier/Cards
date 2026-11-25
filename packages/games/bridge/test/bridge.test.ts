@@ -99,3 +99,14 @@ test("view exposes the play history", () => {
     if (state.phase === "play" && state.tricks[0] + state.tricks[1] === 2 && state.trick.length === 0) { const v = Bridge.view(state, seat); assert.equal(v.history!.length, 2); assert.equal(v.history![0]!.length, 4); }
   }
 });
+
+import { explainCall } from "../src/explain.ts";
+test("bid explainer", () => {
+  const A = (...cs: [number, any][]) => cs.map(([seat, call]) => ({ seat, call }));
+  const nt = A([0, { t: "bid", level: 1, suit: "N" }]);
+  assert.match(explainCall(nt, 0)!.text.en, /15–17/);
+  const stay = A([0, { t: "bid", level: 1, suit: "N" }], [1, { t: "pass" }], [2, { t: "bid", level: 2, suit: "C" }]);
+  assert.equal(explainCall(stay, 2)!.name.en, "Stayman");
+  const dbl = A([0, { t: "bid", level: 1, suit: "H" }], [1, { t: "double" }]);
+  assert.equal(explainCall(dbl, 1)!.name.en, "Takeout double");
+});

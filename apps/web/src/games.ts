@@ -11,11 +11,11 @@ import { Romme, defaultConfig as rommeCfg, rommeBot } from "@cards/romme";
 import { RommeScene } from "./rommeScene.ts";
 import { Canasta, defaultConfig as canastaCfg, canastaBot } from "@cards/canasta";
 import { CanastaScene } from "./canastaScene.ts";
-import { Bridge, defaultConfig as bridgeCfg, bridgeBot, callText, type View as BView, type Move as BMove } from "@cards/bridge";
+import { Bridge, defaultConfig as bridgeCfg, bridgeBot, callText, explainCall, type View as BView, type Move as BMove } from "@cards/bridge";
 import { MauScene } from "./mauScene.ts";
 import { HoldemScene } from "./holdemScene.ts";
 import { TrickScene, type GameScene, type SceneHooks, type TrickUi } from "./trickScene.ts";
-import { t } from "./i18n.ts";
+import { t, getLang } from "./i18n.ts";
 import { withLevel } from "./levels.ts";
 
 /**
@@ -154,20 +154,42 @@ const compass = (seat: number, me: number) => ["S", "W", "N", "E"][(seat - me + 
 let auctionOpen = false;
 const esc = (x: string) => x.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const callCell = (c: any): string => c.t === "pass" ? `<i>${t("pass2")}</i>` : callHtml(c);
-/** The bidding history as a classic table: one column per seat in playing order (W, N, E, S as seen from the own seat), with names, the dealer marked, one row per round. */
+let explainOn = (() => { try { return localStorage.getItem("bridgeExplain") === "1"; } catch { return false; } })();
+let explainSel: number | null = null, explainLen = 0;
+/** The bidding history as a classic table: one column per seat in playing order (W, N, E, S as seen from the own seat), with names, the dealer marked, one row per round.
+ * The "?" button turns on bid explanations: the meaning of the latest call (or of the one you tap) under the table. */
 function auctionTable(v: any, names: string[], me: number): HTMLElement {
+  const wrap = document.createElement("div"); wrap.className = "auctionwrap";
   const el = document.createElement("div"); el.className = "auction";
   const colOf = (seat: number) => (seat - me - 1 + 8) % 4;
   const seatOf = (col: number) => (me + 1 + col) % 4;
   const head = [0, 1, 2, 3].map((c) => { const s = seatOf(c); return `<b class="${s % 2 === me % 2 ? "us" : ""}">${compass(s, me)}${s === v.dealer ? '<sup>D</sup>' : ""}<small>${s === me ? t("you") : esc(names[s] ?? "")}</small></b>`; }).join("");
-  const rows: (string | null)[][] = []; let last = 9;
-  for (const a of v.auction as any[]) { const col = colOf(a.seat); if (!rows.length || col <= last) rows.push([null, null, null, null]); rows[rows.length - 1]![col] = callCell(a.call); last = col; }
-  if (v.phase === "auction" && v.turn !== null) { const col = colOf(v.turn); if (!rows.length || col <= last) rows.push([null, null, null, null]); rows[rows.length - 1]![col] = "…"; }
+  const auction = v.auction as any[];
+  const info = auction.map((_, i) => (explainOn ? explainCall(auction, i) : null));
+  const rows: ({ html: string; i: number } | null)[][] = []; let last = 9;
+  auction.forEach((a, i) => { const col = colOf(a.seat); if (!rows.length || col <= last) rows.push([null, null, null, null]); rows[rows.length - 1]![col] = { html: callCell(a.call) + (info[i] ? '<sup class="qm">?</sup>' : ""), i }; last = col; });
+  if (v.phase === "auction" && v.turn !== null) { const col = colOf(v.turn); if (!rows.length || col <= last) rows.push([null, null, null, null]); rows[rows.length - 1]![col] = { html: "…", i: -1 }; last = col; }
   if (!rows.length) rows.push([null, null, null, null]);
-  // the first round starts at the dealer: leave the seats before the dealer empty
-  const flat = rows.flat(), lastIdx = flat.reduce((m, c, i) => (c !== null ? i : m), -1);
-  el.innerHTML = head + flat.map((c, i) => `<span class="${c === "…" ? "now" : i === lastIdx ? "last" : ""}">${c ?? ""}</span>`).join("");
-  return el;
+  const flat = rows.flat(), lastIdx = flat.reduce((m, c, i) => (c !== null && c.i >= 0 ? i : m), -1);
+  el.innerHTML = head + flat.map((c, i) => `<span data-i="${c ? c.i : -2}" class="${c && c.i === -1 ? "now" : i === lastIdx ? "last" : ""}${c && c.i >= 0 && info[c.i] ? " ex" : ""}">${c ? c.html : ""}</span>`).join("");
+  const box = document.createElement("div"); box.className = "bidexplain";
+  const toggle = document.createElement("button"); toggle.className = "bidq" + (explainOn ? " on" : ""); toggle.textContent = "?"; toggle.title = t("br_explain");
+  const paint = () => {
+    const idx = explainSel !== null && explainSel < auction.length ? explainSel : auction.length - 1;
+    const x = idx >= 0 ? info[idx] ?? null : null, a = auction[idx];
+    const who = a ? (a.seat === me ? t("you") : names[a.seat] ?? "") : "";
+    box.style.display = explainOn ? "block" : "none";
+    el.querySelectorAll("span.sel").forEach((n) => n.classList.remove("sel"));
+    if (explainSel !== null) el.querySelector(`span[data-i="${explainSel}"]`)?.classList.add("sel");
+    const L = getLang();
+    box.innerHTML = !explainOn || !a ? "" : x ? `<b>${esc(who)}: ${callText(a.call)}${x.name[L] === callText(a.call) ? "" : ` · ${esc(x.name[L])}`}</b><br>${esc(x.text[L])}` : `<b>${esc(who)}: ${callText(a.call)}</b><br>${esc(t("br_natural"))}`;
+  };
+  if (auction.length !== explainLen) { explainSel = null; explainLen = auction.length; }
+  toggle.onclick = () => { explainOn = !explainOn; try { localStorage.setItem("bridgeExplain", explainOn ? "1" : "0"); } catch { /* ignore */ } toggle.classList.toggle("on", explainOn); explainSel = null; const fresh = auctionTable(v, names, me); fresh.style.display = wrap.style.display; wrap.replaceWith(fresh); };
+  el.addEventListener("click", (e) => { const sp = (e.target as HTMLElement).closest("span[data-i]") as HTMLElement | null; if (!sp || !explainOn) return; const i = Number(sp.dataset.i); if (i >= 0) { explainSel = i; paint(); } });
+  paint();
+  wrap.append(toggle, el, box);
+  return wrap;
 }
 const bridgeUi: TrickUi<BMove, BView> = {
   teams: true,
@@ -216,7 +238,7 @@ const bridgeUi: TrickUi<BMove, BView> = {
     if (!v.auction.length) return null;
     box.className = "bidbox bidmini";
     const chip = document.createElement("button"); chip.className = "bidchip";
-    const paint = () => { chip.textContent = `${t("br_auction")} ${auctionOpen ? "▴" : "▾"}`; table.style.display = auctionOpen ? "grid" : "none"; };
+    const paint = () => { chip.textContent = `${t("br_auction")} ${auctionOpen ? "▴" : "▾"}`; (box.querySelector(".auctionwrap") as HTMLElement).style.display = auctionOpen ? "block" : "none"; };
     chip.onclick = () => { auctionOpen = !auctionOpen; paint(); };
     paint(); box.append(chip, table); return box;
   },
