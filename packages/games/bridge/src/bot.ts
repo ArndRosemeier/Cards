@@ -1,5 +1,6 @@
 import { rankOf, suitOf, RANKS, type Bot, type Card, type Rng } from "@cards/engine";
 import { chooseCard } from "./play.ts";
+import { competitive } from "./compete.ts";
 import { STRAINS, hcp, lastBid, type Call, type Move, type Strain, type View } from "./rules.ts";
 
 const rv = (c: Card) => RANKS.indexOf(rankOf(c));
@@ -8,6 +9,7 @@ const balanced = (cn: Record<string, number>) => Object.values(cn).every((n) => 
 const points = (hand: Card[]) => { const cn = counts(hand); let d = 0; for (const n of Object.values(cn)) d += n === 0 ? 3 : n === 1 ? 2 : n === 2 ? 1 : 0; return hcp(hand) + d; };
 const longest = (cn: Record<string, number>, order: string[] = ["S", "H", "D", "C"]) => order.slice().sort((a, b) => cn[b]! - cn[a]! || order.indexOf(a) - order.indexOf(b))[0] as Strain;
 const isMajor = (s: string) => s === "H" || s === "S";
+const SUIT_ORDER: Strain[] = ["S", "H", "D", "C"];
 const bidOf = (calls: Call[], level: number, suit: Strain): Call | undefined => calls.find((c) => c.t === "bid" && c.level === level && c.suit === suit);
 /** The cheapest legal bid in `suit`. */
 const cheapest = (calls: Call[], suit: Strain): Call | undefined => calls.filter((c): c is Extract<Call, { t: "bid" }> => c.t === "bid" && c.suit === suit).sort((a, b) => a.level - b.level)[0];
@@ -30,7 +32,7 @@ function conventional(v: View, calls: Call[]): Call | null {
   // ---------------- opening
   if (mine.length === 0 && A.every((a) => a.call.t === "pass")) {
     const len1 = Math.max(...Object.values(cn)), srt = Object.values(cn).sort((a, b) => b - a), rule20 = h + srt[0]! + srt[1]!;
-    if (bal && h >= 22) return bid(3, "N") ?? pass;
+    if (h >= 22 || (h >= 20 && len1 >= 7) || (h + srt[0]! + srt[1]! >= 31 && h >= 19)) return bid(2, "C") ?? pass;             // strong, artificial and forcing to game
     if (bal && h >= 20) return bid(2, "N") ?? pass;
     if (bal && h >= 15 && h <= 17) return bid(1, "N") ?? pass;
     const goodSuit = (s: Strain) => hand.filter((c) => suitOf(c) === s && "AKQ".includes(rankOf(c))).length >= 2;
@@ -53,6 +55,35 @@ function conventional(v: View, calls: Call[]): Call | null {
   }
   const lbid = lastBid({ auction: A });
   if (!lbid) return null;
+  if (lbid.seat === partner && lbid.suit === "N" && lbid.level === 4 && ownBids.length >= 1 && ownBids.every((a) => (a.call as Extract<Call, { t: "bid" }>).suit !== "N") && partnerBids.length >= 2) {
+    const n = aces(hand); return (n === 1 ? bid(5, "D") : n === 2 ? bid(5, "H") : n === 3 ? bid(5, "S") : bid(5, "C")) ?? pass;     // answer Blackwood
+  }
+
+  // ---------------- strong 2C: waiting 2D, then game-forcing natural bidding
+  const open2c = A.find((a) => a.call.t === "bid");
+  if (open2c && (open2c.call as Extract<Call, { t: "bid" }>).suit === "C" && (open2c.call as Extract<Call, { t: "bid" }>).level === 2) {
+    const strong = open2c.seat === me, mineBids = ownBids.length;
+    const maxSuit = SUIT_ORDER.slice().sort((a, b) => cn[b]! - cn[a]!)[0]!;
+    if (!strong && mineBids === 0) {                                                       // response
+      const own = SUIT_ORDER.filter((s) => cn[s]! >= 5 && "AKQ".split("").filter((r) => hand.some((c) => suitOf(c) === s && rankOf(c) === r)).length >= 2);
+      if (h >= 8 && own.length) { const b = cheapest(calls, own[0]!); if (b && b.t === "bid" && b.level <= 3) return b; }
+      return bid(2, "D") ?? pass;
+    }
+    if (strong && mineBids === 1) {                                                        // opener's rebid
+      const r = [...A].reverse().find((a) => a.seat === partner && a.call.t === "bid");
+      const rc = r?.call as Extract<Call, { t: "bid" }> | undefined;
+      if (rc && rc.suit === "D" && rc.level === 2) { if (bal) return (h >= 25 ? bid(3, "N") : bid(2, "N")) ?? pass; const b = cheapest(calls, maxSuit); if (b && b.t === "bid") return b; }
+      if (rc && rc.suit !== "D") { if (cn[rc.suit]! >= 3 && isMajor(rc.suit)) return bid(4, rc.suit) ?? pass; if (bal) return bid(3, "N") ?? pass; const b = cheapest(calls, maxSuit); if (b && b.t === "bid") return b; }
+    }
+    if (!strong && mineBids === 1) {                                                       // responder after opener's rebid (game forced)
+      const pl = [...A].reverse().find((a) => a.seat === partner && a.call.t === "bid")!.call as Extract<Call, { t: "bid" }>;
+      if (pl.suit === "N") return (pl.level === 2 && h >= 10 ? bid(6, "N") : bid(3, "N")) ?? pass;
+      if (cn[pl.suit]! >= 3) { if (isMajor(pl.suit)) return (h >= 9 ? bid(4, pl.suit) ?? bid(6, pl.suit) : bid(4, pl.suit)) ?? pass; return bid(3, "N") ?? bid(pl.level + 1, pl.suit) ?? pass; }
+      return bid(3, "N") ?? pass;
+    }
+    if (strong && mineBids >= 2) return bid(3, "N") ?? pass;
+    return null;
+  }
 
   // ---------------- partner opened (I have not bid yet)
   const po = A.find((a) => a.call.t === "bid");
@@ -61,7 +92,8 @@ function conventional(v: View, calls: Call[]): Call | null {
     if (A.some((a) => a.seat === (me + 1) % 4 && a.call.t !== "pass")) return null;
     if (o.suit === "N") {
       if (o.level === 1) {                                                         // 1NT, 15-17
-        if (h >= 17) return bid(6, "N") ?? bid(3, "N") ?? pass;
+        if (h >= 18) return bid(6, "N") ?? bid(3, "N") ?? pass;
+        if (h >= 16 && bal) return bid(4, "N") ?? bid(3, "N") ?? pass;                              // quantitative: 6NT only with a maximum
         const m5 = (["S", "H"] as Strain[]).find((s) => cn[s]! >= 5);
         if (m5 && h >= 0 && !(h >= 10 && cn[m5]! === 5 && false)) return m5 === "H" ? bid(2, "D") ?? pass : bid(2, "H") ?? pass; // Jacoby transfer
         if (h >= 8 && (cn.H! >= 4 || cn.S! >= 4)) return bid(2, "C") ?? pass;     // Stayman
@@ -83,14 +115,15 @@ function conventional(v: View, calls: Call[]): Call | null {
     const sup = (cn[o.suit]!) , shortPts = (() => { let d = 0; for (const [s, n] of Object.entries(cn)) if (s !== o.suit) d += n === 0 ? 3 : n === 1 ? 2 : n === 2 ? 1 : 0; return d; })();
     if (isMajor(o.suit) && sup >= 3) {
       const sp = h + (sup >= 4 ? shortPts : Math.min(shortPts, 1));
-      if (sp >= 17 && sup >= 4 && aces(hand) >= 1) return bid(4, "N") ?? bid(4, o.suit) ?? pass;            // Blackwood: slam is possible
-      if (sp >= 13) return bid(4, o.suit) ?? pass;                                   // a 5-3 or 5-4 major fit plays better than 3NT
+      if (sp >= 13 && sup >= 4) return bid(2, "N") ?? bid(4, o.suit) ?? pass;                 // Jacoby 2NT: forcing raise, 4+ trumps
+      if (sp >= 13) return bid(3, o.suit) ?? pass;                                           // three trumps: limit-plus, opener decides
       if (sp >= 10) return bid(3, o.suit) ?? pass;
       if (sp >= 6) return bid(2, o.suit) ?? pass;
       return pass;
     }
     if (h < 6) return pass;
     const lower = (["C", "D", "H", "S"] as Strain[]).filter((s) => s !== o.suit && cn[s]! >= 4);
+    const cheapestNewOK = () => lower.some((s2) => { const c2 = cheapest(calls, s2); return !!c2 && c2.t === "bid" && c2.level <= 2; });
     if (h < 10) {                                                                  // 6-9: a one-level new suit or 1NT
       const one = lower.find((s) => bid(1, s)); if (one) return bid(1, one)!;
       if (!isMajor(o.suit) && cn[o.suit]! >= 5) return bid(2, o.suit) ?? bid(1, "N") ?? pass;
@@ -98,6 +131,7 @@ function conventional(v: View, calls: Call[]): Call | null {
     }
     // 10+: forcing new suit, otherwise notrump
     if (!isMajor(o.suit) && cn[o.suit]! >= 5 && h >= 10 && h < 13) return (bal ? bid(2, "N") : bid(3, o.suit)) ?? pass;
+    if (isMajor(o.suit) && bal && h >= 10 && h < 13 && !cheapestNewOK()) return bid(1, "N") ?? pass;
     const cheapestNew = lower.map((s) => cheapest(calls, s)).filter((c): c is Extract<Call, { t: "bid" }> => !!c && c.t === "bid").sort((a, b) => a.level - b.level || STRAINS.indexOf(a.suit) - STRAINS.indexOf(b.suit))[0];
     if (bal && h >= 13 && !(isMajor(o.suit) && sup >= 4)) return bid(3, "N") ?? pass;
     if (cheapestNew && cheapestNew.level <= 2) { const five = lower.filter((s) => cn[s]! >= 5).sort((a, b) => cn[b]! - cn[a]!)[0]; return (five && cheapest(calls, five)) || cheapestNew; }
@@ -106,7 +140,8 @@ function conventional(v: View, calls: Call[]): Call | null {
   }
 
   // ---------------- I opened and partner answered
-  if (mine[0]!.seat === me && ownBids.length === 1) {
+  const nt1 = mine[0]!.seat === me && (mine[0]!.call as Extract<Call, { t: "bid" }>).suit === "N" && (mine[0]!.call as Extract<Call, { t: "bid" }>).level === 1;
+  if (mine[0]!.seat === me && (ownBids.length === 1 || (nt1 && lbid.seat === partner))) {
     const o = mine[0]!.call as Extract<Call, { t: "bid" }>;
     const r = A.slice().reverse().find((a) => a.seat === partner && a.call.t === "bid");
     if (!r) return null;                                                           // partner passed: nothing more to say
@@ -116,6 +151,8 @@ function conventional(v: View, calls: Call[]): Call | null {
       if (rc.suit === "D" && rc.level === 2) return bid(2, "H") ?? pass;                                                              // transfer to hearts
       if (rc.suit === "H" && rc.level === 2) return bid(2, "S") ?? pass;                                                              // transfer to spades
       if (rc.suit === "N" && rc.level === 2) return h >= 16 ? bid(3, "N") ?? pass : pass;                                           // 2NT invite
+      if (rc.suit === "N" && rc.level === 4) return h >= 17 ? bid(6, "N") ?? pass : pass;                                            // quantitative raise
+      if (isMajor(rc.suit) && rc.level === 3) return (h >= 16 && cn[rc.suit]! >= 3) || (h >= 15 && cn[rc.suit]! >= 4) ? bid(4, rc.suit) ?? pass : pass;   // accept the invitation
       return pass;
     }
     if (o.suit === "N") return pass;
@@ -130,6 +167,10 @@ function conventional(v: View, calls: Call[]): Call | null {
     if (rc.suit === "N" && rc.level === 4 && isMajor(o.suit)) {                    // Blackwood: answer with the number of aces
       const n = aces(hand);
       return (n === 1 ? bid(5, "D") : n === 2 ? bid(5, "H") : n === 3 ? bid(5, "S") : bid(5, "C")) ?? pass;
+    }
+    if (rc.suit === "N" && rc.level === 2 && isMajor(o.suit)) {                    // Jacoby 2NT: 18+ asks for aces, otherwise game
+      if (h >= 18) return bid(4, "N") ?? bid(4, o.suit) ?? pass;
+      return bid(4, o.suit) ?? pass;
     }
     if (rc.suit === "N") {                                                         // 1NT 6-9 / 2NT 10-12 / 3NT
       if (rc.level >= 3) return pass;
@@ -154,8 +195,8 @@ function conventional(v: View, calls: Call[]): Call | null {
 
   // ---------------- I asked with Blackwood and partner answered
   const asked = ownBids.find((a) => (a.call as Extract<Call, { t: "bid" }>).suit === "N" && (a.call as Extract<Call, { t: "bid" }>).level === 4);
-  if (asked && mine[0]!.seat === partner) {
-    const trump = (mine[0]!.call as Extract<Call, { t: "bid" }>).suit;
+  if (asked) {
+    const trump = (mine.find((a) => (a.call as Extract<Call, { t: "bid" }>).suit !== "N")?.call as Extract<Call, { t: "bid" }> | undefined)?.suit ?? "S";
     const ans = [...partnerBids].reverse()[0]!.call as Extract<Call, { t: "bid" }>;
     if (ans.level === 5 && ans.suit !== "N" && isMajor(trump)) {
       const theirs = ans.suit === "C" ? 0 : ans.suit === "D" ? 1 : ans.suit === "H" ? 2 : 3;
@@ -199,6 +240,8 @@ function conventional(v: View, calls: Call[]): Call | null {
 function bidding(v: View, legal: Move[]): Move {
   const conv = conventional(v, legal as Call[]);
   if (conv) return conv;
+  const me = v.you as number;
+  if (v.auction.some((a) => a.seat % 2 !== me % 2 && a.call.t !== "pass")) { const c = competitive(v, legal as Call[]); if (c) return c; }
   return naturalBidding(v, legal);
 }
 
