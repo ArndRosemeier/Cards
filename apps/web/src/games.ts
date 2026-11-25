@@ -151,6 +151,24 @@ const SYM: Record<string, string> = { C: "♣", D: "♦", H: "♥", S: "♠", N:
 const callHtml = (c: any): string => c.t === "bid" ? `${c.level}<span class="${c.suit === "H" || c.suit === "D" ? "red" : ""}">${SYM[c.suit]}</span>` : c.t === "pass" ? "–" : c.t === "double" ? "X" : "XX";
 /** compass letters as seen from the own seat: you are South, the next seat clockwise is West */
 const compass = (seat: number, me: number) => ["S", "W", "N", "E"][(seat - me + 4) % 4]!;
+let auctionOpen = false;
+const esc = (x: string) => x.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const callCell = (c: any): string => c.t === "pass" ? `<i>${t("pass2")}</i>` : callHtml(c);
+/** The bidding history as a classic table: one column per seat in playing order (W, N, E, S as seen from the own seat), with names, the dealer marked, one row per round. */
+function auctionTable(v: any, names: string[], me: number): HTMLElement {
+  const el = document.createElement("div"); el.className = "auction";
+  const colOf = (seat: number) => (seat - me - 1 + 8) % 4;
+  const seatOf = (col: number) => (me + 1 + col) % 4;
+  const head = [0, 1, 2, 3].map((c) => { const s = seatOf(c); return `<b class="${s % 2 === me % 2 ? "us" : ""}">${compass(s, me)}${s === v.dealer ? '<sup>D</sup>' : ""}<small>${s === me ? t("you") : esc(names[s] ?? "")}</small></b>`; }).join("");
+  const rows: (string | null)[][] = []; let last = 9;
+  for (const a of v.auction as any[]) { const col = colOf(a.seat); if (!rows.length || col <= last) rows.push([null, null, null, null]); rows[rows.length - 1]![col] = callCell(a.call); last = col; }
+  if (v.phase === "auction" && v.turn !== null) { const col = colOf(v.turn); if (!rows.length || col <= last) rows.push([null, null, null, null]); rows[rows.length - 1]![col] = "…"; }
+  if (!rows.length) rows.push([null, null, null, null]);
+  // the first round starts at the dealer: leave the seats before the dealer empty
+  const flat = rows.flat(), lastIdx = flat.reduce((m, c, i) => (c !== null ? i : m), -1);
+  el.innerHTML = head + flat.map((c, i) => `<span class="${c === "…" ? "now" : i === lastIdx ? "last" : ""}">${c ?? ""}</span>`).join("");
+  return el;
+}
 const bridgeUi: TrickUi<BMove, BView> = {
   teams: true,
   cardOfMove: (m) => (m.t === "play" ? m.card : null),
@@ -176,10 +194,11 @@ const bridgeUi: TrickUi<BMove, BView> = {
   panel: (v, legal, ctx) => {
     if (v.phase === "over") return null;
     const box = document.createElement("div"); box.className = "bidbox";
+    const table = auctionTable(v, ctx.names, ctx.me);
     if (v.phase === "auction") {
-      const hist = document.createElement("div"); hist.className = "auction";
-      hist.innerHTML = [0, 1, 2, 3].map((s) => `<b>${compass(s, v.you as number)}${s === v.dealer ? "*" : ""}</b>`).join("") + [...Array(v.dealer).fill(null), ...v.auction].map((a: any) => `<span>${a ? callHtml(a.call) : ""}</span>`).join("");
-      if (v.turn === ctx.me) {
+      box.append(table);
+      if (v.turn === ctx.me && !ctx.busy) {
+        const pick = document.createElement("div"); pick.className = "bidpick";
         const grid = document.createElement("div"); grid.className = "bidgrid";
         for (let level = 1; level <= 7; level++) for (const su of ["C", "D", "H", "S", "N"]) {
           const mv = legal.find((m) => m.t === "bid" && m.level === level && m.suit === su);
@@ -189,11 +208,17 @@ const bridgeUi: TrickUi<BMove, BView> = {
         for (const [k, label] of [["pass", t("pass2")], ["double", "X"], ["redouble", "XX"]] as const) {
           const mv = legal.find((m) => m.t === k); const b = document.createElement("button"); b.textContent = label; b.disabled = !mv; if (mv) b.onclick = () => ctx.send(mv); row.append(b);
         }
-        box.append(grid, row);
+        pick.append(grid, row); box.prepend(pick);
       }
-      box.append(hist); return box;
+      return box;
     }
-    return null;
+    // during play: a small chip that opens the bidding history
+    if (!v.auction.length) return null;
+    box.className = "bidbox bidmini";
+    const chip = document.createElement("button"); chip.className = "bidchip";
+    const paint = () => { chip.textContent = `${t("br_auction")} ${auctionOpen ? "▴" : "▾"}`; table.style.display = auctionOpen ? "grid" : "none"; };
+    chip.onclick = () => { auctionOpen = !auctionOpen; paint(); };
+    paint(); box.append(chip, table); return box;
   },
   winner: (v) => (v.scores[0]! >= v.scores[1]! ? 0 : 1),
 };

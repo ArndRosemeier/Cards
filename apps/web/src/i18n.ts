@@ -39,7 +39,7 @@ const de: Dict = {
   ca_err_blocked: "Der Stapel ist gesperrt", ca_err_frozen: "Stapel eingefroren: du brauchst ein natürliches Paar", ca_err_pair: "Du brauchst zwei passende Karten (natürlich)", ca_err_match: "Du brauchst eine passende Karte",
   rm_out: "Rommé!", rm_reshuffle: "Stapel neu gemischt", rm_openFirst: "Erst auslegen (Mindestwert)", rm_noFit: "Passt nicht", rm_layoff: "Anlegen", rm_swapJoker: "Joker tauschen", rm_layoffHint: "Karte wählen und an eine Reihe auf dem Tisch anlegen – oder abwerfen", rm_tapGlowing: "Tippe auf eine leuchtende Reihe (oder zieh die Karte darauf)", rm_tapOne: "Passt an die leuchtende Reihe – tippe darauf oder auf „Anlegen“", rm_tapBoth: "Anlegen oder den Joker tauschen – Knopf wählen (Tippen legt an)", rm_fitsLocked: "Passt an eine Reihe – Anlegen geht erst nach dem Auslegen ({n} Punkte)", rm_tapSwap: "Tauscht den Joker der leuchtenden Reihe – tippe darauf oder auf „Joker tauschen“", rm_addGroup: "Gruppe bilden", rm_open: "Auslegen", rm_unstage: "Zurücksetzen",
   rm_meld: "Legen", rm_discard: "Abwerfen", rm_drawPrompt: "Ziehe vom Stapel oder nimm die offene Karte", rm_playPrompt: "Auslegen, anlegen oder abwerfen", rm_minOpen: "Auslegen ab {n} Punkten",
-  pass2: "Passe", br_yourCall: "Du bist mit Reizen dran", br_calling: "{n} reizt …", br_playDummy: "Spiele vom Tisch (Dummy)", br_vul: "Gefahr", br_both: "Beide", br_none: "Keine",
+  pass2: "Passe", br_auction: "Reizverlauf", br_yourCall: "Du bist mit Reizen dran", br_calling: "{n} reizt …", br_playDummy: "Spiele vom Tisch (Dummy)", br_vul: "Gefahr", br_both: "Beide", br_none: "Keine",
   br_call: "{call}", br_passedOut: "Alle passen", br_contract: "Kontrakt!", br_made: "Erfüllt! {n}", br_down: "Gefallen! −{n}",
 };
 const en: Dict = {
@@ -82,7 +82,7 @@ const en: Dict = {
   ca_err_blocked: "The pile is blocked", ca_err_frozen: "Pile is frozen: you need a natural pair", ca_err_pair: "You need two matching natural cards", ca_err_match: "You need a matching card",
   rm_out: "Rummy!", rm_reshuffle: "Stock reshuffled", rm_openFirst: "Open first (minimum value)", rm_noFit: "Does not fit", rm_layoff: "Lay off", rm_swapJoker: "Swap joker", rm_layoffHint: "Pick a card to add to a meld on the table – or discard", rm_tapGlowing: "Tap a glowing meld (or drag the card onto it)", rm_tapOne: "Fits the glowing meld: tap it or press \"Lay off\"", rm_tapBoth: "Add it or swap the joker – pick a button (tapping adds)", rm_fitsLocked: "Fits a meld – but you can only add after opening ({n} points)", rm_tapSwap: "Swaps the joker in the glowing meld: tap it or press \"Swap joker\"", rm_addGroup: "Form group", rm_open: "Lay out", rm_unstage: "Reset",
   rm_meld: "Meld", rm_discard: "Discard", rm_drawPrompt: "Draw from the stock or take the open card", rm_playPrompt: "Meld, lay off or discard", rm_minOpen: "Opening needs {n} points",
-  pass2: "Pass", br_yourCall: "Your call", br_calling: "{n} is bidding …", br_playDummy: "Play from the dummy", br_vul: "Vulnerable", br_both: "Both", br_none: "None",
+  pass2: "Pass", br_auction: "Bidding", br_yourCall: "Your call", br_calling: "{n} is bidding …", br_playDummy: "Play from the dummy", br_vul: "Vulnerable", br_both: "Both", br_none: "None",
   br_call: "{call}", br_passedOut: "Passed out", br_contract: "Contract!", br_made: "Made! {n}", br_down: "Down! −{n}",
 };
 let lang: "de" | "en" = (() => {

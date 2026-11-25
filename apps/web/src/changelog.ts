@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.11", date: "2026-11-25",
+    de: ["Bridge: Der Reizverlauf ist jetzt gut lesbar. Eine Tabelle zeigt für jeden Spieler (West, Nord, Ost, Süd, mit Namen, Geber markiert) in der Reihenfolge der Runden, wer was angesagt hat; sie bleibt auch sichtbar, während die anderen reizen. Im Kartenspiel gibt es oben links den Knopf „Reizverlauf“, der die Tabelle wieder aufklappt."],
+    en: ["Bridge: the bidding history is now easy to read. A table shows, for every player (West, North, East, South, with names, dealer marked) and in round order, who bid what; it stays visible while the others are bidding. During the card play, a “Bidding” button at the top left opens the table again."] },
   { v: "1.10", date: "2026-11-22",
     de: ["Neu: einstellbare Bedenkzeit der Computerspieler (⏱-Regler neben Effekte und Musik, im Menü und im Spiel; 0,2 bis 5 Sekunden, gilt in allen Spielen und sofort). So kannst du den Zügen leichter folgen. Standard bleibt wie bisher (ca. 1,3 s). In Online-Spielen bestimmt die Einstellung des Gastgebers."],
     en: ["New: adjustable thinking time for computer players (⏱ slider next to Effects and Music, in the menu and in the game; 0.2 to 5 seconds) and a 🎲 slider for the random share (0 to 100%, so moves do not feel clockwork; applies to all games and immediately), so it is easier to follow the moves. The default stays as before (about 1.3 s). In online games the host's setting decides."] },

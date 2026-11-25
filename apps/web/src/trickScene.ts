@@ -29,7 +29,7 @@ export interface TrickUi<M, V> {
   /** lower scores are better (Hearts), which flips the summary colours and the star */
   lowBetter?: boolean;
   /** custom panel (e.g. the Bridge bidding box). Return null to hide. */
-  panel?(v: V, legal: M[], ctx: { send(m: M): void; names: string[]; me: number }): HTMLElement | null;
+  panel?(v: V, legal: M[], ctx: { send(m: M): void; names: string[]; me: number; busy: boolean }): HTMLElement | null;
   winner(v: V): number;                        // who won the match (for the result screen)
   /** short "trumps: ♣" style chip shown at the top of the table */
   trump?(v: V): string | null;
@@ -508,7 +508,7 @@ export class TrickScene<V extends TrickViewBase, M, E extends TrickEv> implement
     { const c = this.adapter.trump?.(v) ?? null; this.chip.textContent = c ?? ""; this.chip.style.display = c ? "block" : "none"; }
     this.banner.style.display = this.busy || v.over || !this.banner.textContent ? "none" : "block";
     if (this.adapter.panel) {
-      const el = this.busy ? null : this.adapter.panel(v, this.legal, { send: (m) => this.send(m), names: this.names, me: this.me });
+      const el = this.adapter.panel(v, this.legal, { send: (m) => this.send(m), names: this.names, me: this.me, busy: this.busy });
       this.panelEl.innerHTML = ""; if (el) { this.panelEl.append(el); this.panelEl.style.display = "block"; } else this.panelEl.style.display = "none";
     }
     this.board.innerHTML = this.boardHtml(v);
