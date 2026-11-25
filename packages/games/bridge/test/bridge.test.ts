@@ -77,3 +77,25 @@ test("Blackwood: opener answers with the number of aces", () => {
   const r = atAuction([opener, none[1]!, none[2]!, none[3]!] as any, [[0, "1S"], [1, "P"], [2, "4N"], [3, "P"]], 0) as any;
   assert.deepEqual([r.t, r.level, r.suit], ["bid", 5, "D"]);
 });
+
+import { DD } from "../src/dd.ts";
+test("double-dummy solver", () => {
+  // NT, 3 cards each. NS hold the three top spades, EW only low cards: NS win all 3 tricks whoever leads.
+  const sp = (...bits: number[]) => [0, 0, 0, bits.reduce((a, b) => a | (1 << b), 0)];
+  const h = [sp(12), sp(0), sp(11), sp(1)].map((x) => x.slice());
+  h[0] = [0, 0, 0, (1 << 12) | (1 << 5)]; h[2] = [0, 0, 0, (1 << 11) | (1 << 4)]; h[1] = [0, 0, 0, (1 << 1) | (1 << 0)]; h[3] = [0, 0, 0, (1 << 3) | (1 << 2)];
+  assert.equal(new DD(-1).value(h, 1, [], 2), 2);
+  assert.equal(new DD(-1).value(h, 0, [], 2), 2);
+  // a lone trump beats an ace: West (seat 3) holds the only heart, the trump contract is hearts
+  const g = [[(1 << 12), 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1 << 0, 0]];
+  g[1] = [0, 0, 0, 0]; assert.equal(new DD(2).value([[1 << 12, 0, 0, 0], [(1 << 3), 0, 0, 0], [(1 << 2), 0, 0, 0], [0, 0, 1 << 0, 0]], 0, [], 1), 0);
+});
+test("view exposes the play history", () => {
+  const rng = Rng.fromSeed(5);
+  let { state } = Bridge.setup({ boards: 1 }, 4, rng);
+  for (let i = 0; i < 400 && state.phase !== "over"; i++) {
+    const seat = Bridge.activeSeats(state)[0]!;
+    state = Bridge.apply(state, seat, bridgeBot.choose(Bridge.view(state, seat), Bridge.legalMoves(state, seat), rng), rng).state;
+    if (state.phase === "play" && state.tricks[0] + state.tricks[1] === 2 && state.trick.length === 0) { const v = Bridge.view(state, seat); assert.equal(v.history!.length, 2); assert.equal(v.history![0]!.length, 4); }
+  }
+});

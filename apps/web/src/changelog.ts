@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.12", date: "2026-11-25",
+    de: ["Bridge: Die Computerspieler spielen die Karten jetzt deutlich besser. Sie zählen mit (Farben, Trümpfe, Fehlfarben), spielen sinnvolle Ausspiele (Sequenzen, vierte Karte von oben, Partnerfarbe, kurze Farbe zum Stechen), Zweiter Mann tief und Dritter Mann hoch, geben Zeichen und werfen sicher ab. Ab dem sechsten Stich simulieren sie die verdeckten Karten und rechnen jede Möglichkeit „doppelt offen“ durch (Verfahren wie bei GIB und WBridge5). In 120 Testspielen war das im Schnitt rund 4 IMP pro Spiel besser als vorher."],
+    en: ["Bridge: the computer players now play the cards much better. They count (suits, trumps, voids), make proper opening leads (sequences, fourth best, partner's suit, a short suit to ruff), play second hand low and third hand high, signal and discard safely. From the sixth trick on they sample the hidden cards and solve each deal double-dummy (the method GIB and WBridge5 use). In 120 test boards this was worth about 4 IMPs per board against the previous play."] },
   { v: "1.11", date: "2026-11-25",
     de: ["Bridge: Der Reizverlauf ist jetzt gut lesbar. Eine Tabelle zeigt für jeden Spieler (West, Nord, Ost, Süd, mit Namen, Geber markiert) in der Reihenfolge der Runden, wer was angesagt hat; sie bleibt auch sichtbar, während die anderen reizen. Im Kartenspiel gibt es oben links den Knopf „Reizverlauf“, der die Tabelle wieder aufklappt."],
     en: ["Bridge: the bidding history is now easy to read. A table shows, for every player (West, North, East, South, with names, dealer marked) and in round order, who bid what; it stays visible while the others are bidding. During the card play, a “Bidding” button at the top left opens the table again."] },

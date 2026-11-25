@@ -12,12 +12,16 @@ export interface BridgeState {
   hands: Card[][]; phase: "auction" | "play" | "over"; dealer: Seat; board: number; boards: number; scores: number[];
   auction: { seat: Seat; call: Call }[]; turn: Seat; contract: Contract | null; revealed: boolean;
   trick: { seat: Seat; card: Card }[]; tricks: [number, number]; vul: [boolean, boolean];
+  /** completed tricks of this board, each in play order (public information) */
+  history?: { seat: Seat; card: Card }[][];
 }
 export type Move = Call | { t: "play"; card: Card };
 export type Ev = TrickEv;
 export interface View {
   you: Seat | "public"; hand: Card[]; handSizes: number[]; talon: number; trick: { seat: Seat; card: Card }[]; turn: Seat | null; scores: number[]; over: boolean;
   shown?: Record<number, Card[]>;
+  /** completed tricks, each in play order, so players can count cards */
+  history?: { seat: Seat; card: Card }[][];
   phase: BridgeState["phase"]; dealer: Seat; board: number; boards: number; auction: { seat: Seat; call: Call }[]; contract: Contract | null; dummy: Seat | null;
   tricks: [number, number]; vul: [boolean, boolean]; controller: Seat | null; /** whose card is due (the dummy, when the declarer plays it) */ playTurn: Seat | null;
 }
@@ -57,7 +61,7 @@ export function legalCalls(s: BridgeState, seat: Seat): Call[] {
 function deal(s: BridgeState, rng: Rng, events: Ev[]) {
   const deck = rng.shuffle(makeDeck());
   s.hands = Array.from({ length: N }, (_, i) => deck.slice(i * 13, i * 13 + 13));
-  s.phase = "auction"; s.auction = []; s.contract = null; s.revealed = false; s.trick = []; s.tricks = [0, 0];
+  s.phase = "auction"; s.auction = []; s.contract = null; s.revealed = false; s.trick = []; s.tricks = [0, 0]; s.history = [];
   s.vul = VUL[(s.board - 1) % 16]!; s.turn = s.dealer;
   events.push({ t: "newRound" });
   for (let i = 0; i < N; i++) events.push({ t: "dealt", seat: i, count: 13 });
@@ -133,6 +137,7 @@ export const Bridge: GameRules<BridgeConfig, BridgeState, Move, View, Ev> = {
     const w = trickWinner(s.trick, c.suit);
     s.tricks[side(w)]++;
     events.push({ t: "trickDone", winner: w });
+    (s.history ??= []).push(s.trick.slice());
     s.trick = []; s.turn = w;
     if (s.hands[0]!.length === 0) {
       const pts = scoreContract(c, s.tricks[side(c.declarer)]!, s.vul[side(c.declarer)]!);
@@ -153,6 +158,7 @@ export const Bridge: GameRules<BridgeConfig, BridgeState, Move, View, Ev> = {
       turn: s.phase === "over" ? null : Bridge.activeSeats(s)[0] ?? null, scores: s.scores.slice(), over: s.phase === "over",
       ...(s.revealed && dummy !== null ? { shown: { [dummy]: s.hands[dummy]!.slice() } } : {}),
       phase: s.phase, dealer: s.dealer, board: s.board, boards: s.boards, auction: s.auction.slice(), contract: s.contract ? { ...s.contract } : null, dummy,
+      history: (s.history ?? []).map((t) => t.slice()),
       tricks: [...s.tricks] as [number, number], vul: [...s.vul] as [boolean, boolean], controller: s.phase === "play" ? Bridge.activeSeats(s)[0] ?? null : null, playTurn: s.phase === "play" ? s.turn : null,
     };
   },

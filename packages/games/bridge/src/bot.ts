@@ -1,4 +1,5 @@
 import { rankOf, suitOf, RANKS, type Bot, type Card, type Rng } from "@cards/engine";
+import { chooseCard } from "./play.ts";
 import { STRAINS, hcp, lastBid, type Call, type Move, type Strain, type View } from "./rules.ts";
 
 const rv = (c: Card) => RANKS.indexOf(rankOf(c));
@@ -264,59 +265,9 @@ function naturalBidding(v: View, legal: Move[]): Move {
   return pass;
 }
 
-/** Bots play with the cards of both their hand and the dummy; no peeking at other hands. */
 function play(v: View, legal: Move[], rng: Rng): Move {
   const plays = legal.filter((m): m is Extract<Move, { t: "play" }> => m.t === "play").map((m) => m.card);
-  if (plays.length === 1) return { t: "play", card: plays[0]! };
-  const trump = v.contract!.suit === "N" ? null : v.contract!.suit;
-  const trick = v.trick; const controller = v.you as number;
-  const owner = trick.length ? (trick[trick.length - 1]!.seat + 1) % 4 : v.turn as number; // whose card we are playing
-  void owner;
-  const decl = v.contract!.declarer, dummy = (decl + 2) % 4;
-  const myTeam = (s: number) => s % 2 === controller % 2;
-  const hiFirst = (a: Card, b: Card) => rv(b) - rv(a), loFirst = (a: Card, b: Card) => rv(a) - rv(b);
-  const bySuit = (s: string) => plays.filter((c) => suitOf(c) === s);
-  if (!trick.length) {
-    // lead
-    const declSide = myTeam(decl);
-    if (declSide && trump) {
-      const tr = bySuit(trump).sort(hiFirst);
-      const total = [...v.hand, ...(v.shown?.[dummy] ?? [])].filter((c) => suitOf(c) === trump).length;
-      if (tr.length && total >= 7 && rng.next() < 0.8) return { t: "play", card: tr[0]! };
-    }
-    const aces = plays.filter((c) => rankOf(c) === "A" && suitOf(c) !== trump);
-    if (aces.length && rng.next() < 0.7) return { t: "play", card: aces[0]! };
-    const kings = plays.filter((c) => rankOf(c) === "K");
-    if (declSide && kings.length && rng.next() < 0.4) return { t: "play", card: kings[0]! };
-    const cn = counts(plays);
-    const suits = (["S", "H", "D", "C"] as string[]).filter((s) => cn[s]! > 0 && s !== trump).sort((a, b) => cn[b]! - cn[a]!);
-    const s = suits[0] ?? suitOf(plays[0]!);
-    const cs = plays.filter((c) => suitOf(c) === s).sort(hiFirst);
-    // fourth best from the longest suit for defenders, otherwise low
-    return { t: "play", card: (!declSide && cs.length >= 4 ? cs[3] : cs[cs.length - 1])! };
-  }
-  const ledSuit = suitOf(trick[0]!.card);
-  let win = trick[0]!;
-  for (const p of trick.slice(1)) {
-    const a = suitOf(p.card), b = suitOf(win.card);
-    if (a === b ? rv(p.card) > rv(win.card) : trump !== null && a === trump && b !== trump) win = p;
-  }
-  const last = trick.length === 3;
-  const beats = (c: Card) => (suitOf(c) === suitOf(win.card) ? rv(c) > rv(win.card) : trump !== null && suitOf(c) === trump && suitOf(win.card) !== trump);
-  const winners = plays.filter(beats).sort(loFirst);
-  const partnerWins = myTeam(win.seat);
-  const follow = plays.filter((c) => suitOf(c) === ledSuit);
-  const lowest = (cs: Card[]) => cs.slice().sort(loFirst)[0]!;
-  if (partnerWins && (last || rv(win.card) >= 10)) return { t: "play", card: follow.length ? lowest(follow) : lowest(plays.filter((c) => suitOf(c) !== trump).length ? plays.filter((c) => suitOf(c) !== trump) : plays) };
-  if (winners.length) {
-    if (last || follow.length === 0 || rng.next() < 0.75) {
-      // third hand high, otherwise cheapest winner; do not ruff if partner is winning
-      if (!partnerWins) return { t: "play", card: trick.length === 2 && follow.length ? winners[winners.length - 1]! : winners[0]! };
-    }
-  }
-  if (follow.length) return { t: "play", card: lowest(follow) };
-  const side = plays.filter((c) => suitOf(c) !== trump);
-  return { t: "play", card: lowest(side.length ? side : plays) };
+  return { t: "play", card: chooseCard(v, plays, rng) };
 }
 
 export const bridgeBot: Bot<View, Move> = {
