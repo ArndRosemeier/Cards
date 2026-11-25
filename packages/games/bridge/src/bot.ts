@@ -241,7 +241,7 @@ function bidding(v: View, legal: Move[]): Move {
   const conv = conventional(v, legal as Call[]);
   if (conv) return conv;
   const me = v.you as number;
-  if (v.auction.some((a) => a.seat % 2 !== me % 2 && a.call.t !== "pass")) { const c = competitive(v, legal as Call[]); if (c) return c; }
+  if (v.auction.some((a) => a.call.t !== "pass")) { const c = competitive(v, legal as Call[]); if (c) return c; }
   return naturalBidding(v, legal);
 }
 

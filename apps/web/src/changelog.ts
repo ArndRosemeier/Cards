@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.14", date: "2026-11-25",
+    de: ["Bridge: Die Computerspieler rechnen jetzt schon ab dem dritten Stich (10 Karten pro Hand) mit der „doppelt offen“-Simulation statt erst ab dem sechsten; der Rechner ist dafür deutlich schneller geworden. Außerdem schätzen sie die Stärke des Partners aus seinen Ansagen genauer (Eröffnung, Antwort, Wiederholung), reizen mit starken Händen nach gegnerischer Eröffnung besser und versuchen eher Schlemm. Im Test etwa +0,6 IMP pro Spiel im Kartenspiel."],
+    en: ["Bridge: the computer players now use the double-dummy simulation from the third trick on (10 cards per hand) instead of the sixth, and the solver is much faster. They also estimate partner's strength from their calls more accurately (opening, response, rebid), bid strong hands better after an opposing opening, and try for slam more often. In tests this was worth about +0.6 IMP per board in the card play."] },
   { v: "1.13", date: "2026-11-25",
     de: ["Bridge: Die Computerspieler reizen jetzt auch, wenn die Gegner mitreizen: Überrufe, Informationskontra (Takeout), negatives Kontra, Unterstützung des Partners, Weiterreizen nach dem Gesetz der Gesamtstiche. Neu außerdem: starke 2♣-Eröffnung (22+ Punkte), Jacoby-2SA (Forcing-Unterstützung), Einladungen nach Stayman werden angenommen, quantitatives 4SA nach 1SA. In 1750 Testspielen etwa +0,5 IMP pro Spiel gegenüber dem alten Reizen."],
     en: ["Bridge: the computer players now bid when the opponents take part: overcalls, takeout doubles, negative doubles, supporting partner, and competing by the law of total tricks. Also new: strong 2♣ opening (22+ points), Jacoby 2NT (forcing raise), invitations after Stayman are accepted, quantitative 4NT after 1NT. About +0.5 IMP per board over the old bidding in 1,750 test boards."] },

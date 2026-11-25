@@ -38,8 +38,25 @@ export class DD {
     return this.trick(h, cur, seat, need, left);
   }
 
+  /** Tricks the leader can certainly cash from the top (no trump issues: only used when no one can ruff). */
+  private quick(h: DHands, leader: number): number {
+    const t = this.trump;
+    if (t >= 0) { const tm = h[0]![t]! | h[1]![t]! | h[2]![t]! | h[3]![t]!; if (tm) { const opp = h[(leader + 1) % 4]![t]! | h[(leader + 3) % 4]![t]!; if (opp) return 0; } }
+    let q = 0;
+    for (let s = 0; s < 4; s++) {
+      const u = h[0]![s]! | h[1]![s]! | h[2]![s]! | h[3]![s]!; const m = h[leader]![s]!;
+      if (!m) continue;
+      let n = 0;
+      for (let b = 12; b >= 0; b--) { if (!(u & (1 << b))) continue; if (m & (1 << b)) n++; else break; }
+      q += n;
+    }
+    return q;
+  }
+
   private can(h: DHands, leader: number, need: number, left: number): boolean {
     if (need <= 0) return true; if (need > left || left === 0) return false;
+    if (this.quick(h, leader) >= need && leader % 2 === 0) return true;
+    if (leader % 2 === 1 && this.quick(h, leader) > left - need) return false;                     // the defenders cash enough to hold NS below `need`
     const k = this.key(h, leader); let e = this.tt.get(k);
     if (e) { if (need <= e[0]) return true; if (need > e[1]) return false; } else { e = [0, left]; this.tt.set(k, e); }
     const r = this.trick(h, [], leader, need, left);

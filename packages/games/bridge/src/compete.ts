@@ -56,6 +56,8 @@ export function competitive(v: View, calls: Call[]): Call | null {
     const S = lb.suit; const unbid = SUITS.filter((s) => s !== S);
     const shortInOpp = sup(S) <= 2;
     const otherMajors = (["H", "S"] as Strain[]).filter((s) => s !== S);
+    if (h >= 22 && balancedHand(cn) && stopper(hand, S) && L <= 2) { const g = bidAt(3, "N"); if (g) return g; }
+    if (h >= 19 && dbl && L <= 2 && sup(S) <= 3 && lb.seat !== partner) return dbl;
     // takeout double: opening values, short in their suit, support for the others
     const supportAll = unbid.every((s) => sup(s) >= 3 || (!isMaj(s) && sup(s) >= 2) || sup(s) >= 4) && otherMajors.every((s) => sup(s) >= 3);
     const longest = unbid.slice().sort((a, b) => sup(b) - sup(a))[0]!;
@@ -224,6 +226,17 @@ export function competitive(v: View, calls: Call[]): Call | null {
     if (fitSuit && fitTotal >= 10 && T >= 29) return bidAt(5, fitSuit);
     return null;
   };
+  const acesN = hand.filter((c) => rankOf(c) === "A").length;
+  const iAsked = mine.some((m) => m.suit === "N" && m.level === 4);
+  if (lb.seat === partner && lb.suit === "N" && lb.level === 4 && !iAsked && fitSuit && isMaj(fitSuit)) {             // answer Blackwood
+    return (acesN === 1 ? bidAt(5, "D") : acesN === 2 ? bidAt(5, "H") : acesN === 3 ? bidAt(5, "S") : bidAt(5, "C")) ?? pass;
+  }
+  if (iAsked && lb.seat === partner && lb.level === 5 && lb.suit !== "N" && fitSuit) {                                  // the answer came: decide slam
+    const theirs = lb.suit === "C" ? 0 : lb.suit === "D" ? 1 : lb.suit === "H" ? 2 : 3;
+    if (acesN + theirs >= 4 || (acesN + theirs >= 3 && T >= 32)) return bidAt(6, fitSuit) ?? pass;
+    return (cheap(fitSuit)?.level ?? 9) <= 5 ? cheap(fitSuit) ?? pass : pass;
+  }
+  if (fitSuit && isMaj(fitSuit) && T >= 31.5 && !iAsked && acesN >= 1 && lb.level <= 3 && lb.seat % 2 === me % 2) { const q = bidAt(4, "N"); if (q) return q; }
   // responding to partner's forcing calls
   if (lb.seat === partner && lastCall && lastCall.call.t === "double" && !myDouble) {                  // partner's (negative/support) double after my opening and their overcall
     const S = oppSuit; const maj = (["S", "H"] as Strain[]).filter((s) => s !== S && sup(s) >= 4 && !mine.some((m) => m.suit === s) );
@@ -236,6 +249,7 @@ export function competitive(v: View, calls: Call[]): Call | null {
   }
   if (lb.seat === partner && lastCall && lastCall.seat === partner) {                                   // partner made the last bid: respond naturally, never push beyond our values
     if (fitSuit && T >= (isMaj(fitSuit) ? 25 : 28)) { const g = gameBid(); if (g && lb.level < 4) return g; }
+    if (fitSuit && T >= 23.5 && T < 25 && lb.level <= 2 && lb.suit === fitSuit && mine.length === 1) { const inv = cheap(fitSuit); if (inv && inv.level === lb.level + 1) return inv; }
     if (!fitSuit && balancedHand(cn) && T >= 26 && oppSuit && stopper(hand, oppSuit) && lb.level < 3) return bidAt(3, "N") ?? pass;
     // partner's forcing cue-bid (a bid in the opponents' suit): show a stopper or the trump suit
     if (oppSuit && lb.suit === oppSuit && mine.length) { if (stopper(hand, oppSuit) && balancedHand(cn)) return bidAt(3, "N") ?? pass; const f = SUITS.slice().sort((a, b) => sup(b) - sup(a))[0]!; const b = cheap(f); if (b && b.level <= 4) return b; }
@@ -264,22 +278,60 @@ export function competitive(v: View, calls: Call[]): Call | null {
   return null;
 }
 
-/** Rough HCP range partner has shown with their calls so far. */
+/** HCP range partner has shown with their calls so far (opening, response and rebid types of standard American). */
 function partnerPoints(v: View, A: View["auction"]): [number, number] {
-  const partner = ((v.you as number) + 2) % 4;
-  const firstBidIdx = A.findIndex((a) => a.call.t === "bid");
-  let lo = 0, hi = 9;
-  const mine = A.filter((a) => a.seat === partner);
-  const bids = mine.filter((a) => a.call.t === "bid");
-  if (!bids.length) return [0, A.some((a) => a.seat === partner && a.call.t === "double") ? 20 : 9];
-  const f = bids[0]!.call as Bid; const opened = A.indexOf(bids[0]!) === firstBidIdx;
-  if (opened) {
-    if (f.suit === "N" && f.level === 1) { lo = 15; hi = 17; }
-    else if (f.suit === "N" && f.level === 2) { lo = 20; hi = 21; }
-    else if (f.level >= 2) { lo = 5; hi = 10; }
-    else { lo = 12; hi = 16; }
-  } else if (A.slice(0, A.indexOf(bids[0]!)).some((a) => a.call.t === "bid" && a.seat % 2 === partner % 2)) { lo = 6; hi = 10; } // a response
-  else { lo = 8; hi = 15; }                                                                                   // an overcall
-  if (bids.length >= 2) { lo += 2; hi += 2; }
-  return [lo, hi];
+  const me = v.you as number, partner = (me + 2) % 4;
+  const order = ["C", "D", "H", "S", "N"];
+  let lo = 0, hi = 40; let any = false;
+  const myCalls: Bid[] = [];
+  let last: { level: number; suit: Strain } | null = null;
+  let ownSide: Bid[] = [];                       // our side's bids before the current call
+  let partnerBidCount = 0, openerSide = -1;
+  for (const a of A) {
+    if (a.call.t === "double" && a.seat === partner) { any = true; lo = Math.max(lo, 6); hi = Math.min(hi, 40); if (openerSide === partner % 2) { /* support/negative double */ } }
+    if (a.call.t !== "bid") continue;
+    const b = a.call; const mineSide = a.seat % 2 === me % 2;
+    if (openerSide < 0) openerSide = a.seat % 2;
+    const minLevel = last ? (order.indexOf(b.suit) > order.indexOf(last.suit) ? last.level : last.level + 1) : 1;
+    const jump = b.level > minLevel;
+    if (a.seat === partner) {
+      any = true; partnerBidCount++;
+      let r: [number, number] = [0, 40];
+      const isOpener = openerSide === partner % 2 && partnerBidCount >= 1 && !A.some((x, i) => x.call.t === "bid" && x.seat % 2 === partner % 2 && x.seat !== partner && A.indexOf(x) < A.indexOf(a));
+      const firstOfSide = ownSide.length === 0;
+      const prevPartnerBids = ownSide.filter((x) => (x as Bid & { s?: number }).s === partner);
+      if (firstOfSide) {
+        if (openerSide === partner % 2) {
+          if (b.suit === "N") r = b.level === 1 ? [15, 17] : b.level === 2 ? [20, 21] : [25, 27];
+          else if (b.suit === "C" && b.level === 2) r = [22, 40];
+          else if (b.level === 2) r = [5, 10]; else if (b.level >= 3) r = [4, 10]; else r = [12, 21];
+        } else r = b.level >= 3 || jump ? [5, 11] : b.suit === "N" ? [15, 18] : [8, 16];    // overcall
+      } else {
+        const mySideOpened = openerSide === me % 2;
+        const prevPartner = A.filter((x) => x.seat === partner && x.call.t === "bid" && A.indexOf(x) < A.indexOf(a));
+        if (prevPartner.length === 0) {            // partner's first bid after I (or the opponents) acted: a response
+          const partnerSuits = ownSide.filter((x) => x.suit === b.suit);
+          if (b.suit === "N") r = b.level === 1 ? [6, 10] : b.level === 2 ? (jump ? [13, 15] : [11, 15]) : [13, 18];
+          else if (partnerSuits.length) r = b.level <= minLevel + 0 ? [6, 9] : b.level === minLevel + 1 ? [10, 12] : [13, 17];   // a raise of my suit: simple / limit / game
+          else r = b.level >= 2 && minLevel >= 2 ? [10, 18] : jump ? [17, 20] : [6, 18];
+          void mySideOpened;
+        } else {                                   // a rebid
+          const first = prevPartner[0]!.call as Bid;
+          if (b.suit === "N") r = b.level === 1 ? [12, 14] : b.level === 2 ? (isOpener ? [18, 19] : [11, 13]) : [18, 21];
+          else if (b.suit === first.suit) r = jump ? [16, 18] : [12, 15];
+          else r = jump ? [19, 21] : b.level >= 2 && minLevel === 2 && order.indexOf(b.suit) > order.indexOf(first.suit) && first.level === 1 ? [16, 21] : [12, 18];
+          // a raise of my suit
+          if (ownSide.some((x) => x.suit === b.suit && (x as Bid & { s?: number }).s === me)) r = jump ? [16, 18] : [12, 14];
+        }
+      }
+      lo = Math.max(lo === 0 ? 0 : lo, r[0]); hi = Math.min(hi, r[1]);
+      if (lo > hi) { lo = r[0]; hi = r[1]; }
+    }
+    void mineSide; void myCalls; void prevPartnerBidsDummy;
+    if (mineSide) { const t = Object.assign({}, b, { s: a.seat }); ownSide.push(t as Bid); }
+    last = { level: b.level, suit: b.suit };
+  }
+  if (!any) return [0, 9];
+  return [lo, Math.min(hi, 40)];
 }
+const prevPartnerBidsDummy = 0;

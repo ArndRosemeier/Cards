@@ -137,7 +137,7 @@ function pimc(x: Ctx, rng: Rng, budgetMs: number): Card | null {
   const sums = cands.map(() => 0); let n = 0;
   const t0 = Date.now(); const left = x.sizes[x.actor]! + 0;     // tricks remaining, including the current one
   const cur: [number, number, number][] = x.trick.map((p) => [p.seat, sidx(p.card), rv(p.card)]);
-  for (let i = 0; i < 40 && (i < 4 || Date.now() - t0 < budgetMs); i++) {
+  for (let i = 0; i < 40 && ((i < playConfig.minSamples && Date.now() - t0 < 1200) || Date.now() - t0 < budgetMs); i++) {
     const hands = sample(x, rng, bounds); if (!hands) break;
     const dd = new DD(trumpIdx, 600_000);
     try {
@@ -152,7 +152,7 @@ function pimc(x: Ctx, rng: Rng, budgetMs: number): Card | null {
       vals.forEach((vv, k) => { sums[k]! += vv; }); n++;
     } catch (e) { if (e instanceof NodeLimit) break; throw e; }
   }
-  if (n < 3) return null;
+  if (n < 2) return null;
   let best = 0;
   for (let k = 1; k < cands.length; k++) if (sums[k]! > sums[best]! + 1e-9) best = k;
   // among equal results prefer the lowest card of the suit (keeps honours, no needless overtakes)
@@ -302,12 +302,15 @@ function follow(x: Ctx): Card {
   return discard(x);
 }
 
+/** Tunables (the tests and benchmarks change them). */
+export const playConfig = { maxCards: 10, minSamples: 3 };
+
 export function chooseCard(v: View, legalCards: Card[], rng: Rng): Card {
   if (legalCards.length === 1) return legalCards[0]!;
   const x = context(v, legalCards);
   const cards = x.sizes[x.actor]!;
   // sampling plus double-dummy search once few cards remain; with more cards it is too slow in the browser
-  if (cards <= 8 || (cards <= 9 && x.trick.length >= 1)) {
+  if (cards <= playConfig.maxCards) {
     try { const c = pimc(x, rng, cards <= 6 ? 250 : 450); if (c) return c; } catch { /* fall through to the heuristics */ }
   }
   if (!x.trick.length) return chooseLead(x, rng);
