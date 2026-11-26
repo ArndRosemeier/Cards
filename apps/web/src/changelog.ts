@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.20", date: "2026-11-26",
+    de: ["Online: Die Verbindung zum Raum sendet jetzt alle 20 Sekunden ein kleines Lebenszeichen. Wer lange über einen Zug nachdenkt (zum Beispiel beim ersten Auslegen in Rommé), wird damit nicht mehr wegen einer „stillen“ Verbindung aus dem Spiel geworfen. Falls es dich trotzdem rauswirft, sag mir bitte, welche Meldung erscheint."],
+    en: ["Online: the connection to the room now sends a small sign of life every 20 seconds. Anyone who thinks about a move for a long time (for example when first laying out in Rummy) is no longer dropped because of a “quiet” connection. If you still get thrown out, please tell me which message appears."] },
   { v: "1.19", date: "2026-11-26",
     de: ["Neu: Spielen im WLAN ohne Server und ohne Internet („In der Nähe“ unter Online). Der Gastgeber macht einen Tisch auf und lädt Mitspieler per QR-Code ein: Der andere scannt den Code mit der Kamera, zeigt dann seinen Antwort-Code, und der Gastgeber scannt ihn (oder fügt den Code ein). Die Geräte verbinden sich direkt (WebRTC) im selben WLAN oder am Hotspot eines Handys. Das Gerät des Gastgebers ist der Server: Seite geöffnet lassen. Wenn der Gastgeber geht, endet das Spiel. Alle Spiele, Computerspieler auf offenen Plätzen, Chat und Reaktionen funktionieren wie online."],
     en: ["New: play over Wi-Fi with no server and no internet (“Nearby” under Online). The host opens a table and invites players with a QR code: the other player scans it with their camera, then shows their answer code, and the host scans that (or pastes the code). Devices connect directly (WebRTC) on the same Wi-Fi or one phone's hotspot. The host's device is the server, so keep its page open. When the host leaves, the game ends. All games, computer players on open seats, chat and reactions work as online."] },

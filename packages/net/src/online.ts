@@ -20,6 +20,7 @@ type Msg =
   | { t: "seat"; seat: number }
   | { t: "update"; u: Update<any, any, any> }
   | { t: "rehello" }
+  | { t: "ping" }
   | { t: "full" }
   | { t: "emote"; seat: number; id: string }
   | { t: "chat"; seat: number; name: string; text: string }
@@ -73,7 +74,10 @@ export class OnlineSession<Config, State, Move, View, Ev> {
     this.hub.on("player-", (id) => this.onPlayerLeft(id));
     this.hub.on("player+", () => this.sendShadow());
     this.hub.on("host", (id) => { if (id === this.hub.you) this.promote(); });
-    this.hub.on("close", () => { if (!this.left) this.emit("error", "connection_closed"); });
+    this.hub.on("close", () => { this.stopPing(); if (!this.left) this.emit("error", "connection_closed"); });
+    // a quiet connection (someone is thinking about their move for minutes) must not look idle to proxies or the server
+    this.pinger = setInterval(() => { try { if (this.isHost) this.hub.send({ t: "ping" }); else if (this.hub.host !== null) this.hub.send({ t: "ping" }, this.hub.host); } catch { /* connection already gone */ } }, 20000);
+    (this.pinger as unknown as { unref?: () => void }).unref?.();
   }
 
   static async create<C, S, M, V, E>(def: GameDef<C, S, M, V, E>, opts: SessionOptions, room: { name: string; seats: number; public?: boolean }) {
@@ -271,7 +275,9 @@ export class OnlineSession<Config, State, Move, View, Ev> {
   sendEmote(id: string) { if (this.mySeat !== null) this.hub.send({ t: "emote", seat: this.mySeat, id }); }
 
   private left = false;
-  leave() { this.left = true; this.hub.close(); this.table?.dispose(); }
+  private pinger: ReturnType<typeof setInterval> | null = null;
+  private stopPing() { if (this.pinger) { clearInterval(this.pinger); this.pinger = null; } }
+  leave() { this.left = true; this.stopPing(); this.hub.close(); this.table?.dispose(); }
 }
 
 export type { RoomSummary };
