@@ -44,6 +44,7 @@ To list the app in the GameHub lobby, register its URL in GameHub's app list (se
 - `packages/engine`: seeded RNG, cards, the `GameRules` interface (`setup`, `legalMoves`, `apply`, `view`, `result`) and the `Bot` interface.
 - `packages/games/*`: one pure rules module plus bot per game. State is plain JSON, randomness only from the seeded RNG, `view()` is the only place information is hidden.
 - `packages/net`: `TableHost` (authoritative table, seats are human or bot) and `OnlineSession` (the room creator hosts, others join; if the host leaves, the next player takes over from a snapshot and the bots keep the empty seats).
+- Nearby play (Wi-Fi, no server): `packages/net/src/local.ts` runs the GameHub protocol over WebRTC with the host's browser as room server; players swap two QR codes (UI in `apps/web/src/nearby.ts`). Copied from the gameserver repo (`docs/LOCAL.md`). The host leaving ends the game (no migration).
 - `apps/web`: menu, table scenes (one per game family), card rendering, sound, i18n.
 
 Design notes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

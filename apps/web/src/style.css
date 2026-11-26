@@ -219,3 +219,15 @@ body.portrait .board.hboard { top:14px; left:auto; right:8px; transform:none; ma
 #paceslot .volname { display:block; width:auto; min-width:34px; font-size:12px; white-space:nowrap; text-align:right; }
 @media (max-width:480px) { #paceslot .volrows { flex-direction:column; gap:6px; } }
 .bidexplain:empty { display:none !important; }
+
+/* nearby (Wi-Fi) play */
+.nearby { text-align:center; }
+.nearby.overlay { position:fixed; inset:0; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; background:rgba(5,14,10,.97); overflow-y:auto; }
+.nearby .nstep { max-width:460px; line-height:1.4; margin:8px 0; }
+.nearby .nqr { width:min(70vw,300px); background:#fff; border-radius:12px; padding:6px; margin:8px auto; }
+.nearby .nqr svg { width:100%; height:auto; display:block; }
+.nearby .row { justify-content:center; }
+.nearby .ncode input, .nearby .npaste { min-width:0; max-width:340px; font-size:12px; }
+.nearby .nvideo { width:min(80vw,320px); border-radius:12px; margin:8px auto; background:#000; }
+.nearby .nerr { color:#ff9d9d; margin:8px 0; }
+.nearbytag { font-size:12px; opacity:.8; margin-left:6px; padding:2px 8px; border-radius:99px; background:rgba(255,255,255,.12); }

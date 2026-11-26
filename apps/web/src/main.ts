@@ -4,7 +4,8 @@ import gsap from "gsap";
 import { confetti } from "./fx.ts";
 import { createMenuScene } from "./menuScene.ts";
 import { showRules } from "./rulesText.ts";
-import { connect, OnlineSession, TableHost, type SeatSpec } from "@cards/net";
+import { connect, OnlineSession, TableHost, hostLocal, joinLocal, extractCode, type LocalHost, type GameHub, type SeatSpec } from "@cards/net";
+import { handshake, inviteOne, withTimeout, hasNearbyLink, clearNearbyLink } from "./nearby.ts";
 import { entryOf, GAME_ENTRIES, type GameEntry } from "./games.ts";
 import type { GameScene, SceneHooks } from "./trickScene.ts";
 import { sfx, music } from "./sfx.ts";
@@ -126,6 +127,7 @@ async function boot() {
     gameId = q.get("game") ?? "maumau"; const ok = entry().players, want = Number(q.get("players") ?? 3);
     return startLocal(q.get("name") ?? "Arnd", ok.includes(want) ? want : ok.includes(3) ? 3 : ok[ok.length - 1]!, Number(q.get("seed") ?? Date.now()));
   }
+  if (hasNearbyLink()) return joinNearby(extractCode(location.hash));
   if (q.get("room")) return autoJoin(q.get("room")!.trim().toUpperCase());
   showMenu();
 }
@@ -300,6 +302,9 @@ function showOnline(prefill = "", err0 = "") {
       <div class="row"><label>${t("code")}</label><input type="text" id="code" maxlength="6" value="${esc(prefill)}" style="text-transform:uppercase"><button class="btn" id="join">${t("join")}</button></div>
       <div class="sub" style="margin:16px 0 6px">${t("openRooms")}</div>
       <div id="rooms">${rooms.length ? rooms.map((r) => `<div class="row"><span style="flex:1">${esc(r.name)} · ${r.players}/${(r.meta as any)?.seats ?? r.maxPlayers}</span><button class="btn" data-code="${r.id}">${t("join")}</button></div>`).join("") : `<div class="sub">${lobbyErr ? t("lobbyDown") : t("noRooms")}</div>`}</div>
+      <div class="sub" style="margin:16px 0 6px">${t("nearby")}</div>
+      <div class="sub" style="margin:0 0 8px;font-size:13px">${t("nearbyInfo")}</div>
+      <div class="row"><button class="btn" id="nhost">${t("nearbyHost")}</button><button class="btn" id="njoin">${t("nearbyJoin")}</button></div>
       ${err ? `<div style="color:#ff9d9d;margin:8px 0">${esc(err)}</div>` : ""}
       ${langRow()}<div class="row"><button class="btn" id="back">${t("back")}</button></div>`);
     const nm = () => { name = (w.querySelector("#nm") as HTMLInputElement).value.trim() || t("you"); saveName(name); return name; };
@@ -325,6 +330,16 @@ function showOnline(prefill = "", err0 = "") {
         stop(); enterRoom(session);
       } catch (e) { console.error("create room failed", e); err = failText(e); render(); }
     };
+    (w.querySelector("#nhost") as HTMLButtonElement).onclick = async () => {
+      const n = nm();
+      busy(t("creating"));
+      const hub = hostLocal({ app: "cards", name: n });
+      try {
+        const session = await withTimeout(OnlineSession.create(defOf(), { hub, name: n, token }, { name: `${t(gameId)} · ${n}`, seats }), 10000);
+        stop(); enterRoom(session);
+      } catch (e) { console.error("nearby host failed", e); hub.close(); err = failText(e); render(); }
+    };
+    (w.querySelector("#njoin") as HTMLButtonElement).onclick = () => { nm(); stop(); void joinNearby(""); };
     const joinCode = async (code: string) => {
       const n = nm(); if (!guard()) return;
       busy(t("connecting"));
@@ -340,7 +355,38 @@ function showOnline(prefill = "", err0 = "") {
   teardown = stop;
 }
 
+/** Nearby (Wi-Fi) play, joining side: read the host's invite (QR or pasted), show the answer code, then enter the host's room. */
+async function joinNearby(inviteCode: string, err = "") {
+  const n = savedName() || `${t("guest")} ${10 + Math.floor(Math.random() * 90)}`;
+  let hub: GameHub<any, any, any> | null = null, entered = false;
+  const w = panel(`<h1>${t("nearby")}</h1>${err ? `<div style="color:#ff9d9d;margin:8px 0">${esc(err)}</div>` : ""}<div id="hs"></div>`);
+  const hs = handshake(() => { if (!entered) { hub?.close(); clearNearbyLink(); showMenu(); } });
+  w.querySelector("#hs")!.append(hs.el);
+  teardown = () => { if (!entered) hub?.close(); hs.close(); };
+  if (!inviteCode) { hs.step(t("nearbyScanInvite"), null, (c) => void joinNearby(c)); return; }
+  try {
+    hs.step(t("nearbyConnecting"), null, null);
+    const joined = await joinLocal(inviteCode, { app: "cards", name: n });
+    hub = joined.hub;
+    hs.step(t("nearbyShowAnswer"), joined.answer, null);
+    await withTimeout(hub.ready, 120000);
+    await hub.join("");
+    const game = (hub.room?.meta as any)?.game as string | undefined;
+    if (!game || !live(game)) throw new Error("bad room");
+    gameId = game;
+    const session = await OnlineSession.join(defOf(), { hub, name: n, token }, "");
+    entered = true; clearNearbyLink();
+    enterRoom(session);
+  } catch (e: any) {
+    console.error("nearby join failed", e);
+    hub?.close();
+    void joinNearby("", `${t("nearbyBad")}: ${String(e?.message ?? e).replace(/^gamehub:\s*/, "")}`);
+  }
+}
+
 function enterRoom(session: Session) {
+  const nearbyHost = typeof (session.hub as any).invite === "function" ? (session.hub as LocalHost) : null;
+  const nearby = session.nearby;
   let started = false;
   chatLog = []; chatSink = null;
   session.on("chat", (seat, name, text) => { const l: ChatLine = { seat, name, text, mine: seat === session.mySeat }; chatLog.push(l); if (chatLog.length > 200) chatLog.shift(); chatSink?.(l); });
@@ -348,14 +394,15 @@ function enterRoom(session: Session) {
     if (started) return;
     const l = session.lobby;
     const link = `${location.origin}${location.pathname}?room=${session.code}`;
-    const w = panel(`<h1>${t("online")}</h1><div class="sub">${t("code")}: <b style="color:#e8c66a;font-size:22px;letter-spacing:.15em">${session.code}</b></div>
+    const w = panel(`<h1>${t("online")}</h1><div class="sub">${nearby ? `<b style="color:#e8c66a;font-size:20px">${t("nearbyTag")}</b>` : `${t("code")}: <b style="color:#e8c66a;font-size:22px;letter-spacing:.15em">${session.code}</b>`}</div>
       <div id="seats">${l.seats.map((s, i) => `<div class="row"><span style="flex:1">${i + 1}. ${s.kind === "open" ? `<i style="opacity:.6">${t("seatOpenHuman")}</i>` : esc(s.name || t("seatBot")) + (s.kind === "host" ? ` · ${t("host")}` : s.kind === "bot" ? ` · ${t("seatBot")}` : "")}</span>
         ${session.isHost && i > 0 && (s.kind === "open" || s.kind === "bot") ? `<button class="btn" data-i="${i}" data-k="${s.kind === "open" ? "bot" : "open"}">${s.kind === "open" ? t("seatBot") : t("open")}</button>` : ""}</div>`).join("")}</div>
-      <div class="row"><button class="btn" id="copy">${t("copyLink")}</button></div>
+      ${nearby ? (nearbyHost ? `<div class="row"><button class="btn primary" id="invite"${l.seats.some((s) => s.kind === "open") ? "" : " disabled"}>${t("nearbyInvite")}</button></div><div class="sub" style="font-size:13px">${t("nearbyKeep")}</div>` : "") : `<div class="row"><button class="btn" id="copy">${t("copyLink")}</button></div>`}
       <div class="row" style="justify-content:space-between"><button class="btn" id="leave">${t("leave")}</button>
       ${session.isHost ? `<button class="btn primary" id="start">${t("startGame")}</button>` : `<span class="sub">${t("onlyHost")}</span>`}</div>`);
     w.querySelectorAll<HTMLButtonElement>("[data-i]").forEach((b) => (b.onclick = () => session.setSeatKind(Number(b.dataset.i), b.dataset.k as "open" | "bot")));
-    (w.querySelector("#copy") as HTMLButtonElement).onclick = (e) => { void navigator.clipboard?.writeText(link); (e.target as HTMLElement).textContent = t("copied"); };
+    (w.querySelector("#invite") as HTMLButtonElement | null)?.addEventListener("click", () => { void inviteOne(document.body, nearbyHost!); });
+    (w.querySelector("#copy") as HTMLButtonElement | null)?.addEventListener("click", (e) => { void navigator.clipboard?.writeText(link); (e.target as HTMLElement).textContent = t("copied"); });
     (w.querySelector("#leave") as HTMLButtonElement).onclick = () => { session.leave(); showMenu(); };
     (w.querySelector("#start") as HTMLButtonElement | null)?.addEventListener("click", () => session.startGame(pickBotNames()));
     teardown = () => { /* lobby view only */ };
@@ -364,7 +411,7 @@ function enterRoom(session: Session) {
   session.on("lobby", (l) => { if (l.phase === "lobby") showLobby(); else if (!gameShown) showGame(); });
   session.on("update", (u) => { if (!gameShown) showGame(); deliver(u); if (gameId === "holdem") recordUpdate(u as any); });
   session.on("emote", (seat, id) => scene?.emote?.(seat, id));
-  session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); toast(t(c === "host_lost" ? "hostLost" : "connLost")); } else if (c === "room_full") { session.leave(); showOnline("", t("roomFull")); } });
+  session.on("error", (c) => { if (c === "host_lost" || c === "connection_closed") { session.leave(); showMenu(); toast(t(c === "host_lost" || session.nearby ? "hostLost" : "connLost")); } else if (c === "room_full") { session.leave(); showOnline("", t("roomFull")); } });
   const showGame = () => {
     gameShown = started = true;
     killMenuFx(); teardown?.(); scene?.destroy(); ui.innerHTML = "";

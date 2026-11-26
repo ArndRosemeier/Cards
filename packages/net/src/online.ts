@@ -29,6 +29,8 @@ export interface SessionOptions {
   url?: string; appKey?: string; access?: boolean;
   name: string;
   token: string;
+  /** A ready-made hub (nearby play over WebRTC, see local.ts) instead of a connection to the GameHub server. */
+  hub?: GameHub<any, any, any>;
   /** Delay before a migrated host gives up waiting for a shadow copy, etc. (tests may shorten) */
 }
 
@@ -65,7 +67,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
   private constructor(def: GameDef<Config, State, Move, View, Ev>, opts: SessionOptions) {
     this.def = def; this.opts = opts;
     this.lobby = { phase: "lobby", game: def.id, seats: [] };
-    this.hub = connect<LobbyState, never, Msg>({ url: opts.url, app: "cards", appKey: opts.appKey, access: opts.access, name: opts.name });
+    this.hub = (opts.hub as GameHub<LobbyState, never, Msg> | undefined) ?? connect<LobbyState, never, Msg>({ url: opts.url, app: "cards", appKey: opts.appKey, access: opts.access, name: opts.name });
     this.hub.on("msg", (m, from) => this.onMsg(m, from));
     this.hub.on("state", (s) => { if (!this.isHost) { this.lobby = s; this.emit("lobby", s); } });
     this.hub.on("player-", (id) => this.onPlayerLeft(id));
@@ -78,7 +80,7 @@ export class OnlineSession<Config, State, Move, View, Ev> {
     const s = new OnlineSession<C, S, M, V, E>(def, opts);
     try {
       await s.hub.ready;
-      await s.hub.create({ name: room.name, public: room.public ?? true, maxPlayers: Math.max(room.seats, def.rules.maxSeats), meta: { game: def.id, v: 1, seats: room.seats } });
+      await s.hub.create({ name: room.name, public: opts.hub ? false : room.public ?? true, maxPlayers: Math.max(room.seats, def.rules.maxSeats), meta: { game: def.id, v: 1, seats: room.seats } });
     } catch (e) { s.hub.close(); throw e; }
     s.isHost = true; s.mySeat = 0;
     s.tokens = Array(room.seats).fill(null); s.tokens[0] = opts.token;
@@ -90,12 +92,14 @@ export class OnlineSession<Config, State, Move, View, Ev> {
 
   static async join<C, S, M, V, E>(def: GameDef<C, S, M, V, E>, opts: SessionOptions, code: string) {
     const s = new OnlineSession<C, S, M, V, E>(def, opts);
-    try { await s.hub.ready; await s.hub.join(code); } catch (e) { s.hub.close(); throw e; }
+    try { await s.hub.ready; if (!s.hub.room) await s.hub.join(code); } catch (e) { s.hub.close(); throw e; }
     s.emit("role", false);
     s.hub.send({ t: "hello", token: opts.token, name: opts.name }, s.hub.host!);
     return s;
   }
 
+  /** True for nearby (Wi-Fi) play: no GameHub server, the host's device relays. */
+  get nearby(): boolean { return !!this.opts.hub; }
   get code(): string | null { return this.hub.room?.id ?? null; }
 
   on<K extends keyof Events<View, Move, Ev>>(ev: K, fn: Events<View, Move, Ev>[K]): () => void {

@@ -8,19 +8,21 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@cards/engine": "*",
-    "@cards/net": "*",
-    "@cards/maumau": "*",
-    "pixi.js": "^8.9.0",
-    "gsap": "^3.12.5",
-    "@cards/hearts": "*",
-    "@cards/skat": "*",
-    "@cards/doppelkopf": "*",
-    "@cards/schafkopf": "*",
-    "@cards/holdem": "*",
-    "@cards/romme": "*",
+    "@cards/bridge": "*",
     "@cards/canasta": "*",
-    "@cards/bridge": "*"
+    "@cards/doppelkopf": "*",
+    "@cards/engine": "*",
+    "@cards/hearts": "*",
+    "@cards/holdem": "*",
+    "@cards/maumau": "*",
+    "@cards/net": "*",
+    "@cards/romme": "*",
+    "@cards/schafkopf": "*",
+    "@cards/skat": "*",
+    "gsap": "^3.12.5",
+    "jsqr": "^1.4.0",
+    "pixi.js": "^8.9.0",
+    "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "vite": "^8.3.5"
