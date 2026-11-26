@@ -51,6 +51,8 @@ function chipStack(amount: number): Container {
 
 interface SeatUi { plate: Container; name: Text; stack: Text; status: Text; ring: Graphics; cards: CardView[]; betSpot: { x: number; y: number }; betNode: Container; pos: { x: number; y: number }; handLabel: Text }
 
+/** Hole cards shown at the showdown of the current hand, kept outside the scene so that a rebuilt table (turned device) still shows them. */
+const REVEALED = new Map<number, { cards: Card[]; hand: string }>();
 export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   private world = new Container();
   private bg = new Sprite();
@@ -122,7 +124,10 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
   }
 
   get portraitLayout() { return this.geo.portrait; }
-  receive(u: Update<View, Move, Ev>) { this.queue.push(u); void this.drain(); }
+  receive(u: Update<View, Move, Ev>) {
+    for (const ev of u.events) { if (ev.t === "newHand") REVEALED.clear(); else if (ev.t === "show") REVEALED.set(ev.seat, { cards: ev.cards.slice(), hand: ev.hand }); }
+    this.queue.push(u); void this.drain();
+  }
   private async drain() {
     if (this.running) return; this.running = true;
     while (this.queue.length && !this.destroyed) {
@@ -300,7 +305,12 @@ export class HoldemScene implements GameScene<Update<View, Move, Ev>> {
       const want = s === this.me ? v.hand.length : inHand ? 2 : 0;
       if (sp.cards.length !== want && !v.folded[s]) {
         sp.cards.forEach((c) => c.destroy()); sp.cards = [];
-        for (let i = 0; i < want; i++) { const id = s === this.me ? v.hand[i]! : null; const cv = this.mk(id, s === this.me); const sl = this.holeSlot(s, i); cv.position.set(sl.x, sl.y); cv.rotation = sl.rot; cv.scale.set(sl.scale); sp.cards.push(cv); }
+        const shown = s !== this.me ? REVEALED.get(s) : undefined; // cards already shown at the showdown (the table was rebuilt, e.g. after turning the device)
+        for (let i = 0; i < want; i++) {
+          const id = s === this.me ? v.hand[i]! : shown?.cards[i] ?? null; const cv = this.mk(id, s === this.me || !!shown); const sl = this.holeSlot(s, i);
+          cv.position.set(sl.x, shown ? sl.y + (sp.pos.y < TABLE.y ? -22 : 22) : sl.y); cv.rotation = sl.rot; cv.scale.set(shown ? 0.5 : sl.scale); sp.cards.push(cv);
+        }
+        if (shown) sp.handLabel.text = t("hh_" + shown.hand);
       }
     }
     this.placeDealer(v.dealer);

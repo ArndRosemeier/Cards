@@ -42,16 +42,13 @@ let teardown: (() => void) | null = null;
 /** the newest update for the own seat: what the hint button asks the bot about */
 let lastEmote = 0;
 let lastUpdate: any = null;
+/** The newest update that reached the scene, kept even after the own move cleared lastUpdate (used to rebuild the table when the screen turns). */
+let lastDelivered: any = null;
 /** Makes the current game's scene again (with the same hooks); set where a scene is created. */
 let remakeScene: (() => GameScene<any>) | null = null;
-let turnedSinceStart = false;
 /** Hand an update to the scene. Scenes that fix their layout at start (Hold'em, Rummy, Canasta) are started again, from the current state, when the screen turned. */
 function deliver(u: any) {
-  lastUpdate = u;
-  if (turnedSinceStart && scene && remakeScene) {
-    turnedSinceStart = false;
-    scene.destroy(); scene = remakeScene(); scene.receive({ ...u, events: [] }); return;
-  }
+  lastUpdate = lastDelivered = u;
   scene?.receive(u);
 }
 
@@ -94,7 +91,15 @@ function keepFitted(stage: HTMLElement) {
     if (!w || !h || (w === last.w && h === last.h)) return;
     last = { w, h }; app.renderer.resize(w, h); window.dispatchEvent(new Event("cards:resize"));
   };
-  window.addEventListener("cards:resize", () => { const s = scene; if (s && s.portraitLayout !== undefined && s.portraitLayout !== pickGeo(viewSize().w, viewSize().h).portrait) { turnedSinceStart = true; if (lastUpdate) deliver(lastUpdate); } });
+  // The screen turned: scenes that fix their layout at start are made again, at once, from the newest state. (Not while typing: on Android the on-screen keyboard shrinks the page and would look like a turn.)
+  const turnCheck = () => {
+    const s = scene, a = document.activeElement;
+    if (!s || !remakeScene || !lastDelivered || s.portraitLayout === undefined) return;
+    if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return;
+    if (s.portraitLayout !== pickGeo(viewSize().w, viewSize().h).portrait) { s.destroy(); scene = remakeScene(); scene.receive({ ...lastDelivered, events: [] }); }
+  };
+  window.addEventListener("cards:resize", turnCheck);
+  document.addEventListener("focusout", () => setTimeout(turnCheck, 350));
   const settle = () => { window.scrollTo(0, 0); fit(); for (const ms of [60, 250, 800, 2000]) setTimeout(fit, ms); };
   // safety net: if the browser ever skips a resize notification (iPad after resume, split view), the next tick catches it
   setInterval(() => { if (document.visibilityState === "visible") fit(); }, 1000);
@@ -366,7 +371,7 @@ function enterRoom(session: Session) {
     if (gameId === "holdem") startRecording(`online ${session.code}`);
     setTableTheme(gameId);
     const hooks = { submit: (m: any) => { lastUpdate = null; session.submit(m); }, onFinished: (w: number, names: string[], _me: number, sc: number[]) => setTimeout(() => showResult(w, names, session, undefined, sc), 1500) };
-    scene = entry().scene(app, ui, hooks); remakeScene = () => entry().scene(app, ui, hooks); turnedSinceStart = false;
+    scene = entry().scene(app, ui, hooks); remakeScene = () => entry().scene(app, ui, hooks);
     addHud(() => { session.leave(); scene?.destroy(); scene = null; showMenu(); }, (id) => { const me = session.mySeat; if (me === null || Date.now() - lastEmote < 1500) return; lastEmote = Date.now(); session.sendEmote(id); scene?.emote?.(me, id); }, (text) => session.sendChat(text));
   };
   showLobby();
@@ -461,7 +466,7 @@ function startLocal(name: string, players: number, seed: number) {
     submit: (m: any) => { lastUpdate = null; host.submit(0, m); },
     onFinished: (w, _n, _m, sc) => setTimeout(() => showResult(w, seats.map((s) => s.name), null, () => startLocal(name, players, Date.now()), sc), 1500),
   };
-  scene = entry().scene(app, ui, hooks); remakeScene = () => entry().scene(app, ui, hooks); turnedSinceStart = false;
+  scene = entry().scene(app, ui, hooks); remakeScene = () => entry().scene(app, ui, hooks);
   teardown = () => host.dispose();
   const botEmote = (id?: string) => { if (players < 2) return; const seat = 1 + Math.floor(Math.random() * (players - 1)); scene?.emote?.(seat, id ?? EMOTES[Math.floor(Math.random() * EMOTES.length)]!); };
   addHud(() => { host.dispose(); scene?.destroy(); scene = null; showMenu(); }, (id) => {
