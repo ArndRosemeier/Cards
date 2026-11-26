@@ -2,6 +2,9 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
+  { v: "1.16", date: "2026-11-26",
+    de: ["Fehler behoben: In Bridge blieb das Spiel nach dem Ende der Reizung hängen (der Tisch zeigte nach Kontraktabschluss nichts mehr an und das Ausspiel kam nicht). Ursache war ein Fehler in der neuen Reizerklärung beim Umschalten auf die kleine Reizverlauf-Anzeige."],
+    en: ["Fixed: in Bridge the game stalled once the auction ended (the table stopped updating after the contract and the opening lead never came). Cause: a bug in the new bid explainer when switching to the small bidding-history chip."] },
   { v: "1.15", date: "2026-11-25",
     de: ["Bridge: optionale Reiz-Erklärung. Im Reizkasten gibt es oben rechts einen „?“-Knopf. Ist er an, steht unter der Tabelle, was das letzte Gebot nach den Regeln der Computerspieler bedeutet (z. B. „1SA-Eröffnung: ausgeglichen, 15–17 Punkte“, Stayman, Transfer, Blackwood, Überruf, Informationskontra, Sperrgebot …). Tippe auf ein Gebot mit „?“, um dessen Bedeutung zu sehen. Die Erklärung verrät keine Karten und gilt für alle Spieler, auch online."],
     en: ["Bridge: optional bid explainer. The bidding box has a “?” button at the top right. When it is on, the text under the table says what the latest call means by the computer players' rules (e.g. “1NT opening: balanced, 15–17 points”, Stayman, transfers, Blackwood, overcalls, takeout doubles, pre-empts …). Tap a call marked “?” to see its meaning. The explanation never reveals cards and works for every player, online too."] },

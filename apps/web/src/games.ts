@@ -238,9 +238,9 @@ const bridgeUi: TrickUi<BMove, BView> = {
     if (!v.auction.length) return null;
     box.className = "bidbox bidmini";
     const chip = document.createElement("button"); chip.className = "bidchip";
-    const paint = () => { chip.textContent = `${t("br_auction")} ${auctionOpen ? "▴" : "▾"}`; (box.querySelector(".auctionwrap") as HTMLElement).style.display = auctionOpen ? "block" : "none"; };
+    const paint = () => { chip.textContent = `${t("br_auction")} ${auctionOpen ? "▴" : "▾"}`; const w = box.querySelector(".auctionwrap") as HTMLElement | null; if (w) w.style.display = auctionOpen ? "block" : "none"; };
     chip.onclick = () => { auctionOpen = !auctionOpen; paint(); };
-    paint(); box.append(chip, table); return box;
+    box.append(chip, table); paint(); return box;
   },
   winner: (v) => (v.scores[0]! >= v.scores[1]! ? 0 : 1),
 };
