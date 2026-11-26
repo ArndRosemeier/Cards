@@ -2,7 +2,7 @@
 export interface Release { v: string; date: string; de: string[]; en: string[] }
 
 export const CHANGELOG: Release[] = [
-  { v: "1.12", date: "2026-11-26",
+  { v: "1.18", date: "2026-11-26",
     de: ["Texas Hold’em online: Wird das Gerät (iPad, Handy) während der Hand gedreht, geht die Aufdeckung am Showdown nicht mehr verloren. Der Tisch wird beim Drehen sofort aus dem aktuellen Stand neu aufgebaut, schon aufgedeckte Karten und Handnamen bleiben sichtbar, und neue Ereignisse werden nicht mehr verschluckt. Auf Android löst außerdem die Bildschirmtastatur (Chat) kein „Drehen“ mehr aus."],
     en: ["Texas Hold’em online: turning the device (iPad, phone) during a hand no longer loses the showdown reveal. The table is now rebuilt at once from the current state when you turn, cards already shown and their hand names stay visible, and new events are no longer swallowed. On Android the on-screen keyboard (chat) also no longer counts as a turn."] },
   { v: "1.16", date: "2026-11-26",
